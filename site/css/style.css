@@ -102,13 +102,17 @@
 
 /* --- Reset & base --- */
 
+html {
+    font-size: 22px;
+}
+
 *, *::before, *::after {
     box-sizing: border-box;
 }
 
 body {
     font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 22px;
+    font-size: 1rem;
     line-height: 1.6;
     background-color: var(--bg);
     color: var(--text);
