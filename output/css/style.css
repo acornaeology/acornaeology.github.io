@@ -302,6 +302,14 @@ hr {
     vertical-align: top;
 }
 
+.listing tr:target td {
+    background-color: var(--rule);
+}
+
+.listing tr[id] {
+    scroll-margin-top: 40vh;
+}
+
 .listing .addr {
     color: var(--faint);
     user-select: none;
