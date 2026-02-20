@@ -366,6 +366,39 @@ hr {
     color: var(--yellow);
 }
 
+/* --- Tooltips --- */
+
+.listing [data-tip] {
+    position: relative;
+}
+
+.listing .imm {
+    cursor: help;
+}
+
+.listing [data-tip]::after {
+    content: attr(data-tip);
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 0.3em;
+    padding: 0.4em 0.6em;
+    font-size: 1rem;
+    white-space: nowrap;
+    color: var(--text);
+    background: var(--sidebar-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.listing [data-tip]:hover::after {
+    display: block;
+}
+
 .listing .hex {
     color: var(--dim);
     user-select: none;

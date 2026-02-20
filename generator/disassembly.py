@@ -288,6 +288,12 @@ def _render_code(item):
     html = Markup(f'    <span class="opcode">{mnemonic}</span>')
     if operand:
         operand_html = _linkify_operand(operand, item)
+        if _is_immediate(operand, item):
+            tooltip = _immediate_tooltip(item["bytes"][1])
+            operand_html = Markup(
+                f'<span class="imm" data-tip="{escape(tooltip)}">'
+                f'{operand_html}</span>'
+            )
         html += Markup(f' <span class="operand">{operand_html}</span>')
     return html
 
@@ -304,10 +310,37 @@ def _linkify_operand(operand, item):
     escaped_label = str(escape(target_label))
 
     if escaped_label in escaped_operand:
-        link = f'<a href="#{target_id}">{escaped_label}</a>'
+        target_addr = f"&{item['target']:04X}"
+        link = (f'<a href="#{target_id}"'
+                f' data-tip="{target_addr}">{escaped_label}</a>')
         return Markup(escaped_operand.replace(escaped_label, link, 1))
 
     return escape(operand)
+
+
+_CONTROL_CHARS = {
+    0: "NUL", 1: "SOH", 2: "STX", 3: "ETX", 4: "EOT", 5: "ENQ",
+    6: "ACK", 7: "BEL", 8: "BS", 9: "HT", 10: "LF", 11: "VT",
+    12: "FF", 13: "CR", 14: "SO", 15: "SI", 16: "DLE", 17: "DC1",
+    18: "DC2", 19: "DC3", 20: "DC4", 21: "NAK", 22: "SYN", 23: "ETB",
+    24: "CAN", 25: "EM", 26: "SUB", 27: "ESC", 28: "FS", 29: "GS",
+    30: "RS", 31: "US", 32: "SP", 127: "DEL",
+}
+
+
+def _is_immediate(operand, item):
+    """Check if this operand is an immediate value (#)."""
+    return operand.startswith("#") and len(item.get("bytes", [])) == 2
+
+
+def _immediate_tooltip(value):
+    """Build a multi-representation tooltip for an immediate byte value."""
+    parts = [str(value), f"&{value:02X}", f"%{value:08b}"]
+    if value in _CONTROL_CHARS:
+        parts.append(_CONTROL_CHARS[value])
+    elif 33 <= value <= 126:
+        parts.append(f"'{chr(value)}'")
+    return "  ".join(parts)
 
 
 def _render_bytes(item):
