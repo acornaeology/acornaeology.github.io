@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ name }} — acornaeology{% endblock %}
+
+{% block content %}
+<h1>{{ name }}</h1>
+{% if description %}<p>{{ description }}</p>{% endif %}
+
+<h2>Versions</h2>
+<ul class="rom-list">
+{% for version in versions %}
+<li>
+    <a href="{{ version.id }}.html">{{ version.title }}</a>
+</li>
+{% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,12 @@
+{
+    "slug": "nfs",
+    "name": "Acorn NFS",
+    "description": "Network Filing System for the BBC Micro Econet interface.",
+    "versions": [
+        {
+            "id": "3.34",
+            "title": "NFS 3.34",
+            "filename": "3.34.json"
+        }
+    ]
+}

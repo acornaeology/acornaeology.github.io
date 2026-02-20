@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — acornaeology{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+{% if description %}<p>{{ description }}</p>{% endif %}
+
+{% if subroutines %}
+<h2>Subroutines</h2>
+<ul class="rom-list">
+{% for sub in subroutines %}
+{% if sub.name %}
+<li>
+    <a href="#addr-{{ '%04X' % sub.addr }}">{{ sub.name }}</a>
+    {% if sub.title %}<span class="version">{{ sub.title }}</span>{% endif %}
+</li>
+{% endif %}
+{% endfor %}
+</ul>
+{% endif %}
+
+<hr>
+
+<div class="listing">
+<table>
+{% for line in lines %}
+<tr{% if line.id %} id="{{ line.id }}"{% endif %}>
+<td class="addr">{% if line.addr %}<a href="#{{ line.id }}">{{ line.addr }}</a>{% endif %}</td>
+<td>{{ line.html }}</td>
+<td class="hex">{% if line.hex %}{{ line.hex }}{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}
