@@ -77,6 +77,7 @@
     --dim: #666666;
     --faint: #BBBBBB;
     --rule: #D0D0D0;
+    --sidebar-bg: #F0F0F0;
     --link: #4A78C2;
     --link-visited: #A84DA8;
 }
@@ -95,6 +96,7 @@
         --dim: #6A6A6A;
         --faint: #333338;
         --rule: #2A2A2E;
+        --sidebar-bg: #1A1A1E;
         --link: #5F8FD6;
         --link-visited: #BF5FBF;
     }
@@ -150,6 +152,9 @@ body {
     overflow-y: auto;
     font-size: 0.85rem;
     line-height: 1.4;
+    background-color: var(--sidebar-bg);
+    padding: 1rem;
+    border-radius: 4px;
 }
 
 .subroutine-nav h2 {
