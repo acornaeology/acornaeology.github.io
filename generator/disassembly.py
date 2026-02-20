@@ -1,5 +1,7 @@
 """Processes structured disassembly JSON into template-ready data."""
 
+import re
+
 from markupsafe import Markup, escape
 
 
@@ -11,38 +13,55 @@ def process_disassembly(data):
         addr - address display string (str or None)
         html - pre-rendered content (Markup)
         hex  - hex byte display (str or None)
+        banner - True if this is a full-width subroutine header (optional)
     """
+    sub_lookup = {}
+    for sub in data.get("subroutines", []):
+        sub_lookup[sub["addr"]] = sub
+
     lines = []
     for item in data["items"]:
-        lines.extend(_process_item(item))
+        lines.extend(_process_item(item, sub_lookup))
     return lines
 
 
-def _process_item(item):
+def _process_item(item, sub_lookup):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
     addr_display = f"{addr:04X}"
     addr_used = False
 
-    # Blank separator before items with comments (subroutine boundaries)
+    sub = sub_lookup.get(addr)
+
+    # Filter comments
     comments = [
         c for c in item.get("comments_before", [])
-        if not _is_reference_comment(c)
+        if not _is_reference_comment(c) and not _is_banner_line(c)
     ]
-    if comments:
-        lines.append(_empty_line())
 
-    # Comment lines
-    for comment_text in comments:
-        for line_text in str(comment_text).split("\n"):
-            if line_text.strip():
-                html = Markup(
-                    f'<span class="comment">; {escape(line_text)}</span>'
-                )
-            else:
-                html = Markup("")
-            lines.append({"id": None, "addr": None, "html": html, "hex": None})
+    if sub and sub.get("title"):
+        # Render structured subroutine header instead of raw comments
+        lines.append(_empty_line())
+        lines.append({
+            "id": addr_id,
+            "addr": None,
+            "html": _render_subroutine_header(sub),
+            "hex": None,
+            "banner": True,
+        })
+        addr_used = True
+
+        # Render any comments that aren't part of the banner block
+        non_banner = [c for c in comments if not _is_banner_content(c, sub)]
+        for comment_text in non_banner:
+            _append_comment_lines(lines, comment_text)
+    else:
+        # Normal comment rendering
+        if comments:
+            lines.append(_empty_line())
+        for comment_text in comments:
+            _append_comment_lines(lines, comment_text)
 
     # Label lines
     for label_name in item.get("labels", []):
@@ -73,16 +92,20 @@ def _process_item(item):
 
     # Comments after (rare)
     for comment_text in item.get("comments_after", []):
-        for line_text in str(comment_text).split("\n"):
-            if line_text.strip():
-                html = Markup(
-                    f'<span class="comment">; {escape(line_text)}</span>'
-                )
-                lines.append(
-                    {"id": None, "addr": None, "html": html, "hex": None}
-                )
+        _append_comment_lines(lines, comment_text)
 
     return lines
+
+
+def _append_comment_lines(lines, comment_text):
+    for line_text in str(comment_text).split("\n"):
+        if line_text.strip():
+            html = Markup(
+                f'<span class="comment">; {escape(line_text)}</span>'
+            )
+        else:
+            html = Markup("")
+        lines.append({"id": None, "addr": None, "html": html, "hex": None})
 
 
 def _empty_line():
@@ -90,9 +113,77 @@ def _empty_line():
 
 
 def _is_reference_comment(text):
-    """Auto-generated cross-reference comments are redundant with the
-    structured references field."""
+    """Auto-generated cross-reference comments are redundant."""
     return text.startswith("&") and "referenced" in text
+
+
+def _is_banner_line(text):
+    """Lines made entirely of asterisks are banner decorations."""
+    stripped = text.strip()
+    return len(stripped) > 3 and all(c == "*" for c in stripped)
+
+
+def _is_banner_content(text, sub):
+    """Check if a comment is the body of a subroutine banner that we've
+    already rendered from the structured data."""
+    # The banner body text starts with the subroutine title
+    title = sub.get("title", "")
+    if title and text.startswith(title):
+        return True
+    return False
+
+
+def _render_subroutine_header(sub):
+    """Render a subroutine's structured data as a styled HTML block."""
+    parts = []
+    parts.append('<div class="sub-header">')
+
+    # Title
+    title = sub.get("title", sub.get("name", ""))
+    parts.append(f'<h3>{escape(title)}</h3>')
+
+    # Description — convert paragraphs
+    desc = sub.get("description", "")
+    if desc:
+        paragraphs = re.split(r"\n{2,}", desc)
+        for para in paragraphs:
+            # Check if this paragraph looks like a list (indented lines)
+            para_lines = para.split("\n")
+            if len(para_lines) > 1 and all(
+                l.startswith("  ") or not l.strip() for l in para_lines[1:]
+            ):
+                # Render as preformatted block (register tables, etc.)
+                parts.append(
+                    f'<pre class="sub-detail">{escape(para)}</pre>'
+                )
+            else:
+                parts.append(f"<p>{escape(para)}</p>")
+
+    # On Entry / On Exit
+    entry = sub.get("on_entry", {})
+    exit_ = sub.get("on_exit", {})
+    if entry or exit_:
+        parts.append('<div class="sub-registers">')
+        if entry:
+            parts.append(_render_register_table("On Entry", entry))
+        if exit_:
+            parts.append(_render_register_table("On Exit", exit_))
+        parts.append("</div>")
+
+    parts.append("</div>")
+    return Markup("\n".join(parts))
+
+
+def _render_register_table(heading, regs):
+    """Render a register table (on_entry or on_exit) as a definition list."""
+    parts = [f"<h4>{escape(heading)}</h4>", "<dl>"]
+    for reg, desc in regs.items():
+        parts.append(
+            f"<dt>{escape(reg.upper())}</dt>"
+            f"<dd>{escape(desc)}</dd>"
+        )
+    parts.append("</dl>")
+    return "\n".join(parts)
 
 
 def _render_content(item):

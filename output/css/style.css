@@ -172,6 +172,10 @@ body {
     margin-bottom: 0.3em;
 }
 
+.subroutine-nav a:visited {
+    color: var(--link);
+}
+
 .subroutine-nav .sub-title {
     display: block;
     color: var(--dim);
@@ -358,6 +362,75 @@ hr {
     padding-left: 2em;
     white-space: nowrap;
     vertical-align: top;
+}
+
+/* --- Subroutine headers --- */
+
+.sub-header {
+    font-family: 'IBM Plex Sans', sans-serif;
+    white-space: normal;
+    border-top: 2px solid var(--rule);
+    padding: 1.5rem 0 1rem 0;
+    margin: 1rem 0 0.5rem 0;
+}
+
+.sub-header h3 {
+    font-family: 'Bedstead', monospace;
+    font-size: 1.2rem;
+    margin: 0 0 0.5rem 0;
+    color: var(--cyan);
+}
+
+.sub-header p {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text);
+    margin: 0 0 0.5em 0;
+}
+
+.sub-header pre.sub-detail {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--dim);
+    margin: 0 0 0.5em 0;
+    padding: 0.5em 0.75em;
+    background: var(--sidebar-bg);
+    border-radius: 3px;
+    overflow-x: auto;
+}
+
+.sub-registers {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.sub-registers h4 {
+    font-family: 'Bedstead', monospace;
+    font-size: 0.85rem;
+    margin: 0 0 0.25rem 0;
+    color: var(--dim);
+}
+
+.sub-registers dl {
+    margin: 0;
+    font-size: 0.75rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.1rem 0.75rem;
+}
+
+.sub-registers dt {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: bold;
+    color: var(--blue);
+}
+
+.sub-registers dd {
+    margin: 0;
+    color: var(--dim);
 }
 
 /* --- Index cards --- */
