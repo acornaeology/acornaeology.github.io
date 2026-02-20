@@ -80,6 +80,7 @@
     --sidebar-bg: #F0F0F0;
     --link: #4A78C2;
     --link-visited: #A84DA8;
+    --operand-link: #A84DA8;
 }
 
 /* Dark mode — "Soft Phosphor" */
@@ -99,6 +100,7 @@
         --sidebar-bg: #1A1A1E;
         --link: #5F8FD6;
         --link-visited: #BF5FBF;
+        --operand-link: #D6B85A;
     }
 }
 
@@ -331,13 +333,13 @@ hr {
 }
 
 .listing .operand a {
-    color: var(--text);
+    color: var(--operand-link);
     text-decoration: none;
     border-bottom: 1px dotted var(--dim);
 }
 
 .listing .operand a:visited {
-    color: var(--text);
+    color: var(--operand-link);
 }
 
 .listing .operand a:hover {

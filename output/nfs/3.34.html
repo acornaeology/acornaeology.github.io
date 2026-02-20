@@ -2645,7 +2645,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-00EF">l00ef</a></span>  <span class="comment">; Read command character following *NET</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-00EF">l00ef</a></span>     <span class="comment">; Read command character following *NET</span></td>
 <td class="hex">A5 EF</td>
 </tr>
 
@@ -2653,7 +2653,7 @@
 
 <tr id="addr-806B">
 <td class="addr"><a href="#addr-806B">806B</a></td>
-<td>    <span class="opcode">SBC</span> <span class="operand">#&amp;31</span>  <span class="comment">; Subtract ASCII &#39;1&#39; to get 0-based command index</span></td>
+<td>    <span class="opcode">SBC</span> <span class="operand">#&amp;31</span>      <span class="comment">; Subtract ASCII &#39;1&#39; to get 0-based command index</span></td>
 <td class="hex">E9 31</td>
 </tr>
 
@@ -2701,7 +2701,7 @@
 
 <tr id="addr-8075">
 <td class="addr"><a href="#addr-8075">8075</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;20</span>  <span class="comment">; Y=$20: base offset for *NET commands (index 33+)</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;20</span>      <span class="comment">; Y=$20: base offset for *NET commands (index 33+)</span></td>
 <td class="hex">A0 20</td>
 </tr>
 
@@ -2750,7 +2750,7 @@
 
 <tr id="addr-807C">
 <td class="addr"><a href="#addr-807C">807C</a></td>
-<td>    <span class="opcode">TAY</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">TAY</span>                 <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A8</td>
 </tr>
 
@@ -2766,7 +2766,7 @@
 
 <tr id="addr-8080">
 <td class="addr"><a href="#addr-8080">8080</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand"><a href="#addr-0F03">fs_cmd_csd</a></span>  <span class="comment">; X=depends on function</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand"><a href="#addr-0F03">fs_cmd_csd</a></span>      <span class="comment">; X=depends on function</span></td>
 <td class="hex">AE 03 0F</td>
 </tr>
 
@@ -2782,7 +2782,7 @@
 
 <tr id="addr-8085">
 <td class="addr"><a href="#addr-8085">8085</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0F05">fs_cmd_data</a></span>  <span class="comment">; A=function code (0-7)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0F05">fs_cmd_data</a></span>     <span class="comment">; A=function code (0-7)</span></td>
 <td class="hex">AD 05 0F</td>
 </tr>
 
@@ -2790,7 +2790,7 @@
 
 <tr id="addr-8088">
 <td class="addr"><a href="#addr-8088">8088</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;16</span>  <span class="comment">; Y=depends on function</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;16</span>            <span class="comment">; Y=depends on function</span></td>
 <td class="hex">A0 16</td>
 </tr>
 
@@ -2798,7 +2798,7 @@
 
 <tr id="addr-808A">
 <td class="addr"><a href="#addr-808A">808A</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-809F">dispatch</a></span>  <span class="comment">; ALWAYS branch</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-809F">dispatch</a></span>        <span class="comment">; ALWAYS branch</span></td>
 <td class="hex">D0 13</td>
 </tr>
 
@@ -2853,7 +2853,7 @@
 
 <tr id="addr-808F">
 <td class="addr"><a href="#addr-808F">808F</a></td>
-<td>    <span class="opcode">CMP</span> <span class="operand">#8</span>  <span class="comment">; Function code &gt;= 8? Return (unsupported)</span></td>
+<td>    <span class="opcode">CMP</span> <span class="operand">#8</span>              <span class="comment">; Function code &gt;= 8? Return (unsupported)</span></td>
 <td class="hex">C9 08</td>
 </tr>
 
@@ -2885,7 +2885,7 @@
 
 <tr id="addr-8095">
 <td class="addr"><a href="#addr-8095">8095</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;12</span>  <span class="comment">; Y=$12: base offset for FSCV dispatch (indices 19+)</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;12</span>            <span class="comment">; Y=$12: base offset for FSCV dispatch (indices 19+)</span></td>
 <td class="hex">A0 12</td>
 </tr>
 
@@ -2893,7 +2893,7 @@
 
 <tr id="addr-8097">
 <td class="addr"><a href="#addr-8097">8097</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-809F">dispatch</a></span>  <span class="comment">; ALWAYS branch</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-809F">dispatch</a></span>        <span class="comment">; ALWAYS branch</span></td>
 <td class="hex">D0 06</td>
 </tr>
 
@@ -2976,7 +2976,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">INX</span>  <span class="comment">; Add base offset Y to index X (loop: X += Y+1)</span></td>
+<td>    <span class="opcode">INX</span>                <span class="comment">; Add base offset Y to index X (loop: X += Y+1)</span></td>
 <td class="hex">E8</td>
 </tr>
 
@@ -3016,7 +3016,7 @@
 
 <tr id="addr-80A7">
 <td class="addr"><a href="#addr-80A7">80A7</a></td>
-<td>    <span class="opcode">PHA</span>  <span class="comment">; Push high byte onto stack</span></td>
+<td>    <span class="opcode">PHA</span>                <span class="comment">; Push high byte onto stack</span></td>
 <td class="hex">48</td>
 </tr>
 
@@ -3032,7 +3032,7 @@
 
 <tr id="addr-80AB">
 <td class="addr"><a href="#addr-80AB">80AB</a></td>
-<td>    <span class="opcode">PHA</span>  <span class="comment">; Push low byte onto stack</span></td>
+<td>    <span class="opcode">PHA</span>                <span class="comment">; Push low byte onto stack</span></td>
 <td class="hex">48</td>
 </tr>
 
@@ -3040,7 +3040,7 @@
 
 <tr id="addr-80AC">
 <td class="addr"><a href="#addr-80AC">80AC</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand"><a href="#addr-00BB">fs_options</a></span>  <span class="comment">; Restore X (fileserver options) for use by handler</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand"><a href="#addr-00BB">fs_options</a></span>     <span class="comment">; Restore X (fileserver options) for use by handler</span></td>
 <td class="hex">A6 BB</td>
 </tr>
 
@@ -3699,7 +3699,7 @@
 
 <tr id="addr-8137">
 <td class="addr"><a href="#addr-8137">8137</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#0</span>  <span class="comment">; Y=0: base offset for service calls (index 1+)</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#0</span>        <span class="comment">; Y=0: base offset for service calls (index 1+)</span></td>
 <td class="hex">A0 00</td>
 </tr>
 
@@ -3836,7 +3836,7 @@
 
 <tr id="addr-814E">
 <td class="addr"><a href="#addr-814E">814E</a></td>
-<td>    <span class="opcode">TAX</span>  <span class="comment">; X=&amp;00</span></td>
+<td>    <span class="opcode">TAX</span>         <span class="comment">; X=&amp;00</span></td>
 <td class="hex">AA</td>
 </tr>
 
@@ -3852,7 +3852,7 @@
 
 <tr id="addr-8151">
 <td class="addr"><a href="#addr-8151">8151</a></td>
-<td>    <span class="opcode">TAY</span>  <span class="comment">; Y=&amp;00</span></td>
+<td>    <span class="opcode">TAY</span>         <span class="comment">; Y=&amp;00</span></td>
 <td class="hex">A8</td>
 </tr>
 
@@ -4570,7 +4570,7 @@
 
 <tr id="addr-81D9">
 <td class="addr"><a href="#addr-81D9">81D9</a></td>
-<td>    <span class="opcode">TXA</span>  <span class="comment">; X is key number if key is pressed, or &amp;ff otherwise</span></td>
+<td>    <span class="opcode">TXA</span>         <span class="comment">; X is key number if key is pressed, or &amp;ff otherwise</span></td>
 <td class="hex">8A</td>
 </tr>
 
@@ -4602,7 +4602,7 @@
 
 <tr id="addr-81E0">
 <td class="addr"><a href="#addr-81E0">81E0</a></td>
-<td>    <span class="opcode">TAY</span>  <span class="comment">; Y=key</span></td>
+<td>    <span class="opcode">TAY</span>         <span class="comment">; Y=key</span></td>
 <td class="hex">A8</td>
 </tr>
 
@@ -5182,7 +5182,7 @@
 
 <tr id="addr-828E">
 <td class="addr"><a href="#addr-828E">828E</a></td>
-<td>    <span class="opcode">TAX</span>  <span class="comment">; X=&amp;00</span></td>
+<td>    <span class="opcode">TAX</span>                                     <span class="comment">; X=&amp;00</span></td>
 <td class="hex">AA</td>
 </tr>
 
@@ -5198,7 +5198,7 @@
 
 <tr id="addr-8291">
 <td class="addr"><a href="#addr-8291">8291</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFF4">osbyte</a></span>  <span class="comment">; Read type of last reset</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFF4">osbyte</a></span>                              <span class="comment">; Read type of last reset</span></td>
 <td class="hex">20 F4 FF</td>
 </tr>
 
@@ -5206,7 +5206,7 @@
 
 <tr id="addr-8294">
 <td class="addr"><a href="#addr-8294">8294</a></td>
-<td>    <span class="opcode">TXA</span>  <span class="comment">; X=value of type of last reset</span></td>
+<td>    <span class="opcode">TXA</span>                                     <span class="comment">; X=value of type of last reset</span></td>
 <td class="hex">8A</td>
 </tr>
 
@@ -5214,7 +5214,7 @@
 
 <tr id="addr-8295">
 <td class="addr"><a href="#addr-8295">8295</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-82C3">c82c3</a></span>  <span class="comment">; Soft break (X=0): skip FS init</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-82C3">c82c3</a></span>                               <span class="comment">; Soft break (X=0): skip FS init</span></td>
 <td class="hex">F0 2C</td>
 </tr>
 
@@ -5238,7 +5238,7 @@
 
 <tr id="addr-829B">
 <td class="addr"><a href="#addr-829B">829B</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0E00">fs_server_stn</a></span>  <span class="comment">; Station $FE = no server selected</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0E00">fs_server_stn</a></span>                       <span class="comment">; Station $FE = no server selected</span></td>
 <td class="hex">8D 00 0E</td>
 </tr>
 
@@ -5278,7 +5278,7 @@
 
 <tr id="addr-82A6">
 <td class="addr"><a href="#addr-82A6">82A6</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Y=&amp;03</span></td>
+<td>    <span class="opcode">INY</span>                                     <span class="comment">; Y=&amp;03</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -5414,7 +5414,7 @@
 
 <tr id="addr-82C9">
 <td class="addr"><a href="#addr-82C9">82C9</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-9663">trampoline_adlc_init</a></span>  <span class="comment">; Initialise ADLC hardware</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-9663">trampoline_adlc_init</a></span>         <span class="comment">; Initialise ADLC hardware</span></td>
 <td class="hex">20 63 96</td>
 </tr>
 
@@ -5487,7 +5487,7 @@
 
 <tr id="addr-82D7">
 <td class="addr"><a href="#addr-82D7">82D7</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFF4">osbyte</a></span>  <span class="comment">; Read address of ROM pointer table</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFF4">osbyte</a></span>      <span class="comment">; Read address of ROM pointer table</span></td>
 <td class="hex">20 F4 FF</td>
 </tr>
 
@@ -5503,7 +5503,7 @@
 
 <tr id="addr-82DC">
 <td class="addr"><a href="#addr-82DC">82DC</a></td>
-<td>    <span class="opcode">STY</span> <span class="operand"><a href="#addr-00F7">l00f7</a></span>  <span class="comment">; Y=value of address of ROM pointer table (high byte)</span></td>
+<td>    <span class="opcode">STY</span> <span class="operand"><a href="#addr-00F7">l00f7</a></span>       <span class="comment">; Y=value of address of ROM pointer table (high byte)</span></td>
 <td class="hex">84 F7</td>
 </tr>
 
@@ -6115,7 +6115,7 @@
 
 <tr id="addr-834E">
 <td class="addr"><a href="#addr-834E">834E</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;17</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;17</span>    <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 17</td>
 </tr>
 
@@ -6273,7 +6273,7 @@
 
 <tr id="addr-8367">
 <td class="addr"><a href="#addr-8367">8367</a></td>
-<td>    <span class="opcode">DEY</span>  <span class="comment">; Y=function code</span></td>
+<td>    <span class="opcode">DEY</span>                  <span class="comment">; Y=function code</span></td>
 <td class="hex">88</td>
 </tr>
 
@@ -6953,7 +6953,7 @@
 
 <tr id="addr-83E6">
 <td class="addr"><a href="#addr-83E6">83E6</a></td>
-<td>    <span class="opcode">TAX</span>  <span class="comment">; X=File handle</span></td>
+<td>    <span class="opcode">TAX</span>         <span class="comment">; X=File handle</span></td>
 <td class="hex">AA</td>
 </tr>
 
@@ -6977,7 +6977,7 @@
 
 <tr id="addr-83EC">
 <td class="addr"><a href="#addr-83EC">83EC</a></td>
-<td>    <span class="opcode">TXA</span>  <span class="comment">; X=value of *SPOOL file handle</span></td>
+<td>    <span class="opcode">TXA</span>         <span class="comment">; X=value of *SPOOL file handle</span></td>
 <td class="hex">8A</td>
 </tr>
 
@@ -8657,7 +8657,7 @@
 
 <tr id="addr-854B">
 <td class="addr"><a href="#addr-854B">854B</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-8552">c8552</a></span>  <span class="comment">; Bit 7 set? Done — this byte is the next opcode</span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-8552">c8552</a></span>             <span class="comment">; Bit 7 set? Done — this byte is the next opcode</span></td>
 <td class="hex">30 05</td>
 </tr>
 
@@ -8665,7 +8665,7 @@
 
 <tr id="addr-854D">
 <td class="addr"><a href="#addr-854D">854D</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFE3">osasci</a></span>  <span class="comment">; Write character</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFE3">osasci</a></span>            <span class="comment">; Write character</span></td>
 <td class="hex">20 E3 FF</td>
 </tr>
 
@@ -12823,7 +12823,7 @@
 
 <tr id="addr-8830">
 <td class="addr"><a href="#addr-8830">8830</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;11</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;11</span>            <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 11</td>
 </tr>
 
@@ -12831,7 +12831,7 @@
 
 <tr id="addr-8832">
 <td class="addr"><a href="#addr-8832">8832</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#1</span>  <span class="comment">; X=preserved through header build</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#1</span>              <span class="comment">; X=preserved through header build</span></td>
 <td class="hex">A2 01</td>
 </tr>
 
@@ -13384,7 +13384,7 @@
 
 <tr id="addr-88A8">
 <td class="addr"><a href="#addr-88A8">88A8</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;12</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;12</span>            <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 12</td>
 </tr>
 
@@ -13408,7 +13408,7 @@
 
 <tr id="addr-88B0">
 <td class="addr"><a href="#addr-88B0">88B0</a></td>
-<td>    <span class="opcode">STX</span> <span class="operand"><a href="#addr-0F11">l0f11</a></span>  <span class="comment">; X=0 on success, $D6 on not-found</span></td>
+<td>    <span class="opcode">STX</span> <span class="operand"><a href="#addr-0F11">l0f11</a></span>           <span class="comment">; X=0 on success, $D6 on not-found</span></td>
 <td class="hex">8E 11 0F</td>
 </tr>
 
@@ -13464,7 +13464,7 @@
 
 <tr id="addr-88C2">
 <td class="addr"><a href="#addr-88C2">88C2</a></td>
-<td>    <span class="opcode">DEY</span>  <span class="comment">; Y=&amp;0d</span></td>
+<td>    <span class="opcode">DEY</span>                 <span class="comment">; Y=&amp;0d</span></td>
 <td class="hex">88</td>
 </tr>
 
@@ -13758,7 +13758,7 @@
 
 <tr id="addr-88F8">
 <td class="addr"><a href="#addr-88F8">88F8</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;0c</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;0c</span>               <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 0C</td>
 </tr>
 
@@ -13766,7 +13766,7 @@
 
 <tr id="addr-88FA">
 <td class="addr"><a href="#addr-88FA">88FA</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#2</span>  <span class="comment">; X=preserved through header build</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#2</span>                 <span class="comment">; X=preserved through header build</span></td>
 <td class="hex">A2 02</td>
 </tr>
 
@@ -13774,7 +13774,7 @@
 
 <tr id="addr-88FC">
 <td class="addr"><a href="#addr-88FC">88FC</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>  <span class="comment">; Prepare FS command buffer (12 references)</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>     <span class="comment">; Prepare FS command buffer (12 references)</span></td>
 <td class="hex">20 50 83</td>
 </tr>
 
@@ -13958,7 +13958,7 @@
 
 <tr id="addr-891F">
 <td class="addr"><a href="#addr-891F">891F</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;0d</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;0d</span>               <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 0D</td>
 </tr>
 
@@ -13966,7 +13966,7 @@
 
 <tr id="addr-8921">
 <td class="addr"><a href="#addr-8921">8921</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#5</span>  <span class="comment">; X=preserved through header build</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#5</span>                 <span class="comment">; X=preserved through header build</span></td>
 <td class="hex">A2 05</td>
 </tr>
 
@@ -13974,7 +13974,7 @@
 
 <tr id="addr-8923">
 <td class="addr"><a href="#addr-8923">8923</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>  <span class="comment">; Prepare FS command buffer (12 references)</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>     <span class="comment">; Prepare FS command buffer (12 references)</span></td>
 <td class="hex">20 50 83</td>
 </tr>
 
@@ -14183,7 +14183,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; A=operation (0=close, $40=read, $80=write, $C0=R/W)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>     <span class="comment">; A=operation (0=close, $40=read, $80=write, $C0=R/W)</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -14262,7 +14262,7 @@
 
 <tr id="addr-8950">
 <td class="addr"><a href="#addr-8950">8950</a></td>
-<td>    <span class="opcode">TAX</span>  <span class="comment">; A=preserved</span></td>
+<td>    <span class="opcode">TAX</span>                 <span class="comment">; A=preserved</span></td>
 <td class="hex">AA</td>
 </tr>
 
@@ -14438,7 +14438,7 @@
 
 <tr id="addr-897F">
 <td class="addr"><a href="#addr-897F">897F</a></td>
-<td>    <span class="opcode">TXA</span>  <span class="comment">; A=single-bit bitmask</span></td>
+<td>    <span class="opcode">TXA</span>                 <span class="comment">; A=single-bit bitmask</span></td>
 <td class="hex">8A</td>
 </tr>
 
@@ -14495,7 +14495,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">TYA</span>  <span class="comment">; Y=preserved</span></td>
+<td>    <span class="opcode">TYA</span>         <span class="comment">; Y=preserved</span></td>
 <td class="hex">98</td>
 </tr>
 
@@ -14551,7 +14551,7 @@
 
 <tr id="addr-8992">
 <td class="addr"><a href="#addr-8992">8992</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#1</span>  <span class="comment">; X=preserved through header build</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#1</span>              <span class="comment">; X=preserved through header build</span></td>
 <td class="hex">A2 01</td>
 </tr>
 
@@ -14559,7 +14559,7 @@
 
 <tr id="addr-8994">
 <td class="addr"><a href="#addr-8994">8994</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#7</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#7</span>              <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 07</td>
 </tr>
 
@@ -14760,7 +14760,7 @@
 
 <tr id="addr-89BE">
 <td class="addr"><a href="#addr-89BE">89BE</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;16</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;16</span>            <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 16</td>
 </tr>
 
@@ -15808,7 +15808,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;15</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;15</span>                  <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 15</td>
 </tr>
 
@@ -15816,7 +15816,7 @@
 
 <tr id="addr-8A9A">
 <td class="addr"><a href="#addr-8A9A">8A9A</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>  <span class="comment">; Prepare FS command buffer (12 references)</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>        <span class="comment">; Prepare FS command buffer (12 references)</span></td>
 <td class="hex">20 50 83</td>
 </tr>
 
@@ -15840,7 +15840,7 @@
 
 <tr id="addr-8AA3">
 <td class="addr"><a href="#addr-8AA3">8AA3</a></td>
-<td>    <span class="opcode">STX</span> <span class="operand"><a href="#addr-00B0">fs_load_addr</a></span>  <span class="comment">; X=0 on success, $D6 on not-found</span></td>
+<td>    <span class="opcode">STX</span> <span class="operand"><a href="#addr-00B0">fs_load_addr</a></span>          <span class="comment">; X=0 on success, $D6 on not-found</span></td>
 <td class="hex">86 B0</td>
 </tr>
 
@@ -16073,7 +16073,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">TAY</span>  <span class="comment">; Y=function code</span></td>
+<td>    <span class="opcode">TAY</span>                    <span class="comment">; Y=function code</span></td>
 <td class="hex">A8</td>
 </tr>
 
@@ -16129,7 +16129,7 @@
 
 <tr id="addr-8AE2">
 <td class="addr"><a href="#addr-8AE2">8AE2</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;12</span>  <span class="comment">; X=buffer extent (command-specific data bytes)</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;12</span>               <span class="comment">; X=buffer extent (command-specific data bytes)</span></td>
 <td class="hex">A2 12</td>
 </tr>
 
@@ -16169,7 +16169,7 @@
 
 <tr id="addr-8AEE">
 <td class="addr"><a href="#addr-8AEE">8AEE</a></td>
-<td>    <span class="opcode">LSR</span>  <span class="comment">; A=timeout period for FS reply</span></td>
+<td>    <span class="opcode">LSR</span>                    <span class="comment">; A=timeout period for FS reply</span></td>
 <td class="hex">4A</td>
 </tr>
 
@@ -16201,7 +16201,7 @@
 
 <tr id="addr-8AF6">
 <td class="addr"><a href="#addr-8AF6">8AF6</a></td>
-<td>    <span class="opcode">STX</span> <span class="operand"><a href="#addr-00B1">fs_load_addr_hi</a></span>  <span class="comment">; X=0 on success, $D6 on not-found</span></td>
+<td>    <span class="opcode">STX</span> <span class="operand"><a href="#addr-00B1">fs_load_addr_hi</a></span>    <span class="comment">; X=0 on success, $D6 on not-found</span></td>
 <td class="hex">86 B1</td>
 </tr>
 
@@ -16553,7 +16553,7 @@
 
 <tr id="addr-8B43">
 <td class="addr"><a href="#addr-8B43">8B43</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;0d</span>  <span class="comment">; X=preserved through header build</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;0d</span>             <span class="comment">; X=preserved through header build</span></td>
 <td class="hex">A2 0D</td>
 </tr>
 
@@ -16593,7 +16593,7 @@
 
 <tr id="addr-8B4F">
 <td class="addr"><a href="#addr-8B4F">8B4F</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Y=function code for HDRFN Y=&amp;03</span></td>
+<td>    <span class="opcode">INY</span>                  <span class="comment">; Y=function code for HDRFN Y=&amp;03</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -16601,7 +16601,7 @@
 
 <tr id="addr-8B50">
 <td class="addr"><a href="#addr-8B50">8B50</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>  <span class="comment">; Prepare FS command buffer (12 references)</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-8350">prepare_fs_cmd</a></span>   <span class="comment">; Prepare FS command buffer (12 references)</span></td>
 <td class="hex">20 50 83</td>
 </tr>
 
@@ -17506,7 +17506,7 @@
 
 <tr id="addr-8C16">
 <td class="addr"><a href="#addr-8C16">8C16</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;12</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;12</span>            <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 12</td>
 </tr>
 
@@ -17674,7 +17674,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;15</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#&amp;15</span>            <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 15</td>
 </tr>
 
@@ -18082,7 +18082,7 @@
 
 <tr id="addr-8CC6">
 <td class="addr"><a href="#addr-8CC6">8CC6</a></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#3</span>  <span class="comment">; Y=function code for HDRFN</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#3</span>              <span class="comment">; Y=function code for HDRFN</span></td>
 <td class="hex">A0 03</td>
 </tr>
 
@@ -18456,7 +18456,7 @@
 
 <tr id="addr-8D12">
 <td class="addr"><a href="#addr-8D12">8D12</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Y=offset into (fs_options) buffer</span></td>
+<td>    <span class="opcode">INY</span>                <span class="comment">; Y=offset into (fs_options) buffer</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -19856,7 +19856,7 @@
 
 <tr id="addr-8DF9">
 <td class="addr"><a href="#addr-8DF9">8DF9</a></td>
-<td>    <span class="opcode">SBC</span> <span class="operand">#&amp;0f</span>  <span class="comment">; Subtract $0F: OSWORD $0F-$13 become indices 0-4</span></td>
+<td>    <span class="opcode">SBC</span> <span class="operand">#&amp;0f</span>   <span class="comment">; Subtract $0F: OSWORD $0F-$13 become indices 0-4</span></td>
 <td class="hex">E9 0F</td>
 </tr>
 
@@ -21162,7 +21162,7 @@
 
 <tr id="addr-8EE6">
 <td class="addr"><a href="#addr-8EE6">8EE6</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-85A5">mask_to_handle</a></span>  <span class="comment">; Convert bitmask to handle number (FS2A)</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-85A5">mask_to_handle</a></span>   <span class="comment">; Convert bitmask to handle number (FS2A)</span></td>
 <td class="hex">20 A5 85</td>
 </tr>
 
@@ -21170,7 +21170,7 @@
 
 <tr id="addr-8EE9">
 <td class="addr"><a href="#addr-8EE9">8EE9</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand">(<a href="#addr-00F0">l00f0</a>),y</span>  <span class="comment">; A=handle number ($20-$27) Y=preserved</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand">(<a href="#addr-00F0">l00f0</a>),y</span>        <span class="comment">; A=handle number ($20-$27) Y=preserved</span></td>
 <td class="hex">91 F0</td>
 </tr>
 
@@ -21178,7 +21178,7 @@
 
 <tr id="addr-8EEB">
 <td class="addr"><a href="#addr-8EEB">8EEB</a></td>
-<td>    <span class="opcode">DEY</span>  <span class="comment">; Y=parameter block address high byte</span></td>
+<td>    <span class="opcode">DEY</span>                  <span class="comment">; Y=parameter block address high byte</span></td>
 <td class="hex">88</td>
 </tr>
 
@@ -21194,7 +21194,7 @@
 
 <tr id="addr-8EEE">
 <td class="addr"><a href="#addr-8EEE">8EEE</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-8F48">c8f48</a></span>  <span class="comment">; ALWAYS branch</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-8F48">c8f48</a></span>            <span class="comment">; ALWAYS branch</span></td>
 <td class="hex">F0 58</td>
 </tr>
 
@@ -22146,7 +22146,7 @@
 
 <tr id="addr-8FA3">
 <td class="addr"><a href="#addr-8FA3">8FA3</a></td>
-<td>    <span class="opcode">CLI</span>  <span class="comment">; Enable interrupts before transmit</span></td>
+<td>    <span class="opcode">CLI</span>                  <span class="comment">; Enable interrupts before transmit</span></td>
 <td class="hex">58</td>
 </tr>
 
@@ -22170,7 +22170,7 @@
 
 <tr id="addr-8FA9">
 <td class="addr"><a href="#addr-8FA9">8FA9</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;ff</span>  <span class="comment">; Dest station = $FFFF (accept reply from any station)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;ff</span>             <span class="comment">; Dest station = $FFFF (accept reply from any station)</span></td>
 <td class="hex">A9 FF</td>
 </tr>
 
@@ -22186,7 +22186,7 @@
 
 <tr id="addr-8FAD">
 <td class="addr"><a href="#addr-8FAD">8FAD</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Y=&amp;2d</span></td>
+<td>    <span class="opcode">INY</span>                  <span class="comment">; Y=&amp;2d</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -22226,7 +22226,7 @@
 
 <tr id="addr-8FB6">
 <td class="addr"><a href="#addr-8FB6">8FB6</a></td>
-<td>    <span class="opcode">DEY</span>  <span class="comment">; Y=&amp;24</span></td>
+<td>    <span class="opcode">DEY</span>                  <span class="comment">; Y=&amp;24</span></td>
 <td class="hex">88</td>
 </tr>
 
@@ -22258,7 +22258,7 @@
 
 <tr id="addr-8FBE">
 <td class="addr"><a href="#addr-8FBE">8FBE</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-8F48">c8f48</a></span>  <span class="comment">; Non-zero = error/timeout: jump to cleanup</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-8F48">c8f48</a></span>            <span class="comment">; Non-zero = error/timeout: jump to cleanup</span></td>
 <td class="hex">D0 88</td>
 </tr>
 
@@ -22402,7 +22402,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00BE">fs_crc_lo</a></span>  <span class="comment">; Receive data blocks until command byte = $00 or $0D</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00BE">fs_crc_lo</a></span>     <span class="comment">; Receive data blocks until command byte = $00 or $0D</span></td>
 <td class="hex">A4 BE</td>
 </tr>
 
@@ -24129,7 +24129,7 @@
 
 <tr id="addr-9110">
 <td class="addr"><a href="#addr-9110">9110</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Y=&amp;81</span></td>
+<td>    <span class="opcode">INY</span>         <span class="comment">; Y=&amp;81</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -24161,7 +24161,7 @@
 
 <tr id="addr-9117">
 <td class="addr"><a href="#addr-9117">9117</a></td>
-<td>    <span class="opcode">DEY</span>  <span class="comment">; Y=&amp;0e</span></td>
+<td>    <span class="opcode">DEY</span>         <span class="comment">; Y=&amp;0e</span></td>
 <td class="hex">88</td>
 </tr>
 
@@ -25116,7 +25116,7 @@
 
 <tr id="addr-91DF">
 <td class="addr"><a href="#addr-91DF">91DF</a></td>
-<td>    <span class="opcode">TYA</span>  <span class="comment">; Y is the character extracted from the buffer</span></td>
+<td>    <span class="opcode">TYA</span>         <span class="comment">; Y is the character extracted from the buffer</span></td>
 <td class="hex">98</td>
 </tr>
 
@@ -26216,7 +26216,7 @@
 
 <tr id="addr-92B8">
 <td class="addr"><a href="#addr-92B8">92B8</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Y=&amp;01</span></td>
+<td>    <span class="opcode">INY</span>         <span class="comment">; Y=&amp;01</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -26264,7 +26264,7 @@
 
 <tr id="addr-92C2">
 <td class="addr"><a href="#addr-92C2">92C2</a></td>
-<td>    <span class="opcode">DEY</span>  <span class="comment">; Y=&amp;00</span></td>
+<td>    <span class="opcode">DEY</span>         <span class="comment">; Y=&amp;00</span></td>
 <td class="hex">88</td>
 </tr>
 
@@ -27891,7 +27891,7 @@
 
 <tr id="addr-04B7">
 <td class="addr"><a href="#addr-04B7">04B7</a></td>
-<td>    <span class="opcode">TXA</span>  <span class="comment">; X=value of type of last reset</span></td>
+<td>    <span class="opcode">TXA</span>         <span class="comment">; X=value of type of last reset</span></td>
 <td class="hex">8A</td>
 </tr>
 
@@ -28516,7 +28516,7 @@
 
 <tr id="addr-0553">
 <td class="addr"><a href="#addr-0553">0553</a></td>
-<td>    <span class="opcode">TAY</span>  <span class="comment">; Y=file handle</span></td>
+<td>    <span class="opcode">TAY</span>         <span class="comment">; Y=file handle</span></td>
 <td class="hex">A8</td>
 </tr>
 
@@ -28564,7 +28564,7 @@
 
 <tr id="addr-055E">
 <td class="addr"><a href="#addr-055E">055E</a></td>
-<td>    <span class="opcode">PHA</span>  <span class="comment">; A=character read</span></td>
+<td>    <span class="opcode">PHA</span>         <span class="comment">; A=character read</span></td>
 <td class="hex">48</td>
 </tr>
 
@@ -30622,7 +30622,7 @@
 
 <tr id="addr-967B">
 <td class="addr"><a href="#addr-967B">967B</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFF4">osbyte</a></span>  <span class="comment">; Read Tube present flag</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-FFF4">osbyte</a></span>          <span class="comment">; Read Tube present flag</span></td>
 <td class="hex">20 F4 FF</td>
 </tr>
 
@@ -31139,7 +31139,7 @@
 
 <tr id="addr-96E6">
 <td class="addr"><a href="#addr-96E6">96E6</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; CR3=$00 (via AC=1): no loop-back, no AEX, NRZ, no DTR</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>    <span class="comment">; CR3=$00 (via AC=1): no loop-back, no AEX, NRZ, no DTR</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -31245,7 +31245,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#1</span>  <span class="comment">; A=$01: mask for SR2 bit0 (AP = Address Present)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#1</span>                           <span class="comment">; A=$01: mask for SR2 bit0 (AP = Address Present)</span></td>
 <td class="hex">A9 01</td>
 </tr>
 
@@ -31261,7 +31261,7 @@
 
 <tr id="addr-96FB">
 <td class="addr"><a href="#addr-96FB">96FB</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>  <span class="comment">; AP not set, no incoming data -- check for errors</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>                  <span class="comment">; AP not set, no incoming data -- check for errors</span></td>
 <td class="hex">F0 3A</td>
 </tr>
 
@@ -31269,7 +31269,7 @@
 
 <tr id="addr-96FD">
 <td class="addr"><a href="#addr-96FD">96FD</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read first RX byte (destination station address)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read first RX byte (destination station address)</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -31285,7 +31285,7 @@
 
 <tr id="addr-9703">
 <td class="addr"><a href="#addr-9703">9703</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-970E">c970e</a></span>  <span class="comment">; Match -- accept frame</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-970E">c970e</a></span>                        <span class="comment">; Match -- accept frame</span></td>
 <td class="hex">F0 09</td>
 </tr>
 
@@ -31293,7 +31293,7 @@
 
 <tr id="addr-9705">
 <td class="addr"><a href="#addr-9705">9705</a></td>
-<td>    <span class="opcode">CMP</span> <span class="operand">#&amp;ff</span>  <span class="comment">; Check for broadcast address ($FF)</span></td>
+<td>    <span class="opcode">CMP</span> <span class="operand">#&amp;ff</span>                         <span class="comment">; Check for broadcast address ($FF)</span></td>
 <td class="hex">C9 FF</td>
 </tr>
 
@@ -31301,7 +31301,7 @@
 
 <tr id="addr-9707">
 <td class="addr"><a href="#addr-9707">9707</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9723">scout_reject</a></span>  <span class="comment">; Neither our address nor broadcast -- reject frame</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9723">scout_reject</a></span>                 <span class="comment">; Neither our address nor broadcast -- reject frame</span></td>
 <td class="hex">D0 1A</td>
 </tr>
 
@@ -31309,7 +31309,7 @@
 
 <tr id="addr-9709">
 <td class="addr"><a href="#addr-9709">9709</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;40</span>  <span class="comment">; Flag $40 = broadcast frame</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;40</span>                         <span class="comment">; Flag $40 = broadcast frame</span></td>
 <td class="hex">A9 40</td>
 </tr>
 
@@ -31390,7 +31390,7 @@
 
 <tr id="addr-9718">
 <td class="addr"><a href="#addr-9718">9718</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>  <span class="comment">; No RDA -- check errors</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>                  <span class="comment">; No RDA -- check errors</span></td>
 <td class="hex">10 1D</td>
 </tr>
 
@@ -31398,7 +31398,7 @@
 
 <tr id="addr-971A">
 <td class="addr"><a href="#addr-971A">971A</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read destination network byte</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read destination network byte</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -31406,7 +31406,7 @@
 
 <tr id="addr-971D">
 <td class="addr"><a href="#addr-971D">971D</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-972B">c972b</a></span>  <span class="comment">; Network = 0 -- local network, accept</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-972B">c972b</a></span>                        <span class="comment">; Network = 0 -- local network, accept</span></td>
 <td class="hex">F0 0C</td>
 </tr>
 
@@ -31414,7 +31414,7 @@
 
 <tr id="addr-971F">
 <td class="addr"><a href="#addr-971F">971F</a></td>
-<td>    <span class="opcode">EOR</span> <span class="operand">#&amp;ff</span>  <span class="comment">; EOR $FF: test if network = $FF (broadcast)</span></td>
+<td>    <span class="opcode">EOR</span> <span class="operand">#&amp;ff</span>                         <span class="comment">; EOR $FF: test if network = $FF (broadcast)</span></td>
 <td class="hex">49 FF</td>
 </tr>
 
@@ -31422,7 +31422,7 @@
 
 <tr id="addr-9721">
 <td class="addr"><a href="#addr-9721">9721</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-972E">c972e</a></span>  <span class="comment">; Broadcast network -- accept</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-972E">c972e</a></span>                        <span class="comment">; Broadcast network -- accept</span></td>
 <td class="hex">F0 0B</td>
 </tr>
 
@@ -31494,7 +31494,7 @@
 
 <tr id="addr-9730">
 <td class="addr"><a href="#addr-9730">9730</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;47</span>  <span class="comment">; Install scout data reading loop at $9747</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;47</span>          <span class="comment">; Install scout data reading loop at $9747</span></td>
 <td class="hex">A9 47</td>
 </tr>
 
@@ -31551,7 +31551,7 @@
 
 <tr id="addr-973A">
 <td class="addr"><a href="#addr-973A">973A</a></td>
-<td>    <span class="opcode">AND</span> <span class="operand">#&amp;81</span>  <span class="comment">; Test AP (b0) | RDA (b7)</span></td>
+<td>    <span class="opcode">AND</span> <span class="operand">#&amp;81</span>                         <span class="comment">; Test AP (b0) | RDA (b7)</span></td>
 <td class="hex">29 81</td>
 </tr>
 
@@ -31559,7 +31559,7 @@
 
 <tr id="addr-973C">
 <td class="addr"><a href="#addr-973C">973C</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9744">scout_discard</a></span>  <span class="comment">; Neither set -- clean end, discard via $9A40</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9744">scout_discard</a></span>                <span class="comment">; Neither set -- clean end, discard via $9A40</span></td>
 <td class="hex">F0 06</td>
 </tr>
 
@@ -31567,7 +31567,7 @@
 
 <tr id="addr-973E">
 <td class="addr"><a href="#addr-973E">973E</a></td>
-<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-96DC">adlc_full_reset</a></span>  <span class="comment">; Unexpected data/status: full ADLC reset</span></td>
+<td>    <span class="opcode">JSR</span> <span class="operand"><a href="#addr-96DC">adlc_full_reset</a></span>              <span class="comment">; Unexpected data/status: full ADLC reset</span></td>
 <td class="hex">20 DC 96</td>
 </tr>
 
@@ -31575,7 +31575,7 @@
 
 <tr id="addr-9741">
 <td class="addr"><a href="#addr-9741">9741</a></td>
-<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-9A43">discard_after_reset</a></span>  <span class="comment">; Discard and return to idle</span></td>
+<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-9A43">discard_after_reset</a></span>          <span class="comment">; Discard and return to idle</span></td>
 <td class="hex">4C 43 9A</td>
 </tr>
 
@@ -31616,7 +31616,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>  <span class="comment">; Y = buffer offset</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>                 <span class="comment">; Y = buffer offset</span></td>
 <td class="hex">A4 A2</td>
 </tr>
 
@@ -31640,7 +31640,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>  <span class="comment">; No RDA -- error handler $9737</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>                  <span class="comment">; No RDA -- error handler $9737</span></td>
 <td class="hex">10 E9</td>
 </tr>
 
@@ -31648,7 +31648,7 @@
 
 <tr id="addr-974E">
 <td class="addr"><a href="#addr-974E">974E</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read data byte from RX FIFO</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read data byte from RX FIFO</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -31656,7 +31656,7 @@
 
 <tr id="addr-9751">
 <td class="addr"><a href="#addr-9751">9751</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a>,y</span>  <span class="comment">; Store at $0D3D+Y (scout buffer)</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a>,y</span>                 <span class="comment">; Store at $0D3D+Y (scout buffer)</span></td>
 <td class="hex">99 3D 0D</td>
 </tr>
 
@@ -31664,7 +31664,7 @@
 
 <tr id="addr-9754">
 <td class="addr"><a href="#addr-9754">9754</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Advance buffer index</span></td>
+<td>    <span class="opcode">INY</span>                              <span class="comment">; Advance buffer index</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -31680,7 +31680,7 @@
 
 <tr id="addr-9758">
 <td class="addr"><a href="#addr-9758">9758</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-975C">scout_loop_second</a></span>  <span class="comment">; RDA set -- more data, read second byte</span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-975C">scout_loop_second</a></span>            <span class="comment">; RDA set -- more data, read second byte</span></td>
 <td class="hex">30 02</td>
 </tr>
 
@@ -31688,7 +31688,7 @@
 
 <tr id="addr-975A">
 <td class="addr"><a href="#addr-975A">975A</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9771">scout_complete</a></span>  <span class="comment">; SR2 non-zero (FV or other) -- scout completion</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9771">scout_complete</a></span>               <span class="comment">; SR2 non-zero (FV or other) -- scout completion</span></td>
 <td class="hex">D0 15</td>
 </tr>
 
@@ -31704,7 +31704,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read second byte of pair</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read second byte of pair</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -31712,7 +31712,7 @@
 
 <tr id="addr-975F">
 <td class="addr"><a href="#addr-975F">975F</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a>,y</span>  <span class="comment">; Store at $0D3D+Y</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a>,y</span>                 <span class="comment">; Store at $0D3D+Y</span></td>
 <td class="hex">99 3D 0D</td>
 </tr>
 
@@ -31720,7 +31720,7 @@
 
 <tr id="addr-9762">
 <td class="addr"><a href="#addr-9762">9762</a></td>
-<td>    <span class="opcode">INY</span>  <span class="comment">; Advance and check buffer limit</span></td>
+<td>    <span class="opcode">INY</span>                              <span class="comment">; Advance and check buffer limit</span></td>
 <td class="hex">C8</td>
 </tr>
 
@@ -31736,7 +31736,7 @@
 
 <tr id="addr-9765">
 <td class="addr"><a href="#addr-9765">9765</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9771">scout_complete</a></span>  <span class="comment">; Buffer full (Y=12) -- force completion</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9771">scout_complete</a></span>               <span class="comment">; Buffer full (Y=12) -- force completion</span></td>
 <td class="hex">F0 0A</td>
 </tr>
 
@@ -31744,7 +31744,7 @@
 
 <tr id="addr-9767">
 <td class="addr"><a href="#addr-9767">9767</a></td>
-<td>    <span class="opcode">STY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>  <span class="comment">; Save Y for next iteration</span></td>
+<td>    <span class="opcode">STY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>                 <span class="comment">; Save Y for next iteration</span></td>
 <td class="hex">84 A2</td>
 </tr>
 
@@ -31760,7 +31760,7 @@
 
 <tr id="addr-976C">
 <td class="addr"><a href="#addr-976C">976C</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-974C">scout_loop_rda</a></span>  <span class="comment">; SR2 non-zero -- loop back for more bytes</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-974C">scout_loop_rda</a></span>               <span class="comment">; SR2 non-zero -- loop back for more bytes</span></td>
 <td class="hex">D0 DE</td>
 </tr>
 
@@ -31768,7 +31768,7 @@
 
 <tr id="addr-976E">
 <td class="addr"><a href="#addr-976E">976E</a></td>
-<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-0D14">nmi_rti</a></span>  <span class="comment">; SR2 = 0 -- RTI, wait for next NMI</span></td>
+<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-0D14">nmi_rti</a></span>                      <span class="comment">; SR2 = 0 -- RTI, wait for next NMI</span></td>
 <td class="hex">4C 14 0D</td>
 </tr>
 
@@ -31801,7 +31801,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; CR1=$00: disable all interrupts</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>                           <span class="comment">; CR1=$00: disable all interrupts</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -31817,7 +31817,7 @@
 
 <tr id="addr-9776">
 <td class="addr"><a href="#addr-9776">9776</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;84</span>  <span class="comment">; CR2=$84: disable PSE, enable RDA_SUPPRESS_FV</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;84</span>                         <span class="comment">; CR2=$84: disable PSE, enable RDA_SUPPRESS_FV</span></td>
 <td class="hex">A9 84</td>
 </tr>
 
@@ -31833,7 +31833,7 @@
 
 <tr id="addr-977B">
 <td class="addr"><a href="#addr-977B">977B</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>  <span class="comment">; A=$02: FV mask for SR2 bit1</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>                           <span class="comment">; A=$02: FV mask for SR2 bit1</span></td>
 <td class="hex">A9 02</td>
 </tr>
 
@@ -31849,7 +31849,7 @@
 
 <tr id="addr-9780">
 <td class="addr"><a href="#addr-9780">9780</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>  <span class="comment">; No FV -- not a valid frame end, error</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>                  <span class="comment">; No FV -- not a valid frame end, error</span></td>
 <td class="hex">F0 B5</td>
 </tr>
 
@@ -31857,7 +31857,7 @@
 
 <tr id="addr-9782">
 <td class="addr"><a href="#addr-9782">9782</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>  <span class="comment">; FV set but no RDA -- missing last byte, error</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9737">scout_error</a></span>                  <span class="comment">; FV set but no RDA -- missing last byte, error</span></td>
 <td class="hex">10 B3</td>
 </tr>
 
@@ -31865,7 +31865,7 @@
 
 <tr id="addr-9784">
 <td class="addr"><a href="#addr-9784">9784</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read last byte from RX FIFO</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read last byte from RX FIFO</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -31873,7 +31873,7 @@
 
 <tr id="addr-9787">
 <td class="addr"><a href="#addr-9787">9787</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a>,y</span>  <span class="comment">; Store last byte at $0D3D+Y</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a>,y</span>                 <span class="comment">; Store last byte at $0D3D+Y</span></td>
 <td class="hex">99 3D 0D</td>
 </tr>
 
@@ -31881,7 +31881,7 @@
 
 <tr id="addr-978A">
 <td class="addr"><a href="#addr-978A">978A</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;44</span>  <span class="comment">; CR1=$44: RX_RESET | TIE (switch to TX for ACK)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;44</span>                         <span class="comment">; CR1=$44: RX_RESET | TIE (switch to TX for ACK)</span></td>
 <td class="hex">A9 44</td>
 </tr>
 
@@ -31897,7 +31897,7 @@
 
 <tr id="addr-978F">
 <td class="addr"><a href="#addr-978F">978F</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D40">rx_port</a></span>  <span class="comment">; Check port byte: 0 = immediate op, non-zero = data transfer</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D40">rx_port</a></span>                      <span class="comment">; Check port byte: 0 = immediate op, non-zero = data transfer</span></td>
 <td class="hex">AD 40 0D</td>
 </tr>
 
@@ -31905,7 +31905,7 @@
 
 <tr id="addr-9792">
 <td class="addr"><a href="#addr-9792">9792</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-979A">scout_match_port</a></span>  <span class="comment">; Port non-zero -- look for matching receive block</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-979A">scout_match_port</a></span>             <span class="comment">; Port non-zero -- look for matching receive block</span></td>
 <td class="hex">D0 06</td>
 </tr>
 
@@ -31913,7 +31913,7 @@
 
 <tr id="addr-9794">
 <td class="addr"><a href="#addr-9794">9794</a></td>
-<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-9A59">immediate_op</a></span>  <span class="comment">; Port = 0 -- immediate operation handler</span></td>
+<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-9A59">immediate_op</a></span>                 <span class="comment">; Port = 0 -- immediate operation handler</span></td>
 <td class="hex">4C 59 9A</td>
 </tr>
 
@@ -32843,7 +32843,7 @@
 
 <tr id="addr-986A">
 <td class="addr"><a href="#addr-986A">986A</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Discard control byte</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Discard control byte</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -32851,7 +32851,7 @@
 
 <tr id="addr-986D">
 <td class="addr"><a href="#addr-986D">986D</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Discard port byte</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Discard port byte</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -33052,7 +33052,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>  <span class="comment">; Y = buffer offset, resume from last position</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>                 <span class="comment">; Y = buffer offset, resume from last position</span></td>
 <td class="hex">A4 A2</td>
 </tr>
 
@@ -33301,7 +33301,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; CR1=$00: disable all interrupts</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>                           <span class="comment">; CR1=$00: disable all interrupts</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -33317,7 +33317,7 @@
 
 <tr id="addr-98D3">
 <td class="addr"><a href="#addr-98D3">98D3</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;84</span>  <span class="comment">; CR2=$84: disable PSE for individual bit testing</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;84</span>                         <span class="comment">; CR2=$84: disable PSE for individual bit testing</span></td>
 <td class="hex">A9 84</td>
 </tr>
 
@@ -33341,7 +33341,7 @@
 
 <tr id="addr-98DA">
 <td class="addr"><a href="#addr-98DA">98DA</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>  <span class="comment">; A=$02: FV mask</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>                           <span class="comment">; A=$02: FV mask</span></td>
 <td class="hex">A9 02</td>
 </tr>
 
@@ -33357,7 +33357,7 @@
 
 <tr id="addr-98DF">
 <td class="addr"><a href="#addr-98DF">98DF</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-988A">rx_error</a></span>  <span class="comment">; No FV -- error</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-988A">rx_error</a></span>                     <span class="comment">; No FV -- error</span></td>
 <td class="hex">F0 A9</td>
 </tr>
 
@@ -33365,7 +33365,7 @@
 
 <tr id="addr-98E1">
 <td class="addr"><a href="#addr-98E1">98E1</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-98F4">c98f4</a></span>  <span class="comment">; FV set, no RDA -- proceed to ACK</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-98F4">c98f4</a></span>                        <span class="comment">; FV set, no RDA -- proceed to ACK</span></td>
 <td class="hex">10 11</td>
 </tr>
 
@@ -33389,7 +33389,7 @@
 
 <tr id="addr-98E7">
 <td class="addr"><a href="#addr-98E7">98E7</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; FV+RDA: read and store last data byte</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; FV+RDA: read and store last data byte</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -33983,7 +33983,7 @@
 
 <tr id="addr-997A">
 <td class="addr"><a href="#addr-997A">997A</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a></span>  <span class="comment">; Load dest station from RX scout buffer</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D3D">rx_src_stn</a></span>                  <span class="comment">; Load dest station from RX scout buffer</span></td>
 <td class="hex">AD 3D 0D</td>
 </tr>
 
@@ -33999,7 +33999,7 @@
 
 <tr id="addr-9980">
 <td class="addr"><a href="#addr-9980">9980</a></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-99B8">c99b8</a></span>  <span class="comment">; TDRA not ready -- error</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-99B8">c99b8</a></span>                       <span class="comment">; TDRA not ready -- error</span></td>
 <td class="hex">50 36</td>
 </tr>
 
@@ -34015,7 +34015,7 @@
 
 <tr id="addr-9985">
 <td class="addr"><a href="#addr-9985">9985</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D3E">rx_src_net</a></span>  <span class="comment">; Write dest network to TX FIFO</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D3E">rx_src_net</a></span>                  <span class="comment">; Write dest network to TX FIFO</span></td>
 <td class="hex">AD 3E 0D</td>
 </tr>
 
@@ -34031,7 +34031,7 @@
 
 <tr id="addr-998B">
 <td class="addr"><a href="#addr-998B">998B</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;92</span>  <span class="comment">; Install handler at $9992 (write src addr)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;92</span>                        <span class="comment">; Install handler at $9992 (write src addr)</span></td>
 <td class="hex">A9 92</td>
 </tr>
 
@@ -34088,7 +34088,7 @@
 
 <tr id="addr-9995">
 <td class="addr"><a href="#addr-9995">9995</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; BIT SR1: test TDRA</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; BIT SR1: test TDRA</span></td>
 <td class="hex">2C A0 FE</td>
 </tr>
 
@@ -34096,7 +34096,7 @@
 
 <tr id="addr-9998">
 <td class="addr"><a href="#addr-9998">9998</a></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-99B8">c99b8</a></span>  <span class="comment">; TDRA not ready -- error</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-99B8">c99b8</a></span>                        <span class="comment">; TDRA not ready -- error</span></td>
 <td class="hex">50 1E</td>
 </tr>
 
@@ -34104,7 +34104,7 @@
 
 <tr id="addr-999A">
 <td class="addr"><a href="#addr-999A">999A</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Write our station to TX FIFO</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Write our station to TX FIFO</span></td>
 <td class="hex">8D A2 FE</td>
 </tr>
 
@@ -34112,7 +34112,7 @@
 
 <tr id="addr-999D">
 <td class="addr"><a href="#addr-999D">999D</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; Write network=0 to TX FIFO</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>                           <span class="comment">; Write network=0 to TX FIFO</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -34144,7 +34144,7 @@
 
 <tr id="addr-99A7">
 <td class="addr"><a href="#addr-99A7">99A7</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;3f</span>  <span class="comment">; CR2=$3F: TX_LAST_DATA | CLR_RX_ST | FLAG_IDLE | FC_TDRA | 2_1_BYTE | PSE</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;3f</span>                         <span class="comment">; CR2=$3F: TX_LAST_DATA | CLR_RX_ST | FLAG_IDLE | FC_TDRA | 2_1_BYTE | PSE</span></td>
 <td class="hex">A9 3F</td>
 </tr>
 
@@ -34160,7 +34160,7 @@
 
 <tr id="addr-99AC">
 <td class="addr"><a href="#addr-99AC">99AC</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D4B">nmi_next_lo</a></span>  <span class="comment">; Install saved handler from $0D4B/$0D4C</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D4B">nmi_next_lo</a></span>                  <span class="comment">; Install saved handler from $0D4B/$0D4C</span></td>
 <td class="hex">AD 4B 0D</td>
 </tr>
 
@@ -36470,7 +36470,7 @@
 
 <tr id="addr-9C5C">
 <td class="addr"><a href="#addr-9C5C">9C5C</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9C6D">c9c6d</a></span>  <span class="comment">; INACTIVE not set -- re-enable NMIs and loop</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9C6D">c9c6d</a></span>                        <span class="comment">; INACTIVE not set -- re-enable NMIs and loop</span></td>
 <td class="hex">F0 0F</td>
 </tr>
 
@@ -36478,7 +36478,7 @@
 
 <tr id="addr-9C5E">
 <td class="addr"><a href="#addr-9C5E">9C5E</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; Read SR1 (acknowledge pending interrupt)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; Read SR1 (acknowledge pending interrupt)</span></td>
 <td class="hex">AD A0 FE</td>
 </tr>
 
@@ -36486,7 +36486,7 @@
 
 <tr id="addr-9C61">
 <td class="addr"><a href="#addr-9C61">9C61</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;67</span>  <span class="comment">; CR2=$67: CLR_TX_ST|CLR_RX_ST|FC_TDRA|2_1_BYTE|PSE</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;67</span>                         <span class="comment">; CR2=$67: CLR_TX_ST|CLR_RX_ST|FC_TDRA|2_1_BYTE|PSE</span></td>
 <td class="hex">A9 67</td>
 </tr>
 
@@ -36502,7 +36502,7 @@
 
 <tr id="addr-9C66">
 <td class="addr"><a href="#addr-9C66">9C66</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;10</span>  <span class="comment">; A=$10: CTS mask for SR1 bit4</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;10</span>                         <span class="comment">; A=$10: CTS mask for SR1 bit4</span></td>
 <td class="hex">A9 10</td>
 </tr>
 
@@ -36510,7 +36510,7 @@
 
 <tr id="addr-9C68">
 <td class="addr"><a href="#addr-9C68">9C68</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; BIT SR1: tests CTS present</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; BIT SR1: tests CTS present</span></td>
 <td class="hex">2C A0 FE</td>
 </tr>
 
@@ -36518,7 +36518,7 @@
 
 <tr id="addr-9C6B">
 <td class="addr"><a href="#addr-9C6B">9C6B</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9CA2">tx_prepare</a></span>  <span class="comment">; CTS set -- clock hardware detected, start TX</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9CA2">tx_prepare</a></span>                   <span class="comment">; CTS set -- clock hardware detected, start TX</span></td>
 <td class="hex">D0 35</td>
 </tr>
 
@@ -36550,7 +36550,7 @@
 
 <tr id="addr-9C71">
 <td class="addr"><a href="#addr-9C71">9C71</a></td>
-<td>    <span class="opcode">TSX</span>  <span class="comment">; 3-byte timeout counter on stack</span></td>
+<td>    <span class="opcode">TSX</span>                    <span class="comment">; 3-byte timeout counter on stack</span></td>
 <td class="hex">BA</td>
 </tr>
 
@@ -36679,7 +36679,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#7</span>  <span class="comment">; CR2=$07: FC_TDRA | 2_1_BYTE | PSE (abort TX)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#7</span>     <span class="comment">; CR2=$07: FC_TDRA | 2_1_BYTE | PSE (abort TX)</span></td>
 <td class="hex">A9 07</td>
 </tr>
 
@@ -36719,7 +36719,7 @@
 
 <tr id="addr-9C90">
 <td class="addr"><a href="#addr-9C90">9C90</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;40</span>  <span class="comment">; Error $40 = &#39;Line Jammed&#39;</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;40</span>   <span class="comment">; Error $40 = &#39;Line Jammed&#39;</span></td>
 <td class="hex">A9 40</td>
 </tr>
 
@@ -36848,7 +36848,7 @@
 
 <tr id="addr-9CA5">
 <td class="addr"><a href="#addr-9CA5">9CA5</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;44</span>  <span class="comment">; CR1=$44: RX_RESET | TIE (TX active, TX interrupts enabled)</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;44</span>                         <span class="comment">; CR1=$44: RX_RESET | TIE (TX active, TX interrupts enabled)</span></td>
 <td class="hex">A2 44</td>
 </tr>
 
@@ -36864,7 +36864,7 @@
 
 <tr id="addr-9CAA">
 <td class="addr"><a href="#addr-9CAA">9CAA</a></td>
-<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;4c</span>  <span class="comment">; Install NMI handler at $9D4C (TX data handler)</span></td>
+<td>    <span class="opcode">LDX</span> <span class="operand">#&amp;4c</span>                         <span class="comment">; Install NMI handler at $9D4C (TX data handler)</span></td>
 <td class="hex">A2 4C</td>
 </tr>
 
@@ -36896,7 +36896,7 @@
 
 <tr id="addr-9CB4">
 <td class="addr"><a href="#addr-9CB4">9CB4</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FE20">video_ula_control</a></span>  <span class="comment">; INTON -- NMIs now fire for TDRA ($FE20 read)</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FE20">video_ula_control</a></span>            <span class="comment">; INTON -- NMIs now fire for TDRA ($FE20 read)</span></td>
 <td class="hex">2C 20 FE</td>
 </tr>
 
@@ -37297,7 +37297,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-0D4F">tx_index</a></span>  <span class="comment">; Load TX buffer index</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-0D4F">tx_index</a></span>                    <span class="comment">; Load TX buffer index</span></td>
 <td class="hex">AC 4F 0D</td>
 </tr>
 
@@ -37321,7 +37321,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9D76">c9d76</a></span>  <span class="comment">; TDRA not set -- TX error</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9D76">c9d76</a></span>                       <span class="comment">; TDRA not set -- TX error</span></td>
 <td class="hex">50 22</td>
 </tr>
 
@@ -37329,7 +37329,7 @@
 
 <tr id="addr-9D54">
 <td class="addr"><a href="#addr-9D54">9D54</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a>,y</span>  <span class="comment">; Load byte from TX buffer</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a>,y</span>                <span class="comment">; Load byte from TX buffer</span></td>
 <td class="hex">B9 20 0D</td>
 </tr>
 
@@ -37385,7 +37385,7 @@
 
 <tr id="addr-9D65">
 <td class="addr"><a href="#addr-9D65">9D65</a></td>
-<td>    <span class="opcode">CPY</span> <span class="operand"><a href="#addr-0D50">tx_length</a></span>  <span class="comment">; Compare index to TX length</span></td>
+<td>    <span class="opcode">CPY</span> <span class="operand"><a href="#addr-0D50">tx_length</a></span>                   <span class="comment">; Compare index to TX length</span></td>
 <td class="hex">CC 50 0D</td>
 </tr>
 
@@ -37393,7 +37393,7 @@
 
 <tr id="addr-9D68">
 <td class="addr"><a href="#addr-9D68">9D68</a></td>
-<td>    <span class="opcode">BCS</span> <span class="operand"><a href="#addr-9D88">tx_last_data</a></span>  <span class="comment">; Frame complete -- go to TX_LAST_DATA</span></td>
+<td>    <span class="opcode">BCS</span> <span class="operand"><a href="#addr-9D88">tx_last_data</a></span>                <span class="comment">; Frame complete -- go to TX_LAST_DATA</span></td>
 <td class="hex">B0 1E</td>
 </tr>
 
@@ -37409,7 +37409,7 @@
 
 <tr id="addr-9D6D">
 <td class="addr"><a href="#addr-9D6D">9D6D</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-9D52">loop_c9d52</a></span>  <span class="comment">; IRQ set -- send 2 more bytes (tight loop)</span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-9D52">loop_c9d52</a></span>                  <span class="comment">; IRQ set -- send 2 more bytes (tight loop)</span></td>
 <td class="hex">30 E3</td>
 </tr>
 
@@ -37417,7 +37417,7 @@
 
 <tr id="addr-9D6F">
 <td class="addr"><a href="#addr-9D6F">9D6F</a></td>
-<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-0D14">nmi_rti</a></span>  <span class="comment">; RTI -- wait for next NMI</span></td>
+<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-0D14">nmi_rti</a></span>                     <span class="comment">; RTI -- wait for next NMI</span></td>
 <td class="hex">4C 14 0D</td>
 </tr>
 
@@ -37449,7 +37449,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;42</span>  <span class="comment">; Error $42</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;42</span>   <span class="comment">; Error $42</span></td>
 <td class="hex">A9 42</td>
 </tr>
 
@@ -37521,7 +37521,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">PHA</span>  <span class="comment">; PHA/PLA delay loop (256 iterations for NMI disable)</span></td>
+<td>    <span class="opcode">PHA</span>                  <span class="comment">; PHA/PLA delay loop (256 iterations for NMI disable)</span></td>
 <td class="hex">48</td>
 </tr>
 
@@ -37651,7 +37651,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;82</span>  <span class="comment">; CR1=$82: TX_RESET | RIE (now in RX mode)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;82</span>          <span class="comment">; CR1=$82: TX_RESET | RIE (now in RX mode)</span></td>
 <td class="hex">A9 82</td>
 </tr>
 
@@ -37667,7 +37667,7 @@
 
 <tr id="addr-9D99">
 <td class="addr"><a href="#addr-9D99">9D99</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-0D4A">tx_flags</a></span>  <span class="comment">; Test workspace flags</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-0D4A">tx_flags</a></span>      <span class="comment">; Test workspace flags</span></td>
 <td class="hex">2C 4A 0D</td>
 </tr>
 
@@ -37675,7 +37675,7 @@
 
 <tr id="addr-9D9C">
 <td class="addr"><a href="#addr-9D9C">9D9C</a></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9DA1">c9da1</a></span>  <span class="comment">; bit6 not set -- check bit0</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9DA1">c9da1</a></span>         <span class="comment">; bit6 not set -- check bit0</span></td>
 <td class="hex">50 03</td>
 </tr>
 
@@ -37788,7 +37788,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#1</span>  <span class="comment">; A=$01: AP mask for SR2</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#1</span>                           <span class="comment">; A=$01: AP mask for SR2</span></td>
 <td class="hex">A9 01</td>
 </tr>
 
@@ -37804,7 +37804,7 @@
 
 <tr id="addr-9DB7">
 <td class="addr"><a href="#addr-9DB7">9DB7</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9D72">tx_error</a></span>  <span class="comment">; No AP -- error</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9D72">tx_error</a></span>                     <span class="comment">; No AP -- error</span></td>
 <td class="hex">F0 B9</td>
 </tr>
 
@@ -37812,7 +37812,7 @@
 
 <tr id="addr-9DB9">
 <td class="addr"><a href="#addr-9DB9">9DB9</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read RX byte (destination station)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read RX byte (destination station)</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -37828,7 +37828,7 @@
 
 <tr id="addr-9DBF">
 <td class="addr"><a href="#addr-9DBF">9DBF</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; Not our station -- error/reject</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; Not our station -- error/reject</span></td>
 <td class="hex">D0 1D</td>
 </tr>
 
@@ -37836,7 +37836,7 @@
 
 <tr id="addr-9DC1">
 <td class="addr"><a href="#addr-9DC1">9DC1</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;c8</span>  <span class="comment">; Install next handler at $9DC8 (reply continuation)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;c8</span>                         <span class="comment">; Install next handler at $9DC8 (reply continuation)</span></td>
 <td class="hex">A9 C8</td>
 </tr>
 
@@ -37893,7 +37893,7 @@
 
 <tr id="addr-9DCB">
 <td class="addr"><a href="#addr-9DCB">9DCB</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; No RDA -- error</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; No RDA -- error</span></td>
 <td class="hex">10 11</td>
 </tr>
 
@@ -37901,7 +37901,7 @@
 
 <tr id="addr-9DCD">
 <td class="addr"><a href="#addr-9DCD">9DCD</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read destination network byte</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read destination network byte</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -37909,7 +37909,7 @@
 
 <tr id="addr-9DD0">
 <td class="addr"><a href="#addr-9DD0">9DD0</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; Non-zero -- network mismatch, error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; Non-zero -- network mismatch, error</span></td>
 <td class="hex">D0 0C</td>
 </tr>
 
@@ -37917,7 +37917,7 @@
 
 <tr id="addr-9DD2">
 <td class="addr"><a href="#addr-9DD2">9DD2</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;e3</span>  <span class="comment">; Install next handler at $9DE3 (reply validation)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;e3</span>                         <span class="comment">; Install next handler at $9DE3 (reply validation)</span></td>
 <td class="hex">A9 E3</td>
 </tr>
 
@@ -37933,7 +37933,7 @@
 
 <tr id="addr-9DD6">
 <td class="addr"><a href="#addr-9DD6">9DD6</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; BIT SR1: test IRQ (N=bit7) -- more data ready?</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; BIT SR1: test IRQ (N=bit7) -- more data ready?</span></td>
 <td class="hex">2C A0 FE</td>
 </tr>
 
@@ -37941,7 +37941,7 @@
 
 <tr id="addr-9DD9">
 <td class="addr"><a href="#addr-9DD9">9DD9</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-9DE3">nmi_reply_validate</a></span>  <span class="comment">; IRQ set -- fall through to $9DE3 without RTI</span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-9DE3">nmi_reply_validate</a></span>           <span class="comment">; IRQ set -- fall through to $9DE3 without RTI</span></td>
 <td class="hex">30 08</td>
 </tr>
 
@@ -37949,7 +37949,7 @@
 
 <tr id="addr-9DDB">
 <td class="addr"><a href="#addr-9DDB">9DDB</a></td>
-<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-0D0E">set_nmi_vector</a></span>  <span class="comment">; IRQ not set -- install handler and RTI</span></td>
+<td>    <span class="opcode">JMP</span> <span class="operand"><a href="#addr-0D0E">set_nmi_vector</a></span>               <span class="comment">; IRQ not set -- install handler and RTI</span></td>
 <td class="hex">4C 0E 0D</td>
 </tr>
 
@@ -38014,7 +38014,7 @@
 
 <tr id="addr-9DE6">
 <td class="addr"><a href="#addr-9DE6">9DE6</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; No RDA -- error (FV masking RDA via PSE would cause this)</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; No RDA -- error (FV masking RDA via PSE would cause this)</span></td>
 <td class="hex">10 F6</td>
 </tr>
 
@@ -38022,7 +38022,7 @@
 
 <tr id="addr-9DE8">
 <td class="addr"><a href="#addr-9DE8">9DE8</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read source station</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read source station</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -38030,7 +38030,7 @@
 
 <tr id="addr-9DEB">
 <td class="addr"><a href="#addr-9DEB">9DEB</a></td>
-<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a></span>  <span class="comment">; Compare to original TX destination station ($0D20)</span></td>
+<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a></span>                   <span class="comment">; Compare to original TX destination station ($0D20)</span></td>
 <td class="hex">CD 20 0D</td>
 </tr>
 
@@ -38038,7 +38038,7 @@
 
 <tr id="addr-9DEE">
 <td class="addr"><a href="#addr-9DEE">9DEE</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; Mismatch -- not the expected reply, error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; Mismatch -- not the expected reply, error</span></td>
 <td class="hex">D0 EE</td>
 </tr>
 
@@ -38046,7 +38046,7 @@
 
 <tr id="addr-9DF0">
 <td class="addr"><a href="#addr-9DF0">9DF0</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read source network</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read source network</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -38054,7 +38054,7 @@
 
 <tr id="addr-9DF3">
 <td class="addr"><a href="#addr-9DF3">9DF3</a></td>
-<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D21">tx_dst_net</a></span>  <span class="comment">; Compare to original TX destination network ($0D21)</span></td>
+<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D21">tx_dst_net</a></span>                   <span class="comment">; Compare to original TX destination network ($0D21)</span></td>
 <td class="hex">CD 21 0D</td>
 </tr>
 
@@ -38062,7 +38062,7 @@
 
 <tr id="addr-9DF6">
 <td class="addr"><a href="#addr-9DF6">9DF6</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; Mismatch -- error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; Mismatch -- error</span></td>
 <td class="hex">D0 E6</td>
 </tr>
 
@@ -38070,7 +38070,7 @@
 
 <tr id="addr-9DF8">
 <td class="addr"><a href="#addr-9DF8">9DF8</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>  <span class="comment">; A=$02: FV mask for SR2 bit1</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>                           <span class="comment">; A=$02: FV mask for SR2 bit1</span></td>
 <td class="hex">A9 02</td>
 </tr>
 
@@ -38086,7 +38086,7 @@
 
 <tr id="addr-9DFD">
 <td class="addr"><a href="#addr-9DFD">9DFD</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>  <span class="comment">; No FV -- incomplete frame, error</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9DDE">reply_error</a></span>                  <span class="comment">; No FV -- incomplete frame, error</span></td>
 <td class="hex">F0 DF</td>
 </tr>
 
@@ -38094,7 +38094,7 @@
 
 <tr id="addr-9DFF">
 <td class="addr"><a href="#addr-9DFF">9DFF</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;a7</span>  <span class="comment">; CR2=$A7: RTS|CLR_TX_ST|FC_TDRA|2_1_BYTE|PSE (TX in handshake)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;a7</span>                         <span class="comment">; CR2=$A7: RTS|CLR_TX_ST|FC_TDRA|2_1_BYTE|PSE (TX in handshake)</span></td>
 <td class="hex">A9 A7</td>
 </tr>
 
@@ -38110,7 +38110,7 @@
 
 <tr id="addr-9E04">
 <td class="addr"><a href="#addr-9E04">9E04</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;44</span>  <span class="comment">; CR1=$44: RX_RESET | TIE (TX active for scout ACK)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;44</span>                         <span class="comment">; CR1=$44: RX_RESET | TIE (TX active for scout ACK)</span></td>
 <td class="hex">A9 44</td>
 </tr>
 
@@ -38126,7 +38126,7 @@
 
 <tr id="addr-9E09">
 <td class="addr"><a href="#addr-9E09">9E09</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;dd</span>  <span class="comment">; Install next handler at $9EDD (four-way data phase) into $0D4B/$0D4C</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;dd</span>                         <span class="comment">; Install next handler at $9EDD (four-way data phase) into $0D4B/$0D4C</span></td>
 <td class="hex">A9 DD</td>
 </tr>
 
@@ -38158,7 +38158,7 @@
 
 <tr id="addr-9E13">
 <td class="addr"><a href="#addr-9E13">9E13</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a></span>  <span class="comment">; Load dest station for scout ACK TX</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a></span>                   <span class="comment">; Load dest station for scout ACK TX</span></td>
 <td class="hex">AD 20 0D</td>
 </tr>
 
@@ -38166,7 +38166,7 @@
 
 <tr id="addr-9E16">
 <td class="addr"><a href="#addr-9E16">9E16</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; BIT SR1: test TDRA (V=bit6)</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; BIT SR1: test TDRA (V=bit6)</span></td>
 <td class="hex">2C A0 FE</td>
 </tr>
 
@@ -38174,7 +38174,7 @@
 
 <tr id="addr-9E19">
 <td class="addr"><a href="#addr-9E19">9E19</a></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9E8E">data_tx_error</a></span>  <span class="comment">; TDRA not ready -- error</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9E8E">data_tx_error</a></span>                <span class="comment">; TDRA not ready -- error</span></td>
 <td class="hex">50 73</td>
 </tr>
 
@@ -38182,7 +38182,7 @@
 
 <tr id="addr-9E1B">
 <td class="addr"><a href="#addr-9E1B">9E1B</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Write dest station to TX FIFO</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Write dest station to TX FIFO</span></td>
 <td class="hex">8D A2 FE</td>
 </tr>
 
@@ -38190,7 +38190,7 @@
 
 <tr id="addr-9E1E">
 <td class="addr"><a href="#addr-9E1E">9E1E</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D21">tx_dst_net</a></span>  <span class="comment">; Write dest network to TX FIFO</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-0D21">tx_dst_net</a></span>                   <span class="comment">; Write dest network to TX FIFO</span></td>
 <td class="hex">AD 21 0D</td>
 </tr>
 
@@ -38206,7 +38206,7 @@
 
 <tr id="addr-9E24">
 <td class="addr"><a href="#addr-9E24">9E24</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;2b</span>  <span class="comment">; Install handler at $9E2B (write src addr for scout ACK)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;2b</span>                         <span class="comment">; Install handler at $9E2B (write src addr for scout ACK)</span></td>
 <td class="hex">A9 2B</td>
 </tr>
 
@@ -38263,7 +38263,7 @@
 
 <tr id="addr-9E2E">
 <td class="addr"><a href="#addr-9E2E">9E2E</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; BIT SR1: test TDRA</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; BIT SR1: test TDRA</span></td>
 <td class="hex">2C A0 FE</td>
 </tr>
 
@@ -38271,7 +38271,7 @@
 
 <tr id="addr-9E31">
 <td class="addr"><a href="#addr-9E31">9E31</a></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9E8E">data_tx_error</a></span>  <span class="comment">; TDRA not ready -- error</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9E8E">data_tx_error</a></span>                <span class="comment">; TDRA not ready -- error</span></td>
 <td class="hex">50 5B</td>
 </tr>
 
@@ -38279,7 +38279,7 @@
 
 <tr id="addr-9E33">
 <td class="addr"><a href="#addr-9E33">9E33</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Write our station to TX FIFO</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Write our station to TX FIFO</span></td>
 <td class="hex">8D A2 FE</td>
 </tr>
 
@@ -38287,7 +38287,7 @@
 
 <tr id="addr-9E36">
 <td class="addr"><a href="#addr-9E36">9E36</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; Write network=0 to TX FIFO</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>                           <span class="comment">; Write network=0 to TX FIFO</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -38416,7 +38416,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>  <span class="comment">; Y = buffer offset, resume from last position</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand"><a href="#addr-00A2">port_buf_len</a></span>                <span class="comment">; Y = buffer offset, resume from last position</span></td>
 <td class="hex">A4 A2</td>
 </tr>
 
@@ -38440,7 +38440,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9E8E">data_tx_error</a></span>  <span class="comment">; TDRA not ready -- error</span></td>
+<td>    <span class="opcode">BVC</span> <span class="operand"><a href="#addr-9E8E">data_tx_error</a></span>      <span class="comment">; TDRA not ready -- error</span></td>
 <td class="hex">50 37</td>
 </tr>
 
@@ -39098,7 +39098,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#1</span>  <span class="comment">; A=$01: AP mask</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#1</span>                           <span class="comment">; A=$01: AP mask</span></td>
 <td class="hex">A9 01</td>
 </tr>
 
@@ -39114,7 +39114,7 @@
 
 <tr id="addr-9EEE">
 <td class="addr"><a href="#addr-9EEE">9EEE</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; No AP -- error</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; No AP -- error</span></td>
 <td class="hex">F0 4D</td>
 </tr>
 
@@ -39122,7 +39122,7 @@
 
 <tr id="addr-9EF0">
 <td class="addr"><a href="#addr-9EF0">9EF0</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read dest station</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read dest station</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -39138,7 +39138,7 @@
 
 <tr id="addr-9EF6">
 <td class="addr"><a href="#addr-9EF6">9EF6</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; Not our station -- error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; Not our station -- error</span></td>
 <td class="hex">D0 45</td>
 </tr>
 
@@ -39146,7 +39146,7 @@
 
 <tr id="addr-9EF8">
 <td class="addr"><a href="#addr-9EF8">9EF8</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;ff</span>  <span class="comment">; Install handler at $9EFF (final ACK continuation)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;ff</span>                         <span class="comment">; Install handler at $9EFF (final ACK continuation)</span></td>
 <td class="hex">A9 FF</td>
 </tr>
 
@@ -39186,7 +39186,7 @@
 
 <tr id="addr-9F02">
 <td class="addr"><a href="#addr-9F02">9F02</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; No RDA -- error</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; No RDA -- error</span></td>
 <td class="hex">10 39</td>
 </tr>
 
@@ -39194,7 +39194,7 @@
 
 <tr id="addr-9F04">
 <td class="addr"><a href="#addr-9F04">9F04</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read dest network</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read dest network</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -39202,7 +39202,7 @@
 
 <tr id="addr-9F07">
 <td class="addr"><a href="#addr-9F07">9F07</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; Non-zero -- network mismatch, error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; Non-zero -- network mismatch, error</span></td>
 <td class="hex">D0 34</td>
 </tr>
 
@@ -39210,7 +39210,7 @@
 
 <tr id="addr-9F09">
 <td class="addr"><a href="#addr-9F09">9F09</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;15</span>  <span class="comment">; Install handler at $9F15 (final ACK validation)</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;15</span>                         <span class="comment">; Install handler at $9F15 (final ACK validation)</span></td>
 <td class="hex">A9 15</td>
 </tr>
 
@@ -39226,7 +39226,7 @@
 
 <tr id="addr-9F0D">
 <td class="addr"><a href="#addr-9F0D">9F0D</a></td>
-<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>  <span class="comment">; BIT SR1: test IRQ -- more data ready?</span></td>
+<td>    <span class="opcode">BIT</span> <span class="operand"><a href="#addr-FEA0">econet_control1_or_status1</a></span>   <span class="comment">; BIT SR1: test IRQ -- more data ready?</span></td>
 <td class="hex">2C A0 FE</td>
 </tr>
 
@@ -39234,7 +39234,7 @@
 
 <tr id="addr-9F10">
 <td class="addr"><a href="#addr-9F10">9F10</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-9F15">nmi_final_ack_validate</a></span>  <span class="comment">; IRQ set -- fall through to $9F15 without RTI</span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-9F15">nmi_final_ack_validate</a></span>       <span class="comment">; IRQ set -- fall through to $9F15 without RTI</span></td>
 <td class="hex">30 03</td>
 </tr>
 
@@ -39283,7 +39283,7 @@
 
 <tr id="addr-9F18">
 <td class="addr"><a href="#addr-9F18">9F18</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; No RDA -- error</span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; No RDA -- error</span></td>
 <td class="hex">10 23</td>
 </tr>
 
@@ -39291,7 +39291,7 @@
 
 <tr id="addr-9F1A">
 <td class="addr"><a href="#addr-9F1A">9F1A</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read source station</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read source station</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -39299,7 +39299,7 @@
 
 <tr id="addr-9F1D">
 <td class="addr"><a href="#addr-9F1D">9F1D</a></td>
-<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a></span>  <span class="comment">; Compare to TX dest station ($0D20)</span></td>
+<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D20">tx_dst_stn</a></span>                   <span class="comment">; Compare to TX dest station ($0D20)</span></td>
 <td class="hex">CD 20 0D</td>
 </tr>
 
@@ -39307,7 +39307,7 @@
 
 <tr id="addr-9F20">
 <td class="addr"><a href="#addr-9F20">9F20</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; Mismatch -- error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; Mismatch -- error</span></td>
 <td class="hex">D0 1B</td>
 </tr>
 
@@ -39315,7 +39315,7 @@
 
 <tr id="addr-9F22">
 <td class="addr"><a href="#addr-9F22">9F22</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>  <span class="comment">; Read source network</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand"><a href="#addr-FEA2">econet_data_continue_frame</a></span>   <span class="comment">; Read source network</span></td>
 <td class="hex">AD A2 FE</td>
 </tr>
 
@@ -39323,7 +39323,7 @@
 
 <tr id="addr-9F25">
 <td class="addr"><a href="#addr-9F25">9F25</a></td>
-<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D21">tx_dst_net</a></span>  <span class="comment">; Compare to TX dest network ($0D21)</span></td>
+<td>    <span class="opcode">CMP</span> <span class="operand"><a href="#addr-0D21">tx_dst_net</a></span>                   <span class="comment">; Compare to TX dest network ($0D21)</span></td>
 <td class="hex">CD 21 0D</td>
 </tr>
 
@@ -39331,7 +39331,7 @@
 
 <tr id="addr-9F28">
 <td class="addr"><a href="#addr-9F28">9F28</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; Mismatch -- error</span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; Mismatch -- error</span></td>
 <td class="hex">D0 13</td>
 </tr>
 
@@ -39371,7 +39371,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>  <span class="comment">; A=$02: FV mask for SR2 bit1</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#2</span>                           <span class="comment">; A=$02: FV mask for SR2 bit1</span></td>
 <td class="hex">A9 02</td>
 </tr>
 
@@ -39387,7 +39387,7 @@
 
 <tr id="addr-9F37">
 <td class="addr"><a href="#addr-9F37">9F37</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>  <span class="comment">; No FV -- error</span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9F3D">tx_result_fail</a></span>               <span class="comment">; No FV -- error</span></td>
 <td class="hex">F0 04</td>
 </tr>
 
@@ -39420,7 +39420,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>  <span class="comment">; A=0: success result code</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#0</span>               <span class="comment">; A=0: success result code</span></td>
 <td class="hex">A9 00</td>
 </tr>
 
@@ -39477,7 +39477,7 @@
 
 <tr>
 <td class="addr"></td>
-<td>    <span class="opcode">LDY</span> <span class="operand">#0</span>  <span class="comment">; Y=0: index into TX control block</span></td>
+<td>    <span class="opcode">LDY</span> <span class="operand">#0</span>                    <span class="comment">; Y=0: index into TX control block</span></td>
 <td class="hex">A0 00</td>
 </tr>
 
@@ -39485,7 +39485,7 @@
 
 <tr id="addr-9F41">
 <td class="addr"><a href="#addr-9F41">9F41</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand">(<a href="#addr-00A0">nmi_tx_block</a>),y</span>  <span class="comment">; Store result/error code at (nmi_tx_block),0</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand">(<a href="#addr-00A0">nmi_tx_block</a>),y</span>      <span class="comment">; Store result/error code at (nmi_tx_block),0</span></td>
 <td class="hex">91 A0</td>
 </tr>
 
@@ -39493,7 +39493,7 @@
 
 <tr id="addr-9F43">
 <td class="addr"><a href="#addr-9F43">9F43</a></td>
-<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;80</span>  <span class="comment">; $80: completion flag for $0D3A</span></td>
+<td>    <span class="opcode">LDA</span> <span class="operand">#&amp;80</span>                  <span class="comment">; $80: completion flag for $0D3A</span></td>
 <td class="hex">A9 80</td>
 </tr>
 
@@ -39501,7 +39501,7 @@
 
 <tr id="addr-9F45">
 <td class="addr"><a href="#addr-9F45">9F45</a></td>
-<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3A">tx_ctrl_status</a></span>  <span class="comment">; Signal TX complete</span></td>
+<td>    <span class="opcode">STA</span> <span class="operand"><a href="#addr-0D3A">tx_ctrl_status</a></span>        <span class="comment">; Signal TX complete</span></td>
 <td class="hex">8D 3A 0D</td>
 </tr>
 

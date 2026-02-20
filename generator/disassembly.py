@@ -1,5 +1,7 @@
 """Processes structured disassembly JSON into template-ready data."""
 
+import re
+
 from markupsafe import Markup, escape
 
 
@@ -20,6 +22,8 @@ def process_disassembly(data):
     lines = []
     for item in data["items"]:
         lines.extend(_process_item(item, sub_lookup))
+
+    _align_inline_comments(lines)
     return lines
 
 
@@ -71,21 +75,16 @@ def _process_item(item, sub_lookup):
         })
         addr_used = True
 
-    # Main content line
+    # Main content line — store inline comment separately for alignment
     content_html = _render_content(item)
     hex_str = " ".join(f"{b:02X}" for b in item["bytes"])
-
-    inline = item.get("comment_inline")
-    if inline:
-        content_html += Markup(
-            f'  <span class="comment">; {escape(inline)}</span>'
-        )
 
     lines.append({
         "id": addr_id if not addr_used else None,
         "addr": addr_display if not addr_used else None,
         "html": content_html,
         "hex": hex_str,
+        "_inline_comment": item.get("comment_inline"),
     })
 
     # Comments after (rare)
@@ -93,6 +92,71 @@ def _process_item(item, sub_lookup):
         _append_comment_lines(lines, comment_text)
 
     return lines
+
+
+def _visible_width(html):
+    """Compute the visible character width of an HTML string."""
+    text = re.sub(r"<[^>]+>", "", str(html))
+    # Decode HTML entities
+    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    text = text.replace("&quot;", '"')
+    return len(text)
+
+
+def _align_inline_comments(lines):
+    """Align inline comments within blocks separated by labels/banners.
+
+    Within each block, all inline comments start at the same column —
+    the position of the widest code line in that block, plus padding."""
+    blocks = _split_into_blocks(lines)
+
+    for block in blocks:
+        # Find lines with inline comments and the max code width in this block
+        commented = [(i, line) for i, line in block
+                     if line.get("_inline_comment")]
+        if not commented:
+            continue
+
+        max_width = max(_visible_width(line["html"]) for _, line in commented)
+
+        # Merge comments with padding
+        for i, line in commented:
+            comment = line.pop("_inline_comment")
+            code_width = _visible_width(line["html"])
+            padding = " " * (max_width - code_width + 2)
+            line["html"] = line["html"] + Markup(
+                f'{padding}<span class="comment">; {escape(comment)}</span>'
+            )
+
+    # Clean up: remove _inline_comment from any remaining lines
+    for line in lines:
+        line.pop("_inline_comment", None)
+
+
+def _split_into_blocks(lines):
+    """Split lines into blocks at label boundaries and subroutine headers.
+
+    Returns a list of blocks, where each block is a list of (index, line)
+    tuples."""
+    blocks = []
+    current = []
+
+    for i, line in enumerate(lines):
+        # Start a new block at labels, banners, or blank separators
+        is_label = '<span class="label">' in str(line.get("html", ""))
+        is_banner = line.get("banner")
+
+        if is_label or is_banner:
+            if current:
+                blocks.append(current)
+            current = [(i, line)]
+        else:
+            current.append((i, line))
+
+    if current:
+        blocks.append(current)
+
+    return blocks
 
 
 def _append_comment_lines(lines, comment_text):
@@ -181,11 +245,11 @@ def _render_plaintext(text):
 
     for block in blocks:
         if all(line.startswith("  ") for line in block):
-            # Indented block → preformatted
+            # Indented block -> preformatted
             content = "\n".join(block)
             parts.append(f'<pre class="sub-detail">{escape(content)}</pre>')
         else:
-            # Prose block — join hard-wrapped lines with spaces
+            # Prose block -- join hard-wrapped lines with spaces
             content = " ".join(line.strip() for line in block)
             parts.append(f"<p>{escape(content)}</p>")
 
