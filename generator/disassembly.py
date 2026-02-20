@@ -1,7 +1,5 @@
 """Processes structured disassembly JSON into template-ready data."""
 
-import re
-
 from markupsafe import Markup, escape
 
 
@@ -126,7 +124,6 @@ def _is_banner_line(text):
 def _is_banner_content(text, sub):
     """Check if a comment is the body of a subroutine banner that we've
     already rendered from the structured data."""
-    # The banner body text starts with the subroutine title
     title = sub.get("title", "")
     if title and text.startswith(title):
         return True
@@ -142,22 +139,10 @@ def _render_subroutine_header(sub):
     title = sub.get("title", sub.get("name", ""))
     parts.append(f'<h3>{escape(title)}</h3>')
 
-    # Description — convert paragraphs
+    # Description
     desc = sub.get("description", "")
     if desc:
-        paragraphs = re.split(r"\n{2,}", desc)
-        for para in paragraphs:
-            # Check if this paragraph looks like a list (indented lines)
-            para_lines = para.split("\n")
-            if len(para_lines) > 1 and all(
-                l.startswith("  ") or not l.strip() for l in para_lines[1:]
-            ):
-                # Render as preformatted block (register tables, etc.)
-                parts.append(
-                    f'<pre class="sub-detail">{escape(para)}</pre>'
-                )
-            else:
-                parts.append(f"<p>{escape(para)}</p>")
+        parts.append(f'<div class="sub-desc">{_render_plaintext(desc)}</div>')
 
     # On Entry / On Exit
     entry = sub.get("on_entry", {})
@@ -171,6 +156,39 @@ def _render_subroutine_header(sub):
         parts.append("</div>")
 
     parts.append("</div>")
+    return Markup("\n".join(parts))
+
+
+def _render_plaintext(text):
+    """Render plain text as HTML, preserving the author's intended structure.
+
+    Blank-line-separated blocks become paragraphs or preformatted blocks.
+    A block where every line is indented (2+ spaces) is rendered as <pre>.
+    Everything else becomes a <p> with line breaks preserved."""
+    parts = []
+    # Split on blank lines
+    blocks = []
+    current = []
+    for line in text.split("\n"):
+        if not line.strip():
+            if current:
+                blocks.append(current)
+                current = []
+        else:
+            current.append(line)
+    if current:
+        blocks.append(current)
+
+    for block in blocks:
+        if all(line.startswith("  ") for line in block):
+            # Indented block → preformatted
+            content = "\n".join(block)
+            parts.append(f'<pre class="sub-detail">{escape(content)}</pre>')
+        else:
+            # Prose block — join hard-wrapped lines with spaces
+            content = " ".join(line.strip() for line in block)
+            parts.append(f"<p>{escape(content)}</p>")
+
     return Markup("\n".join(parts))
 
 

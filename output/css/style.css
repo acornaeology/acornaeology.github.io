@@ -384,14 +384,17 @@ hr {
     color: var(--cyan);
 }
 
-.sub-header p {
+.sub-desc {
     font-size: 0.8rem;
     line-height: 1.5;
     color: var(--text);
+}
+
+.sub-desc p {
     margin: 0 0 0.5em 0;
 }
 
-.sub-header pre.sub-detail {
+.sub-desc pre.sub-detail {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.75rem;
     line-height: 1.4;
@@ -401,6 +404,7 @@ hr {
     background: var(--sidebar-bg);
     border-radius: 3px;
     overflow-x: auto;
+    white-space: pre;
 }
 
 .sub-registers {
