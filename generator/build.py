@@ -85,12 +85,23 @@ def build_disassemblies(env):
                 title=f"{meta['name']} {version['id']}",
                 description=meta.get("description", ""),
                 lines=lines,
-                subroutines=data.get("subroutines", []),
+                subroutines=_filter_subroutines(data),
             )
 
             version_filepath = output_dirpath / f"{version['id']}.html"
             version_filepath.write_text(html)
             print(f"  {slug}/{version['id']}.html")
+
+
+def _filter_subroutines(data):
+    """Return only subroutines within the ROM address range."""
+    meta = data.get("meta", {})
+    load_addr = meta.get("load_addr", 0)
+    end_addr = meta.get("end_addr", 0xFFFF)
+    return [
+        s for s in data.get("subroutines", [])
+        if load_addr <= s["addr"] < end_addr
+    ]
 
 
 def copy_static():
