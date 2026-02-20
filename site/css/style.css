@@ -1,1 +1,34 @@
 /* acornaeology.uk */
+
+/* Light mode — "Retro Manual" */
+:root {
+    --bg: #F4F1E8;
+    --text: #1E2228;
+    --red: #C24B4B;
+    --green: #4DAA4D;
+    --blue: #4A78C2;
+    --cyan: #3AA6A6;
+    --magenta: #A84DA8;
+    --yellow: #C7A645;
+}
+
+/* Dark mode — "Soft Phosphor" */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #111214;
+        --text: #E6E6E6;
+        --red: #D65A5A;
+        --green: #5FBF5F;
+        --blue: #5F8FD6;
+        --cyan: #4FBFBF;
+        --magenta: #BF5FBF;
+        --yellow: #D6B85A;
+    }
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+}
