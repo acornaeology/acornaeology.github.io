@@ -108,7 +108,7 @@
 
 body {
     font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 18px;
+    font-size: 22px;
     line-height: 1.6;
     background-color: var(--bg);
     color: var(--text);
@@ -271,7 +271,7 @@ hr {
 
 .listing {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
+    font-size: 18px;
     line-height: 1.4;
     overflow-x: auto;
     tab-size: 8;
