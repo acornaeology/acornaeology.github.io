@@ -124,6 +124,68 @@ body {
     padding: 2rem 1.5rem;
 }
 
+/* Wider container for disassembly pages */
+.page-disassembly .container {
+    max-width: 1400px;
+}
+
+/* --- Disassembly two-column layout --- */
+
+.disassembly-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.subroutine-nav {
+    position: sticky;
+    top: 1rem;
+    width: 240px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.subroutine-nav h2 {
+    font-size: 1.1rem;
+    margin-top: 0;
+}
+
+.subroutine-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.subroutine-nav li {
+    margin-bottom: 0.3em;
+}
+
+.subroutine-nav .sub-title {
+    display: block;
+    color: var(--dim);
+    font-size: 0.8rem;
+}
+
+.disassembly-layout .listing {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .disassembly-layout {
+        flex-direction: column;
+    }
+
+    .subroutine-nav {
+        position: static;
+        width: auto;
+        max-height: none;
+    }
+}
+
 /* --- Typography --- */
 
 h1, h2, h3 {

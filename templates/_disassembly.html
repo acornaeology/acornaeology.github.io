@@ -2,25 +2,28 @@
 
 {% block title %}{{ title }} — acornaeology{% endblock %}
 
+{% block body_attrs %} class="page-disassembly"{% endblock %}
+
 {% block content %}
 <h1>{{ title }}</h1>
 {% if description %}<p>{{ description }}</p>{% endif %}
 
+<div class="disassembly-layout">
 {% if subroutines %}
-<h2>Subroutines</h2>
-<ul class="rom-list">
-{% for sub in subroutines %}
-{% if sub.name %}
-<li>
-    <a href="#addr-{{ '%04X' % sub.addr }}">{{ sub.name }}</a>
-    {% if sub.title %}<span class="version">{{ sub.title }}</span>{% endif %}
-</li>
+<nav class="subroutine-nav">
+    <h2>Subroutines</h2>
+    <ul>
+    {% for sub in subroutines %}
+    {% if sub.name %}
+    <li>
+        <a href="#addr-{{ '%04X' % sub.addr }}">{{ sub.name }}</a>
+        {% if sub.title %}<span class="sub-title">{{ sub.title }}</span>{% endif %}
+    </li>
+    {% endif %}
+    {% endfor %}
+    </ul>
+</nav>
 {% endif %}
-{% endfor %}
-</ul>
-{% endif %}
-
-<hr>
 
 <div class="listing">
 <table>
@@ -32,5 +35,6 @@
 </tr>
 {% endfor %}
 </table>
+</div>
 </div>
 {% endblock %}

@@ -6,7 +6,7 @@
     <title>{% block title %}acornaeology{% endblock %}</title>
     <link rel="stylesheet" href="{{ root }}css/style.css">
 </head>
-<body>
+<body{% block body_attrs %}{% endblock %}>
     <header class="site-header">
         <div class="container">
             <a href="{{ root }}" class="site-title">acornaeology</a>

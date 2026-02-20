@@ -109,7 +109,7 @@ def _render_content(item):
 
 
 def _render_code(item):
-    mnemonic = escape(item["mnemonic"])
+    mnemonic = escape(item["mnemonic"].upper())
     operand = item.get("operand", "")
 
     html = Markup(f'    <span class="opcode">{mnemonic}</span>')
