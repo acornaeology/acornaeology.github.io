@@ -409,6 +409,10 @@ hr {
     border-bottom-style: solid;
 }
 
+.listing .operand .ext-label {
+    color: var(--text);
+}
+
 .listing .comment {
     color: var(--green);
 }

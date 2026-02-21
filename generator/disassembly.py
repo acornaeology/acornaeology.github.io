@@ -20,16 +20,17 @@ def process_disassembly(data):
         sub_lookup[sub["addr"]] = sub
 
     item_by_addr = {item["addr"]: item for item in data["items"]}
+    valid_addrs = set(item_by_addr)
 
     lines = []
     for item in data["items"]:
-        lines.extend(_process_item(item, sub_lookup, item_by_addr))
+        lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs))
 
     _align_inline_comments(lines)
     return lines
 
 
-def _process_item(item, sub_lookup, item_by_addr):
+def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
@@ -83,7 +84,7 @@ def _process_item(item, sub_lookup, item_by_addr):
         addr_used = True
 
     # Main content line — store inline comment separately for alignment
-    content_html = _render_content(item)
+    content_html = _render_content(item, valid_addrs)
     hex_str = " ".join(f"{b:02X}" for b in item["bytes"])
 
     lines.append({
@@ -297,10 +298,10 @@ def _render_register_table(heading, regs):
     return "\n".join(parts)
 
 
-def _render_content(item):
+def _render_content(item, valid_addrs):
     t = item["type"]
     if t == "code":
-        return _render_code(item)
+        return _render_code(item, valid_addrs)
     if t == "byte":
         return _render_bytes(item)
     if t == "word":
@@ -310,13 +311,13 @@ def _render_content(item):
     return Markup("")
 
 
-def _render_code(item):
+def _render_code(item, valid_addrs):
     mnemonic = escape(item["mnemonic"].upper())
     operand = item.get("operand", "")
 
     html = Markup(f'    <span class="opcode">{mnemonic}</span>')
     if operand:
-        operand_html = _linkify_operand(operand, item)
+        operand_html = _linkify_operand(operand, item, valid_addrs)
         if _is_immediate(operand, item):
             tooltip = _immediate_tooltip(item["bytes"][1])
             operand_html = Markup(
@@ -327,22 +328,27 @@ def _render_code(item):
     return html
 
 
-def _linkify_operand(operand, item):
+def _linkify_operand(operand, item, valid_addrs):
     """Wrap label references in the operand text with anchor links."""
     if "target_label" not in item or "target" not in item:
         return escape(operand)
 
     target_label = item["target_label"]
-    target_id = f"addr-{item['target']:04X}"
+    target = item["target"]
+    target_addr = f"&{target:04X}"
 
     escaped_operand = str(escape(operand))
     escaped_label = str(escape(target_label))
 
     if escaped_label in escaped_operand:
-        target_addr = f"&{item['target']:04X}"
-        link = (f'<a href="#{target_id}"'
-                f' data-tip="{target_addr}">{escaped_label}</a>')
-        return Markup(escaped_operand.replace(escaped_label, link, 1))
+        if target in valid_addrs:
+            target_id = f"addr-{target:04X}"
+            replacement = (f'<a href="#{target_id}"'
+                           f' data-tip="{target_addr}">{escaped_label}</a>')
+        else:
+            replacement = (f'<span class="ext-label"'
+                           f' data-tip="{target_addr}">{escaped_label}</span>')
+        return Markup(escaped_operand.replace(escaped_label, replacement, 1))
 
     return escape(operand)
 
