@@ -132,9 +132,9 @@ body {
     padding: 2rem 1.5rem;
 }
 
-/* Wider container for disassembly pages */
+/* No width cap on disassembly pages — use the full viewport */
 .page-disassembly .container {
-    max-width: 1400px;
+    max-width: none;
 }
 
 /* --- Disassembly two-column layout --- */
@@ -355,7 +355,6 @@ hr {
     position: absolute;
     left: 0;
     top: 100%;
-    margin-top: 0.2em;
     padding: 0.4em 0;
     min-width: 12em;
     font-family: 'IBM Plex Mono', monospace;
@@ -366,6 +365,15 @@ hr {
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     z-index: 20;
+}
+
+.listing .ref-popup::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -0.5em;
+    height: 0.5em;
 }
 
 .listing .ref-popup a {
