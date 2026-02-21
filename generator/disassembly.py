@@ -1,8 +1,11 @@
 """Processes structured disassembly JSON into template-ready data."""
 
+import html as html_mod
 import re
 
 from markupsafe import Markup, escape
+
+CONTENT_MAX_WIDTH = 64
 
 
 def process_disassembly(data):
@@ -101,13 +104,99 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
     return lines
 
 
-def _visible_width(html):
+def _visible_width(markup):
     """Compute the visible character width of an HTML string."""
-    text = re.sub(r"<[^>]+>", "", str(html))
-    # Decode HTML entities
-    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-    text = text.replace("&quot;", '"')
+    text = re.sub(r"<[^>]+>", "", str(markup))
+    text = html_mod.unescape(text)
     return len(text)
+
+
+def _find_break_position(word, budget):
+    """Find the best position to break a long word at or before budget.
+
+    Prefers breaking near internal punctuation (|, _, /, -), then at
+    character class transitions (letter/digit/punctuation boundaries),
+    and falls back to the exact budget position."""
+    if budget <= 0:
+        budget = 1
+
+    # Preferred: break after punctuation characters
+    best = -1
+    for i in range(min(budget, len(word)) - 1, 0, -1):
+        if word[i] in "|_/-":
+            best = i + 1
+            break
+    if best > 0:
+        return best
+
+    # Second: break at character class transitions
+    for i in range(min(budget, len(word)) - 1, 0, -1):
+        a, b = word[i - 1], word[i]
+        if (a.isalpha() != b.isalpha()) or (a.isdigit() != b.isdigit()):
+            return i
+    if best > 0:
+        return best
+
+    # Last resort: break at exact boundary
+    return min(budget, len(word))
+
+
+def _wrap_text(text, first_line_budget, continuation_indent):
+    """Wrap plain text at word boundaries, returning a list of strings.
+
+    Words longer than the budget are broken at preferred positions."""
+    words = text.split(" ")
+    result_lines = []
+    current = ""
+    continuation_budget = CONTENT_MAX_WIDTH - continuation_indent
+
+    for word in words:
+        budget = first_line_budget if not result_lines else continuation_budget
+
+        candidate = current + (" " if current else "") + word
+        if len(candidate) <= budget:
+            current = candidate
+        else:
+            if current:
+                result_lines.append(current)
+                current = ""
+                budget = continuation_budget
+
+            # Break words that don't fit on a fresh line
+            while len(word) > budget:
+                pos = _find_break_position(word, budget)
+                result_lines.append(word[:pos])
+                word = word[pos:]
+                budget = continuation_budget
+            current = word
+
+    if current:
+        result_lines.append(current)
+
+    return result_lines or [""]
+
+
+def _group_values(parts, prefix_width, value_width):
+    """Group data values into lines that fit within CONTENT_MAX_WIDTH.
+
+    Returns a list of lists (groups of parts per line)."""
+    line_groups = []
+    current_group = []
+    current_width = prefix_width
+
+    for part in parts:
+        needed = (2 if current_group else 0) + value_width
+        if current_width + needed > CONTENT_MAX_WIDTH and current_group:
+            line_groups.append(current_group)
+            current_group = [part]
+            current_width = prefix_width + value_width
+        else:
+            current_group.append(part)
+            current_width += needed
+    if current_group:
+        line_groups.append(current_group)
+
+    return line_groups
 
 
 def _align_inline_comments(lines):
@@ -126,14 +215,31 @@ def _align_inline_comments(lines):
 
         max_width = max(_visible_width(line["html"]) for _, line in commented)
 
-        # Merge comments with padding
+        # Merge comments with padding, wrapping if needed
         for i, line in commented:
             comment = line.pop("_inline_comment")
             code_width = _visible_width(line["html"])
             padding = " " * (max_width - code_width + 2)
-            line["html"] = line["html"] + Markup(
-                f'{padding}<span class="comment">; {escape(comment)}</span>'
-            )
+            comment_col = max_width + 2 + 2  # padding + "; "
+            total_width = comment_col + len(comment)
+
+            if total_width <= CONTENT_MAX_WIDTH:
+                line["html"] = line["html"] + Markup(
+                    f'{padding}<span class="comment">'
+                    f'; {escape(comment)}</span>'
+                )
+            else:
+                first_budget = CONTENT_MAX_WIDTH - comment_col
+                wrapped = _wrap_text(comment, first_budget, comment_col)
+                indent_str = " " * comment_col
+                parts = [str(escape(wrapped[0]))]
+                for cont in wrapped[1:]:
+                    parts.append(f"\n{indent_str}{escape(cont)}")
+                comment_html = "".join(parts)
+                line["html"] = line["html"] + Markup(
+                    f'{padding}<span class="comment">'
+                    f'; {comment_html}</span>'
+                )
 
     # Clean up: remove _inline_comment from any remaining lines
     for line in lines:
@@ -167,14 +273,37 @@ def _split_into_blocks(lines):
 
 
 def _append_comment_lines(lines, comment_text):
+    comment_prefix_width = 2  # "; "
     for line_text in str(comment_text).split("\n"):
-        if line_text.strip():
+        if not line_text.strip():
+            lines.append({"id": None, "addr": None, "html": Markup("")})
+            continue
+
+        # Skip wrapping for indented lines (preformatted content)
+        if line_text.startswith("  "):
             html = Markup(
                 f'<span class="comment">; {escape(line_text)}</span>'
             )
+            lines.append({"id": None, "addr": None, "html": html})
+            continue
+
+        total_width = comment_prefix_width + len(line_text)
+        if total_width <= CONTENT_MAX_WIDTH:
+            html = Markup(
+                f'<span class="comment">; {escape(line_text)}</span>'
+            )
+            lines.append({"id": None, "addr": None, "html": html})
         else:
-            html = Markup("")
-        lines.append({"id": None, "addr": None, "html": html})
+            budget = CONTENT_MAX_WIDTH - comment_prefix_width
+            wrapped = _wrap_text(line_text, budget, comment_prefix_width)
+            parts = [str(escape(wrapped[0]))]
+            for cont in wrapped[1:]:
+                parts.append(f"\n; {escape(cont)}")
+            comment_html = "".join(parts)
+            html = Markup(
+                f'<span class="comment">; {comment_html}</span>'
+            )
+            lines.append({"id": None, "addr": None, "html": html})
 
 
 def _empty_line():
@@ -390,18 +519,25 @@ def _render_bytes(item):
         parts.append(
             f'<span data-tip="{escape(tooltip)}">&amp;{v:02X}</span>'
         )
-    formatted = ", ".join(parts)
-    return Markup(
-        f'    <span class="directive">EQUB</span> {formatted}'
-    )
+    prefix_html = '    <span class="directive">EQUB</span> '
+    prefix_width = 9  # visible "    EQUB "
+    line_groups = _group_values(parts, prefix_width, 3)
+    indent = " " * prefix_width
+    joined_groups = [", ".join(group) for group in line_groups]
+    all_html = (",\n" + indent).join(joined_groups)
+    return Markup(prefix_html + all_html)
 
 
 def _render_words(item):
     values = item.get("values", [])
-    formatted = ", ".join(f"&{v:04X}" for v in values)
-    return Markup(
-        f'    <span class="directive">EQUW</span> {escape(formatted)}'
-    )
+    escaped_parts = [str(escape(f"&{v:04X}")) for v in values]
+    prefix_html = '    <span class="directive">EQUW</span> '
+    prefix_width = 9  # visible "    EQUW "
+    line_groups = _group_values(escaped_parts, prefix_width, 5)
+    indent = " " * prefix_width
+    joined_groups = [", ".join(group) for group in line_groups]
+    all_html = (",\n" + indent).join(joined_groups)
+    return Markup(prefix_html + all_html)
 
 
 def _render_string(item):
