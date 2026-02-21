@@ -45,7 +45,7 @@
 <div class="disassembly-layout">
 
 <nav class="subroutine-nav">
-    <details>
+    <details open>
         <summary>Subroutines</summary>
         <ul>
         
@@ -1145,6 +1145,7 @@
         </ul>
     </details>
 </nav>
+<script>if (matchMedia("(max-width:900px)").matches) document.querySelector(".subroutine-nav details").removeAttribute("open")</script>
 
 
 <div class="listing">

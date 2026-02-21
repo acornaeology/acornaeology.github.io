@@ -20,7 +20,7 @@
 <div class="disassembly-layout">
 {% if subroutines %}
 <nav class="subroutine-nav">
-    <details>
+    <details open>
         <summary>Subroutines</summary>
         <ul>
         {% for sub in subroutines %}
@@ -34,6 +34,7 @@
         </ul>
     </details>
 </nav>
+<script>if (matchMedia("(max-width:900px)").matches) document.querySelector(".subroutine-nav details").removeAttribute("open")</script>
 {% endif %}
 
 <div class="listing">
