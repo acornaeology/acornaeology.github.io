@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Acorn NFS 3.34 — acornaeology</title>
+    <title>NFS 3.34 — acornaeology</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body class="page-disassembly">
@@ -19,10 +19,16 @@
 
     <main class="container">
         
-<h1>Acorn NFS 3.34</h1>
+<h1>NFS 3.34</h1>
 <p>Network Filing System for the BBC Micro Econet interface.</p>
 
-<p class="rom-links"><a href="https://tobylobster.github.io/rom_library/?md5=d6761cb566cd87b0c1117b5b600cff16">Acorn NFS 3.34 in The BBC Micro ROM Library</a></p>
+<ul class="rom-links">
+
+<li><a href="https://github.com/acornaeology/acorn-nfs"><svg class="link-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Disassembly source on GitHub</a></li>
+
+<li><a href="https://tobylobster.github.io/rom_library/?md5=d6761cb566cd87b0c1117b5b600cff16"><svg class="link-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="8" x2="6" y2="8" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="12" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="16" x2="6" y2="16" stroke="currentColor" stroke-width="1.5"/><line x1="18" y1="8" x2="21" y2="8" stroke="currentColor" stroke-width="1.5"/><line x1="18" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="18" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="10" r="1.2" fill="currentColor"/></svg>Acorn NFS 3.34 in The BBC Micro ROM Library</a></li>
+
+</ul>
 
 
 <div class="disassembly-layout">
@@ -6329,7 +6335,7 @@
 
 <tr id="addr-838E">
 <td class="addr"><a href="#addr-838E">838E</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-8396" data-tip="&8396">return_1</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-8396" data-tip="&8396">return_dofsl7</a></span></td>
 <td class="hex">F0 06</td>
 </tr>
 
@@ -6369,7 +6375,7 @@
 
 <tr id="addr-8396">
 <td class="addr"><a href="#addr-8396">8396</a></td>
-<td><span class="label">.return_1<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-838E">← 838E BEQ</a></span></span></td>
+<td><span class="label">.return_dofsl7<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-838E">← 838E BEQ</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -7574,7 +7580,7 @@
 
 <tr id="addr-847E">
 <td class="addr"><a href="#addr-847E">847E</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-84A3" data-tip="&84A3">return_2</a></span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-84A3" data-tip="&84A3">return_bget</a></span></td>
 <td class="hex">10 23</td>
 </tr>
 
@@ -7646,7 +7652,7 @@
 
 <tr id="addr-848F">
 <td class="addr"><a href="#addr-848F">848F</a></td>
-<td>    <span class="opcode">BVS</span> <span class="operand"><a href="#addr-84A3" data-tip="&84A3">return_2</a></span></td>
+<td>    <span class="opcode">BVS</span> <span class="operand"><a href="#addr-84A3" data-tip="&84A3">return_bget</a></span></td>
 <td class="hex">70 12</td>
 </tr>
 
@@ -7734,7 +7740,7 @@
 
 <tr id="addr-84A3">
 <td class="addr"><a href="#addr-84A3">84A3</a></td>
-<td><span class="label">.return_2<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-847E">← 847E BPL</a><a href="#addr-848F">← 848F BVS</a></span></span></td>
+<td><span class="label">.return_bget<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-847E">← 847E BPL</a><a href="#addr-848F">← 848F BVS</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -9447,7 +9453,7 @@
 
 <tr id="addr-85D4">
 <td class="addr"><a href="#addr-85D4">85D4</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-85D9" data-tip="&85D9">return_3</a></span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-85D9" data-tip="&85D9">return_compare</a></span></td>
 <td class="hex">D0 03</td>
 </tr>
 
@@ -9471,7 +9477,7 @@
 
 <tr id="addr-85D9">
 <td class="addr"><a href="#addr-85D9">85D9</a></td>
-<td><span class="label">.return_3<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-85D4">← 85D4 BNE</a></span></span></td>
+<td><span class="label">.return_compare<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-85D4">← 85D4 BNE</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -9511,7 +9517,7 @@
 
 <tr id="addr-85DE">
 <td class="addr"><a href="#addr-85DE">85DE</a></td>
-<td><span class="label">.return_4<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8603">← 8603 BEQ</a></span></span></td>
+<td><span class="label">.return_fscv_handles<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8603">← 8603 BEQ</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -9795,7 +9801,7 @@
 
 <tr id="addr-8603">
 <td class="addr"><a href="#addr-8603">8603</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-85DE" data-tip="&85DE">return_4</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-85DE" data-tip="&85DE">return_fscv_handles</a></span></td>
 <td class="hex">F0 D9</td>
 </tr>
 
@@ -11248,7 +11254,7 @@
 
 <tr id="addr-8719">
 <td class="addr"><a href="#addr-8719">8719</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-8740" data-tip="&8740">return_5</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-8740" data-tip="&8740">return_lodchk</a></span></td>
 <td class="hex">F0 25</td>
 </tr>
 
@@ -11424,7 +11430,7 @@
 
 <tr id="addr-8740">
 <td class="addr"><a href="#addr-8740">8740</a></td>
-<td><span class="label">.return_5<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8719">← 8719 BEQ</a></span></span></td>
+<td><span class="label">.return_lodchk<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8719">← 8719 BEQ</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -18828,7 +18834,7 @@
 
 <tr id="addr-8D72">
 <td class="addr"><a href="#addr-8D72">8D72</a></td>
-<td><span class="label">.return_6<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8D78">← 8D78 BMI</a></span></span></td>
+<td><span class="label">.return_copy_string<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8D78">← 8D78 BMI</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -18893,7 +18899,7 @@
 
 <tr id="addr-8D78">
 <td class="addr"><a href="#addr-8D78">8D78</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-8D72" data-tip="&8D72">return_6</a></span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-8D72" data-tip="&8D72">return_copy_string</a></span></td>
 <td class="hex">30 F8</td>
 </tr>
 
@@ -19280,7 +19286,7 @@
 
 <tr id="addr-8DC3">
 <td class="addr"><a href="#addr-8DC3">8DC3</a></td>
-<td>    <span class="opcode">BCC</span> <span class="operand"><a href="#addr-8DC8" data-tip="&8DC8">return_7</a></span></td>
+<td>    <span class="opcode">BCC</span> <span class="operand"><a href="#addr-8DC8" data-tip="&8DC8">return_calc_handle</a></span></td>
 <td class="hex">90 03</td>
 </tr>
 
@@ -19304,7 +19310,7 @@
 
 <tr id="addr-8DC8">
 <td class="addr"><a href="#addr-8DC8">8DC8</a></td>
-<td><span class="label">.return_7<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8DC3">← 8DC3 BCC</a></span></span></td>
+<td><span class="label">.return_calc_handle<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-8DC3">← 8DC3 BCC</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -19628,7 +19634,7 @@
 
 <tr id="addr-8DFB">
 <td class="addr"><a href="#addr-8DFB">8DFB</a></td>
-<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-8E32" data-tip="&8E32">return_8</a></span></td>
+<td>    <span class="opcode">BMI</span> <span class="operand"><a href="#addr-8E32" data-tip="&8E32">return_copy_param</a></span></td>
 <td class="hex">30 35</td>
 </tr>
 
@@ -19644,7 +19650,7 @@
 
 <tr id="addr-8DFF">
 <td class="addr"><a href="#addr-8DFF">8DFF</a></td>
-<td>    <span class="opcode">BCS</span> <span class="operand"><a href="#addr-8E32" data-tip="&8E32">return_8</a></span></td>
+<td>    <span class="opcode">BCS</span> <span class="operand"><a href="#addr-8E32" data-tip="&8E32">return_copy_param</a></span></td>
 <td class="hex">B0 31</td>
 </tr>
 
@@ -19998,7 +20004,7 @@
 
 <tr id="addr-8E32">
 <td class="addr"><a href="#addr-8E32">8E32</a></td>
-<td><span class="label">.return_8<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-8DFB">← 8DFB BMI</a><a href="#addr-8DFF">← 8DFF BCS</a></span></span></td>
+<td><span class="label">.return_copy_param<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-8DFB">← 8DFB BMI</a><a href="#addr-8DFF">← 8DFF BCS</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -23147,7 +23153,7 @@
 
 <tr id="addr-907F">
 <td class="addr"><a href="#addr-907F">907F</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-90B4" data-tip="&90B4">return_9</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-90B4" data-tip="&90B4">return_nbyte</a></span></td>
 <td class="hex">F0 33</td>
 </tr>
 
@@ -23267,7 +23273,7 @@
 
 <tr id="addr-9096">
 <td class="addr"><a href="#addr-9096">9096</a></td>
-<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-90B4" data-tip="&90B4">return_9</a></span></td>
+<td>    <span class="opcode">BPL</span> <span class="operand"><a href="#addr-90B4" data-tip="&90B4">return_nbyte</a></span></td>
 <td class="hex">10 1C</td>
 </tr>
 
@@ -23419,7 +23425,7 @@
 
 <tr id="addr-90B4">
 <td class="addr"><a href="#addr-90B4">90B4</a></td>
-<td><span class="label">.return_9<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-907F">← 907F BEQ</a><a href="#addr-9096">← 9096 BPL</a></span></span></td>
+<td><span class="label">.return_nbyte<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-907F">← 907F BEQ</a><a href="#addr-9096">← 9096 BPL</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -23451,7 +23457,7 @@
 
 <tr id="addr-90B8">
 <td class="addr"><a href="#addr-90B8">90B8</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-90BD" data-tip="&90BD">return_10</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-90BD" data-tip="&90BD">return_match_osbyte</a></span></td>
 <td class="hex">F0 03</td>
 </tr>
 
@@ -23475,7 +23481,7 @@
 
 <tr id="addr-90BD">
 <td class="addr"><a href="#addr-90BD">90BD</a></td>
-<td><span class="label">.return_10<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-90B8">← 90B8 BEQ</a></span></span></td>
+<td><span class="label">.return_match_osbyte<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-90B8">← 90B8 BEQ</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -23564,7 +23570,7 @@
 
 <tr id="addr-90D5">
 <td class="addr"><a href="#addr-90D5">90D5</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-90FB" data-tip="&90FB">return_11</a></span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-90FB" data-tip="&90FB">return_remote_cmd</a></span></td>
 <td class="hex">D0 24</td>
 </tr>
 
@@ -23732,7 +23738,7 @@
 
 <tr id="addr-90FB">
 <td class="addr"><a href="#addr-90FB">90FB</a></td>
-<td><span class="label">.return_11<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-90D5">← 90D5 BNE</a></span></span></td>
+<td><span class="label">.return_remote_cmd<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-90D5">← 90D5 BNE</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -24711,7 +24717,7 @@
 
 <tr id="addr-91C6">
 <td class="addr"><a href="#addr-91C6">91C6</a></td>
-<td><span class="label">.return_12<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-91C9">← 91C9 BNE</a><a href="#addr-91DD">← 91DD BCS</a></span></span></td>
+<td><span class="label">.return_display_setup<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-91C9">← 91C9 BNE</a><a href="#addr-91DD">← 91DD BCS</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -24760,7 +24766,7 @@
 
 <tr id="addr-91C9">
 <td class="addr"><a href="#addr-91C9">91C9</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-91C6" data-tip="&91C6">return_12</a></span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-91C6" data-tip="&91C6">return_display_setup</a></span></td>
 <td class="hex">D0 FB</td>
 </tr>
 
@@ -24848,7 +24854,7 @@
 
 <tr id="addr-91DD">
 <td class="addr"><a href="#addr-91DD">91DD</a></td>
-<td>    <span class="opcode">BCS</span> <span class="operand"><a href="#addr-91C6" data-tip="&91C6">return_12</a></span></td>
+<td>    <span class="opcode">BCS</span> <span class="operand"><a href="#addr-91C6" data-tip="&91C6">return_display_setup</a></span></td>
 <td class="hex">B0 E7</td>
 </tr>
 
@@ -25731,7 +25737,7 @@
 
 <tr id="addr-928B">
 <td class="addr"><a href="#addr-928B">928B</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9290" data-tip="&9290">return_13</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-9290" data-tip="&9290">return_bspsx</a></span></td>
 <td class="hex">F0 03</td>
 </tr>
 
@@ -25747,7 +25753,7 @@
 
 <tr id="addr-9290">
 <td class="addr"><a href="#addr-9290">9290</a></td>
-<td><span class="label">.return_13<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-928B">← 928B BEQ</a></span></span></td>
+<td><span class="label">.return_bspsx<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-928B">← 928B BEQ</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -26871,7 +26877,7 @@
 
 <tr id="addr-0412">
 <td class="addr"><a href="#addr-0412">0412</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-0425" data-tip="&0425">return_14</a></span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-0425" data-tip="&0425">return_tube_init</a></span></td>
 <td class="hex">D0 11</td>
 </tr>
 
@@ -26943,7 +26949,7 @@
 
 <tr id="addr-041F">
 <td class="addr"><a href="#addr-041F">041F</a></td>
-<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-0425" data-tip="&0425">return_14</a></span></td>
+<td>    <span class="opcode">BEQ</span> <span class="operand"><a href="#addr-0425" data-tip="&0425">return_tube_init</a></span></td>
 <td class="hex">F0 04</td>
 </tr>
 
@@ -26983,7 +26989,7 @@
 
 <tr id="addr-0425">
 <td class="addr"><a href="#addr-0425">0425</a></td>
-<td><span class="label">.return_14<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-0412">← 0412 BNE</a><a href="#addr-041F">← 041F BEQ</a></span></span></td>
+<td><span class="label">.return_tube_init<span class="ref-badge">←2</span><span class="ref-popup"><a href="#addr-0412">← 0412 BNE</a><a href="#addr-041F">← 041F BEQ</a></span></span></td>
 <td class="hex"></td>
 </tr>
 
@@ -27215,7 +27221,7 @@
 
 <tr id="addr-0459">
 <td class="addr"><a href="#addr-0459">0459</a></td>
-<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-0472" data-tip="&0472">return_15</a></span></td>
+<td>    <span class="opcode">BNE</span> <span class="operand"><a href="#addr-0472" data-tip="&0472">return_tube_xfer</a></span></td>
 <td class="hex">D0 17</td>
 </tr>
 
@@ -27319,7 +27325,7 @@
 
 <tr id="addr-0472">
 <td class="addr"><a href="#addr-0472">0472</a></td>
-<td><span class="label">.return_15<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-0459">← 0459 BNE</a></span></span></td>
+<td><span class="label">.return_tube_xfer<span class="ref-badge">←1</span><span class="ref-popup"><a href="#addr-0459">← 0459 BNE</a></span></span></td>
 <td class="hex"></td>
 </tr>
 

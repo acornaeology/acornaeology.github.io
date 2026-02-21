@@ -235,6 +235,20 @@ a:hover {
 .rom-links {
     font-size: 0.85rem;
     color: var(--dim);
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+
+.rom-links li {
+    margin: 0.3rem 0;
+}
+
+.link-icon {
+    width: 1.5em;
+    height: 1.5em;
+    vertical-align: -0.3em;
+    margin-right: 0.3em;
 }
 
 hr {

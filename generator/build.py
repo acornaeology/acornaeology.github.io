@@ -3,6 +3,7 @@
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -15,6 +16,7 @@ SITE_DIRPATH = REPO_ROOT / "site"
 TEMPLATES_DIRPATH = REPO_ROOT / "templates"
 DATA_DIRPATH = REPO_ROOT / "data"
 OUTPUT_DIRPATH = REPO_ROOT / "output"
+CACHE_DIRPATH = REPO_ROOT / ".cache"
 
 
 def is_page_template(filepath):
@@ -40,58 +42,132 @@ def build_templates(env):
         print(f"  {template_filepath.name} -> {output_filepath.relative_to(REPO_ROOT)}")
 
 
+def resolve_source(source):
+    """Resolve a disassembly source to a local directory path.
+
+    Uses the local path if available, otherwise clones the repo.
+    """
+    if "path" in source:
+        local_dirpath = (DATA_DIRPATH / source["path"]).resolve()
+        if local_dirpath.is_dir():
+            return local_dirpath
+
+    repo_url = source["repo"]
+    # Derive a cache directory name from the repo URL
+    repo_name = repo_url.rstrip("/").rsplit("/", 1)[-1]
+    clone_dirpath = CACHE_DIRPATH / repo_name
+
+    if clone_dirpath.is_dir():
+        print(f"  Using cached clone: {clone_dirpath}")
+        return clone_dirpath
+
+    print(f"  Cloning {repo_url}...")
+    CACHE_DIRPATH.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["git", "clone", "--depth", "1", repo_url, str(clone_dirpath)],
+        check=True,
+        capture_output=True,
+    )
+    return clone_dirpath
+
+
 def build_disassemblies(env):
-    """Build disassembly pages from the data/ directory."""
-    if not DATA_DIRPATH.is_dir():
+    """Build disassembly pages from external disassembly repos."""
+    sources_filepath = DATA_DIRPATH / "sources.json"
+    if not sources_filepath.exists():
         return
+
+    sources = json.loads(sources_filepath.read_text())
 
     rom_index_template = env.get_template("_rom_index.html")
     disassembly_template = env.get_template("_disassembly.html")
 
-    for project_dirpath in sorted(DATA_DIRPATH.iterdir()):
-        if not project_dirpath.is_dir():
-            continue
-        meta_filepath = project_dirpath / "meta.json"
-        if not meta_filepath.exists():
-            continue
+    for source in sources:
+        repo_dirpath = resolve_source(source)
+        repo_url = source["repo"]
 
-        meta = json.loads(meta_filepath.read_text())
-        slug = meta["slug"]
+        # Read project manifest
+        manifest_filepath = repo_dirpath / "acornaeology.json"
+        if not manifest_filepath.exists():
+            print(f"  Warning: {manifest_filepath} not found, skipping")
+            continue
+        manifest = json.loads(manifest_filepath.read_text())
+
+        slug = manifest["slug"]
+        name = manifest["name"]
+        description = manifest.get("description", "")
 
         # Create output directory
         output_dirpath = OUTPUT_DIRPATH / slug
         output_dirpath.mkdir(parents=True, exist_ok=True)
 
+        # Build version metadata for the index page
+        versions = []
+        for version_id in manifest["versions"]:
+            rom_json_filepath = repo_dirpath / "versions" / version_id / "rom" / "rom.json"
+            if rom_json_filepath.exists():
+                rom_meta = json.loads(rom_json_filepath.read_text())
+                title = rom_meta.get("title", f"{name} {version_id}")
+            else:
+                title = f"{name} {version_id}"
+            versions.append({"id": version_id, "title": title})
+
         # Build per-ROM index page
         html = rom_index_template.render(
             root="../",
-            name=meta["name"],
-            description=meta.get("description", ""),
-            versions=meta["versions"],
+            name=name,
+            description=description,
+            versions=versions,
         )
         index_filepath = output_dirpath / "index.html"
         index_filepath.write_text(html)
         print(f"  {slug}/index.html")
 
         # Build per-version disassembly pages
-        for version in meta["versions"]:
-            data_filepath = project_dirpath / version["filename"]
+        for version_id in manifest["versions"]:
+            version_dirpath = repo_dirpath / "versions" / version_id
+
+            # Find the disassembly JSON
+            output_json_dirpath = version_dirpath / "output"
+            json_files = list(output_json_dirpath.glob("*.json"))
+            if not json_files:
+                print(f"  Warning: no JSON found in {output_json_dirpath}, skipping")
+                continue
+            data_filepath = json_files[0]
             data = json.loads(data_filepath.read_text())
+
+            # Read version metadata
+            rom_json_filepath = version_dirpath / "rom" / "rom.json"
+            if rom_json_filepath.exists():
+                rom_meta = json.loads(rom_json_filepath.read_text())
+                title = rom_meta.get("title", f"{name} {version_id}")
+                links = list(rom_meta.get("links", []))
+            else:
+                title = f"{name} {version_id}"
+                links = []
+
+            # Prepend the GitHub link
+            github_link = {
+                "label": "Disassembly source on GitHub",
+                "url": repo_url,
+                "icon": "github",
+            }
+            links.insert(0, github_link)
 
             lines = process_disassembly(data)
 
             html = disassembly_template.render(
                 root="../",
-                title=f"{meta['name']} {version['id']}",
-                description=meta.get("description", ""),
-                links=version.get("links", []),
+                title=title,
+                description=description,
+                links=links,
                 lines=lines,
                 subroutines=_filter_subroutines(data),
             )
 
-            version_filepath = output_dirpath / f"{version['id']}.html"
+            version_filepath = output_dirpath / f"{version_id}.html"
             version_filepath.write_text(html)
-            print(f"  {slug}/{version['id']}.html")
+            print(f"  {slug}/{version_id}.html")
 
 
 def _filter_subroutines(data):
