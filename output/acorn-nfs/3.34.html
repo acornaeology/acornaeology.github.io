@@ -45,1103 +45,1105 @@
 <div class="disassembly-layout">
 
 <nav class="subroutine-nav">
-    <h2>Subroutines</h2>
-    <ul>
-    
-    
-    <li>
-        <a href="#addr-8508">save_fscv_args</a>
-        <span class="sub-title">Save FSCV/vector arguments</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8513">decode_attribs_6bit</a>
-        <span class="sub-title">Decode file attributes: FS → BBC format (FSBBC, 6-bit variant)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-851D">decode_attribs_5bit</a>
-        <span class="sub-title">Decode file attributes: BBC → FS format (BBCFS, 5-bit variant)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8555">skip_spaces</a>
-        <span class="sub-title">Skip leading spaces in parameter block</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8560">parse_decimal</a>
-        <span class="sub-title">Parse decimal number from (fs_options),Y (DECIN)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-858A">handle_to_mask</a>
-        <span class="sub-title">Convert file handle to bitmask (Y2FS)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85A5">mask_to_handle</a>
-        <span class="sub-title">Convert bitmask to handle number (FS2A)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85AF">print_decimal</a>
-        <span class="sub-title">Print byte as 3-digit decimal number</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85BC">print_decimal_digit</a>
-        <span class="sub-title">Print one decimal digit by repeated subtraction</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85CE">compare_addresses</a>
-        <span class="sub-title">Compare two 4-byte addresses</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85DF">clear_fs_flag</a>
-        <span class="sub-title">Clear bit(s) in FS flags (&amp;0E07)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85E4">set_fs_flag</a>
-        <span class="sub-title">Set bit(s) in FS flags (&amp;0E07)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8600">print_file_info</a>
-        <span class="sub-title">Print file catalogue line</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-85EB">print_hex</a>
-        <span class="sub-title">Print byte as two hex digits</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8644">setup_tx_ptr_c0</a>
-        <span class="sub-title">Set up TX pointer to control block at &amp;00C0</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-864C">tx_poll_ff</a>
-        <span class="sub-title">Transmit and poll for result (full retry)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8650">tx_poll_core</a>
-        <span class="sub-title">Core transmit and poll routine (XMIT)</span>
-    </li>
-    
-    
-    
-    
-    
-    <li>
-        <a href="#addr-8069">dispatch_net_cmd</a>
-        <span class="sub-title">*NET command dispatcher</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-809F">dispatch</a>
-        <span class="sub-title">PHA/PHA/RTS computed dispatch</span>
-    </li>
-    
-    
-    
-    
-    
-    <li>
-        <a href="#addr-8127">dispatch_service</a>
-        <span class="sub-title">Service call dispatcher</span>
-    </li>
-    
-    
-    
-    
-    
-    <li>
-        <a href="#addr-80C8">init_vectors_and_copy</a>
-        <span class="sub-title">NFS initialisation (service &amp;FF: full reset)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8184">select_nfs</a>
-        <span class="sub-title">Select NFS as active filing system (INIT)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8217">setup_fs_vectors</a>
-        <span class="sub-title">Set up filing system vectors</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-826F">svc_abs_workspace</a>
-        <span class="sub-title">Service 1: claim absolute workspace</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8278">svc_private_workspace</a>
-        <span class="sub-title">Service 2: claim private workspace and initialise NFS</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-81D1">svc_autoboot</a>
-        <span class="sub-title">Service 3: auto-boot</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8172">svc_star_command</a>
-        <span class="sub-title">Service 4: unrecognised * command</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-81BC">svc_help</a>
-        <span class="sub-title">Service 9: *HELP</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-819B">match_rom_string</a>
-        <span class="sub-title">Match command text against ROM string table</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-81CC">call_fscv_shutdown</a>
-        <span class="sub-title">Notify filing system of shutdown</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-822E">issue_vectors_claimed</a>
-        <span class="sub-title">Issue &#39;vectors claimed&#39; service and optionally auto-boot</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-82D1">setup_rom_ptrs_netv</a>
-        <span class="sub-title">Set up ROM pointer table and NETV</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-82FD">fscv_shutdown</a>
-        <span class="sub-title">FSCV 6: Filing system shutdown / save state (FSDIE)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-831C">init_tx_ctrl_block</a>
-        <span class="sub-title">Initialise TX control block at &amp;00C0 from template</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8334">tx_ctrl_template</a>
-        <span class="sub-title">TX control block template (TXTAB, 12 bytes)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8350">prepare_fs_cmd</a>
-        <span class="sub-title">Prepare FS command buffer (12 references)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-836A">build_send_fs_cmd</a>
-        <span class="sub-title">Build and send FS command (DOFSOP)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8402">store_fs_error</a>
-        <span class="sub-title">Handle fileserver error replies (FSERR)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-83A3">handle_bput_bget</a>
-        <span class="sub-title">Handle BPUT/BGET file byte I/O</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-844A">send_to_fs</a>
-        <span class="sub-title">Send command to fileserver and handle reply (WAITFS)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-847A">check_escape</a>
-        <span class="sub-title">Check and handle escape condition (ESC)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-84AF">error_msg_table</a>
-        <span class="sub-title">Econet error message table (ERRTAB, 8 entries)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8146">resume_after_remote</a>
-        <span class="sub-title">Resume after remote operation / *ROFF handler (NROFF)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-808C">fscv_handler</a>
-        <span class="sub-title">FSCV dispatch entry</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8694">filev_handler</a>
-        <span class="sub-title">FILEV handler (OSFILE entry point)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-86D0">send_fs_examine</a>
-        <span class="sub-title">Send FS examine command</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8716">send_data_blocks</a>
-        <span class="sub-title">Send file data in multi-block chunks</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8746">filev_save</a>
-        <span class="sub-title">OSFILE save handler (A=&amp;00)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-87AD">copy_load_addr_from_params</a>
-        <span class="sub-title">Copy load address from parameter block</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-87BA">copy_reply_to_params</a>
-        <span class="sub-title">Copy FS reply data to parameter block</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-87C8">transfer_file_blocks</a>
-        <span class="sub-title">Multi-block file data transfer</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-881F">eof_handler</a>
-        <span class="sub-title">FSCV 1: EOF handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8844">filev_attrib_dispatch</a>
-        <span class="sub-title">FILEV attribute dispatch (A=1-6)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-892C">restore_args_return</a>
-        <span class="sub-title">Restore arguments and return</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-89A1">opt_handler</a>
-        <span class="sub-title">FSCV 0: *OPT handler (OPTION)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-89D2">adjust_addrs</a>
-        <span class="sub-title">Bidirectional 4-byte address adjustment</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-88E1">argsv_handler</a>
-        <span class="sub-title">ARGSV handler (OSARGS entry point)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8949">findv_handler</a>
-        <span class="sub-title">FINDV handler (OSFIND entry point)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8985">close_handle</a>
-        <span class="sub-title">Close file handle(s) (CLOSE)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-89EA">gbpbv_handler</a>
-        <span class="sub-title">GBPBV handler (OSGBPB entry point)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8AAD">osgbpb_info</a>
-        <span class="sub-title">OSGBPB 5-8 info handler (OSINFO)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8079">forward_star_cmd</a>
-        <span class="sub-title">Forward unrecognised * command to fileserver (COMERR)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8349">bye_handler</a>
-        <span class="sub-title">*BYE handler (logoff)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8B92">fscv_star_handler</a>
-        <span class="sub-title">FSCV 2/3/4: unrecognised * command handler (DECODE)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8BD6">fs_cmd_match_table</a>
-        <span class="sub-title">FS command match table (COMTAB)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8BF2">ex_handler</a>
-        <span class="sub-title">*EX handler (extended catalogue)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8BFD">cat_handler</a>
-        <span class="sub-title">*CAT handler (directory catalogue)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8CEA">boot_cmd_strings</a>
-        <span class="sub-title">Boot command strings for auto-boot</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8CF7">set_lib_handle</a>
-        <span class="sub-title">Set library handle</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8CFC">set_csd_handle</a>
-        <span class="sub-title">Set CSD handle</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D02">boot_option_offsets</a>
-        <span class="sub-title">Boot option → OSCLI string offset table</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D06">i_am_handler</a>
-        <span class="sub-title">&#34;I AM&#34; command handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D1F">copy_handles_and_boot</a>
-        <span class="sub-title">Copy FS reply handles to workspace and execute boot command</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D20">copy_handles</a>
-        <span class="sub-title">Copy FS reply handles to workspace (no boot)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D3A">option_name_strings</a>
-        <span class="sub-title">Option name strings</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D4B">option_name_offsets</a>
-        <span class="sub-title">Option name offsets</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D4F">print_reply_bytes</a>
-        <span class="sub-title">Print reply buffer bytes</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D5C">print_spaces</a>
-        <span class="sub-title">Print spaces</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D63">copy_filename</a>
-        <span class="sub-title">Copy filename to FS command buffer</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D65">copy_string_to_cmd</a>
-        <span class="sub-title">Copy string to FS command buffer</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D73">print_dir_name</a>
-        <span class="sub-title">Print directory name from reply buffer</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8D84">notify_and_exec</a>
-        <span class="sub-title">Send FS load-as-command and execute response</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8DAF">net1_read_handle</a>
-        <span class="sub-title">*NET1: read file handle from received packet</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8DB7">calc_handle_offset</a>
-        <span class="sub-title">Calculate handle workspace offset</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8DC9">net2_read_handle_entry</a>
-        <span class="sub-title">*NET2: read handle entry from workspace</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8DDF">net3_close_handle</a>
-        <span class="sub-title">*NET3: close handle (mark as unused)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8DF2">net4_resume_remote</a>
-        <span class="sub-title">*NET4: resume after remote operation</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8DF7">osword_fs_entry</a>
-        <span class="sub-title">Filing system OSWORD entry</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8E01">fs_osword_dispatch</a>
-        <span class="sub-title">PHA/PHA/RTS dispatch for filing system OSWORDs</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8F72">econet_tx_rx</a>
-        <span class="sub-title">Econet transmit/receive handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9007">osword_dispatch</a>
-        <span class="sub-title">NETVEC dispatch handler (ENTRY)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-903D">net_write_char</a>
-        <span class="sub-title">Fn 4: net write character (NWRCH)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-904B">setup_tx_and_send</a>
-        <span class="sub-title">Set up TX control block and send</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9159">ctrl_block_setup_alt</a>
-        <span class="sub-title">Alternate entry into control block setup</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9162">ctrl_block_setup</a>
-        <span class="sub-title">Control block setup — main entry</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-918E">ctrl_block_template</a>
-        <span class="sub-title">Control block initialisation template</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8E22">copy_param_block</a>
-        <span class="sub-title">Bidirectional block copy between OSWORD param block and workspace.</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8E33">osword_0f_handler</a>
-        <span class="sub-title">OSWORD &amp;0F handler: initiate transmit (CALLTX)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8E53">osword_11_handler</a>
-        <span class="sub-title">OSWORD &amp;11 handler: read JSR arguments (READRA)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8E7B">osword_12_handler</a>
-        <span class="sub-title">OSWORD &amp;12 handler: read/set state information (RS)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8EF0">osword_10_handler</a>
-        <span class="sub-title">OSWORD &amp;10 handler: open/read RX control block (OPENRX)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-90FC">remote_boot_handler</a>
-        <span class="sub-title">Remote boot/execute handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-912A">execute_at_0100</a>
-        <span class="sub-title">Execute downloaded code at &amp;0100</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-913A">remote_validated</a>
-        <span class="sub-title">Remote operation with source validation (REMOT)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-914A">insert_remote_key</a>
-        <span class="sub-title">Insert remote keypress</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-8F57">setup_rx_buffer_ptrs</a>
-        <span class="sub-title">Set up RX buffer pointers in NFS workspace</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9063">remote_cmd_dispatch</a>
-        <span class="sub-title">Fn 7: remote OSBYTE handler (NBYTE)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-90CD">remote_cmd_data</a>
-        <span class="sub-title">Fn 8: remote OSWORD handler (NWORD)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-91B5">remote_display_setup</a>
-        <span class="sub-title">Fn 5: printer selection changed (SELECT)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-91C7">remote_print_handler</a>
-        <span class="sub-title">Fn 1/2/3: network printer handler (PRINT)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-91EC">store_output_byte</a>
-        <span class="sub-title">Store output byte to network buffer</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9217">flush_output_block</a>
-        <span class="sub-title">Flush output block</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-92DD">save_vdu_state</a>
-        <span class="sub-title">Save VDU workspace state</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-966F">adlc_init</a>
-        <span class="sub-title">ADLC initialisation</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9681">adlc_init_workspace</a>
-        <span class="sub-title">Initialise NMI workspace</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-969D">save_econet_state</a>
-        <span class="sub-title">Save Econet state to RX control block</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-96B4">restore_econet_state</a>
-        <span class="sub-title">Restore Econet state from RX control block</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-96CD">install_nmi_shim</a>
-        <span class="sub-title">Copy NMI shim from ROM (&amp;9FCA) to RAM (&amp;0D00)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9248">econet_tx_retry</a>
-        <span class="sub-title">Transmit with retry loop (XMITFS/XMITFY)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9291">save_palette_vdu</a>
-        <span class="sub-title">Save palette and VDU state (CVIEW)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-99BB">post_ack_scout</a>
-        <span class="sub-title">Post-ACK scout processing</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9A59">immediate_op</a>
-        <span class="sub-title">Immediate operation handler (port = 0)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9A34">discard_reset_listen</a>
-        <span class="sub-title">Discard with full ADLC reset</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9A40">discard_listen</a>
-        <span class="sub-title">Discard frame (gentle)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9A43">discard_after_reset</a>
-        <span class="sub-title">Return to idle listen after reset/discard</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9F5B">tx_calc_transfer</a>
-        <span class="sub-title">Calculate transfer size</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9FCB">nmi_bootstrap_entry</a>
-        <span class="sub-title">Bootstrap NMI entry point (in ROM)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9FD9">rom_set_nmi_vector</a>
-        <span class="sub-title">ROM copy of set_nmi_vector + nmi_rti</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-96DC">adlc_full_reset</a>
-        <span class="sub-title">ADLC full reset</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-96EB">adlc_rx_listen</a>
-        <span class="sub-title">Enter RX listen mode</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-96F6">nmi_rx_scout</a>
-        <span class="sub-title">NMI RX scout handler (initial byte)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9715">nmi_rx_scout_net</a>
-        <span class="sub-title">RX scout second byte handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9737">scout_error</a>
-        <span class="sub-title">Scout error/discard handler</span>
-    </li>
-    
-    
-    
-    
-    
-    <li>
-        <a href="#addr-9771">scout_complete</a>
-        <span class="sub-title">Scout completion handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9839">nmi_data_rx</a>
-        <span class="sub-title">Data frame RX handler (four-way handshake)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-989A">nmi_data_rx_bulk</a>
-        <span class="sub-title">Data frame bulk read loop</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-98CE">data_rx_complete</a>
-        <span class="sub-title">Data frame completion</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-995E">ack_tx</a>
-        <span class="sub-title">ACK transmission</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9992">nmi_ack_tx_src</a>
-        <span class="sub-title">ACK TX continuation</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9C48">inactive_poll</a>
-        <span class="sub-title">INACTIVE polling loop</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9C88">tx_line_jammed</a>
-        <span class="sub-title">Timeout error: writes CR2=&amp;07 to abort, cleans stack,</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9CA2">tx_prepare</a>
-        <span class="sub-title">TX preparation</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9D4C">nmi_tx_data</a>
-        <span class="sub-title">NMI TX data handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9D88">tx_last_data</a>
-        <span class="sub-title">TX_LAST_DATA and frame completion</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9D94">nmi_tx_complete</a>
-        <span class="sub-title">TX completion: switch to RX mode</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9DB2">nmi_reply_scout</a>
-        <span class="sub-title">RX reply scout handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9DC8">nmi_reply_cont</a>
-        <span class="sub-title">RX reply continuation handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9DE3">nmi_reply_validate</a>
-        <span class="sub-title">RX reply validation (Path 2 for FV/PSE interaction)</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9E2B">nmi_scout_ack_src</a>
-        <span class="sub-title">TX scout ACK: write source address</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9E50">nmi_data_tx</a>
-        <span class="sub-title">TX data phase: send payload</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9EDD">handshake_await_ack</a>
-        <span class="sub-title">Four-way handshake: switch to RX for final ACK</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9EE9">nmi_final_ack</a>
-        <span class="sub-title">RX final ACK handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9F15">nmi_final_ack_validate</a>
-        <span class="sub-title">Final ACK validation</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9F39">tx_result_ok</a>
-        <span class="sub-title">TX completion handler</span>
-    </li>
-    
-    
-    
-    <li>
-        <a href="#addr-9F3F">tx_store_result</a>
-        <span class="sub-title">TX error handler</span>
-    </li>
-    
-    
-    </ul>
+    <details>
+        <summary>Subroutines</summary>
+        <ul>
+        
+        
+        <li>
+            <a href="#addr-8508">save_fscv_args</a>
+            <span class="sub-title">Save FSCV/vector arguments</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8513">decode_attribs_6bit</a>
+            <span class="sub-title">Decode file attributes: FS → BBC format (FSBBC, 6-bit variant)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-851D">decode_attribs_5bit</a>
+            <span class="sub-title">Decode file attributes: BBC → FS format (BBCFS, 5-bit variant)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8555">skip_spaces</a>
+            <span class="sub-title">Skip leading spaces in parameter block</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8560">parse_decimal</a>
+            <span class="sub-title">Parse decimal number from (fs_options),Y (DECIN)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-858A">handle_to_mask</a>
+            <span class="sub-title">Convert file handle to bitmask (Y2FS)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85A5">mask_to_handle</a>
+            <span class="sub-title">Convert bitmask to handle number (FS2A)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85AF">print_decimal</a>
+            <span class="sub-title">Print byte as 3-digit decimal number</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85BC">print_decimal_digit</a>
+            <span class="sub-title">Print one decimal digit by repeated subtraction</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85CE">compare_addresses</a>
+            <span class="sub-title">Compare two 4-byte addresses</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85DF">clear_fs_flag</a>
+            <span class="sub-title">Clear bit(s) in FS flags (&amp;0E07)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85E4">set_fs_flag</a>
+            <span class="sub-title">Set bit(s) in FS flags (&amp;0E07)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8600">print_file_info</a>
+            <span class="sub-title">Print file catalogue line</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-85EB">print_hex</a>
+            <span class="sub-title">Print byte as two hex digits</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8644">setup_tx_ptr_c0</a>
+            <span class="sub-title">Set up TX pointer to control block at &amp;00C0</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-864C">tx_poll_ff</a>
+            <span class="sub-title">Transmit and poll for result (full retry)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8650">tx_poll_core</a>
+            <span class="sub-title">Core transmit and poll routine (XMIT)</span>
+        </li>
+        
+        
+        
+        
+        
+        <li>
+            <a href="#addr-8069">dispatch_net_cmd</a>
+            <span class="sub-title">*NET command dispatcher</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-809F">dispatch</a>
+            <span class="sub-title">PHA/PHA/RTS computed dispatch</span>
+        </li>
+        
+        
+        
+        
+        
+        <li>
+            <a href="#addr-8127">dispatch_service</a>
+            <span class="sub-title">Service call dispatcher</span>
+        </li>
+        
+        
+        
+        
+        
+        <li>
+            <a href="#addr-80C8">init_vectors_and_copy</a>
+            <span class="sub-title">NFS initialisation (service &amp;FF: full reset)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8184">select_nfs</a>
+            <span class="sub-title">Select NFS as active filing system (INIT)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8217">setup_fs_vectors</a>
+            <span class="sub-title">Set up filing system vectors</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-826F">svc_abs_workspace</a>
+            <span class="sub-title">Service 1: claim absolute workspace</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8278">svc_private_workspace</a>
+            <span class="sub-title">Service 2: claim private workspace and initialise NFS</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-81D1">svc_autoboot</a>
+            <span class="sub-title">Service 3: auto-boot</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8172">svc_star_command</a>
+            <span class="sub-title">Service 4: unrecognised * command</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-81BC">svc_help</a>
+            <span class="sub-title">Service 9: *HELP</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-819B">match_rom_string</a>
+            <span class="sub-title">Match command text against ROM string table</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-81CC">call_fscv_shutdown</a>
+            <span class="sub-title">Notify filing system of shutdown</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-822E">issue_vectors_claimed</a>
+            <span class="sub-title">Issue &#39;vectors claimed&#39; service and optionally auto-boot</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-82D1">setup_rom_ptrs_netv</a>
+            <span class="sub-title">Set up ROM pointer table and NETV</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-82FD">fscv_shutdown</a>
+            <span class="sub-title">FSCV 6: Filing system shutdown / save state (FSDIE)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-831C">init_tx_ctrl_block</a>
+            <span class="sub-title">Initialise TX control block at &amp;00C0 from template</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8334">tx_ctrl_template</a>
+            <span class="sub-title">TX control block template (TXTAB, 12 bytes)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8350">prepare_fs_cmd</a>
+            <span class="sub-title">Prepare FS command buffer (12 references)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-836A">build_send_fs_cmd</a>
+            <span class="sub-title">Build and send FS command (DOFSOP)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8402">store_fs_error</a>
+            <span class="sub-title">Handle fileserver error replies (FSERR)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-83A3">handle_bput_bget</a>
+            <span class="sub-title">Handle BPUT/BGET file byte I/O</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-844A">send_to_fs</a>
+            <span class="sub-title">Send command to fileserver and handle reply (WAITFS)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-847A">check_escape</a>
+            <span class="sub-title">Check and handle escape condition (ESC)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-84AF">error_msg_table</a>
+            <span class="sub-title">Econet error message table (ERRTAB, 8 entries)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8146">resume_after_remote</a>
+            <span class="sub-title">Resume after remote operation / *ROFF handler (NROFF)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-808C">fscv_handler</a>
+            <span class="sub-title">FSCV dispatch entry</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8694">filev_handler</a>
+            <span class="sub-title">FILEV handler (OSFILE entry point)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-86D0">send_fs_examine</a>
+            <span class="sub-title">Send FS examine command</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8716">send_data_blocks</a>
+            <span class="sub-title">Send file data in multi-block chunks</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8746">filev_save</a>
+            <span class="sub-title">OSFILE save handler (A=&amp;00)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-87AD">copy_load_addr_from_params</a>
+            <span class="sub-title">Copy load address from parameter block</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-87BA">copy_reply_to_params</a>
+            <span class="sub-title">Copy FS reply data to parameter block</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-87C8">transfer_file_blocks</a>
+            <span class="sub-title">Multi-block file data transfer</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-881F">eof_handler</a>
+            <span class="sub-title">FSCV 1: EOF handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8844">filev_attrib_dispatch</a>
+            <span class="sub-title">FILEV attribute dispatch (A=1-6)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-892C">restore_args_return</a>
+            <span class="sub-title">Restore arguments and return</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-89A1">opt_handler</a>
+            <span class="sub-title">FSCV 0: *OPT handler (OPTION)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-89D2">adjust_addrs</a>
+            <span class="sub-title">Bidirectional 4-byte address adjustment</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-88E1">argsv_handler</a>
+            <span class="sub-title">ARGSV handler (OSARGS entry point)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8949">findv_handler</a>
+            <span class="sub-title">FINDV handler (OSFIND entry point)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8985">close_handle</a>
+            <span class="sub-title">Close file handle(s) (CLOSE)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-89EA">gbpbv_handler</a>
+            <span class="sub-title">GBPBV handler (OSGBPB entry point)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8AAD">osgbpb_info</a>
+            <span class="sub-title">OSGBPB 5-8 info handler (OSINFO)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8079">forward_star_cmd</a>
+            <span class="sub-title">Forward unrecognised * command to fileserver (COMERR)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8349">bye_handler</a>
+            <span class="sub-title">*BYE handler (logoff)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8B92">fscv_star_handler</a>
+            <span class="sub-title">FSCV 2/3/4: unrecognised * command handler (DECODE)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8BD6">fs_cmd_match_table</a>
+            <span class="sub-title">FS command match table (COMTAB)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8BF2">ex_handler</a>
+            <span class="sub-title">*EX handler (extended catalogue)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8BFD">cat_handler</a>
+            <span class="sub-title">*CAT handler (directory catalogue)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8CEA">boot_cmd_strings</a>
+            <span class="sub-title">Boot command strings for auto-boot</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8CF7">set_lib_handle</a>
+            <span class="sub-title">Set library handle</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8CFC">set_csd_handle</a>
+            <span class="sub-title">Set CSD handle</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D02">boot_option_offsets</a>
+            <span class="sub-title">Boot option → OSCLI string offset table</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D06">i_am_handler</a>
+            <span class="sub-title">&#34;I AM&#34; command handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D1F">copy_handles_and_boot</a>
+            <span class="sub-title">Copy FS reply handles to workspace and execute boot command</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D20">copy_handles</a>
+            <span class="sub-title">Copy FS reply handles to workspace (no boot)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D3A">option_name_strings</a>
+            <span class="sub-title">Option name strings</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D4B">option_name_offsets</a>
+            <span class="sub-title">Option name offsets</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D4F">print_reply_bytes</a>
+            <span class="sub-title">Print reply buffer bytes</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D5C">print_spaces</a>
+            <span class="sub-title">Print spaces</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D63">copy_filename</a>
+            <span class="sub-title">Copy filename to FS command buffer</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D65">copy_string_to_cmd</a>
+            <span class="sub-title">Copy string to FS command buffer</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D73">print_dir_name</a>
+            <span class="sub-title">Print directory name from reply buffer</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8D84">notify_and_exec</a>
+            <span class="sub-title">Send FS load-as-command and execute response</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8DAF">net1_read_handle</a>
+            <span class="sub-title">*NET1: read file handle from received packet</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8DB7">calc_handle_offset</a>
+            <span class="sub-title">Calculate handle workspace offset</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8DC9">net2_read_handle_entry</a>
+            <span class="sub-title">*NET2: read handle entry from workspace</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8DDF">net3_close_handle</a>
+            <span class="sub-title">*NET3: close handle (mark as unused)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8DF2">net4_resume_remote</a>
+            <span class="sub-title">*NET4: resume after remote operation</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8DF7">osword_fs_entry</a>
+            <span class="sub-title">Filing system OSWORD entry</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8E01">fs_osword_dispatch</a>
+            <span class="sub-title">PHA/PHA/RTS dispatch for filing system OSWORDs</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8F72">econet_tx_rx</a>
+            <span class="sub-title">Econet transmit/receive handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9007">osword_dispatch</a>
+            <span class="sub-title">NETVEC dispatch handler (ENTRY)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-903D">net_write_char</a>
+            <span class="sub-title">Fn 4: net write character (NWRCH)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-904B">setup_tx_and_send</a>
+            <span class="sub-title">Set up TX control block and send</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9159">ctrl_block_setup_alt</a>
+            <span class="sub-title">Alternate entry into control block setup</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9162">ctrl_block_setup</a>
+            <span class="sub-title">Control block setup — main entry</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-918E">ctrl_block_template</a>
+            <span class="sub-title">Control block initialisation template</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8E22">copy_param_block</a>
+            <span class="sub-title">Bidirectional block copy between OSWORD param block and workspace.</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8E33">osword_0f_handler</a>
+            <span class="sub-title">OSWORD &amp;0F handler: initiate transmit (CALLTX)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8E53">osword_11_handler</a>
+            <span class="sub-title">OSWORD &amp;11 handler: read JSR arguments (READRA)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8E7B">osword_12_handler</a>
+            <span class="sub-title">OSWORD &amp;12 handler: read/set state information (RS)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8EF0">osword_10_handler</a>
+            <span class="sub-title">OSWORD &amp;10 handler: open/read RX control block (OPENRX)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-90FC">remote_boot_handler</a>
+            <span class="sub-title">Remote boot/execute handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-912A">execute_at_0100</a>
+            <span class="sub-title">Execute downloaded code at &amp;0100</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-913A">remote_validated</a>
+            <span class="sub-title">Remote operation with source validation (REMOT)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-914A">insert_remote_key</a>
+            <span class="sub-title">Insert remote keypress</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-8F57">setup_rx_buffer_ptrs</a>
+            <span class="sub-title">Set up RX buffer pointers in NFS workspace</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9063">remote_cmd_dispatch</a>
+            <span class="sub-title">Fn 7: remote OSBYTE handler (NBYTE)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-90CD">remote_cmd_data</a>
+            <span class="sub-title">Fn 8: remote OSWORD handler (NWORD)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-91B5">remote_display_setup</a>
+            <span class="sub-title">Fn 5: printer selection changed (SELECT)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-91C7">remote_print_handler</a>
+            <span class="sub-title">Fn 1/2/3: network printer handler (PRINT)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-91EC">store_output_byte</a>
+            <span class="sub-title">Store output byte to network buffer</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9217">flush_output_block</a>
+            <span class="sub-title">Flush output block</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-92DD">save_vdu_state</a>
+            <span class="sub-title">Save VDU workspace state</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-966F">adlc_init</a>
+            <span class="sub-title">ADLC initialisation</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9681">adlc_init_workspace</a>
+            <span class="sub-title">Initialise NMI workspace</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-969D">save_econet_state</a>
+            <span class="sub-title">Save Econet state to RX control block</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-96B4">restore_econet_state</a>
+            <span class="sub-title">Restore Econet state from RX control block</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-96CD">install_nmi_shim</a>
+            <span class="sub-title">Copy NMI shim from ROM (&amp;9FCA) to RAM (&amp;0D00)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9248">econet_tx_retry</a>
+            <span class="sub-title">Transmit with retry loop (XMITFS/XMITFY)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9291">save_palette_vdu</a>
+            <span class="sub-title">Save palette and VDU state (CVIEW)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-99BB">post_ack_scout</a>
+            <span class="sub-title">Post-ACK scout processing</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9A59">immediate_op</a>
+            <span class="sub-title">Immediate operation handler (port = 0)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9A34">discard_reset_listen</a>
+            <span class="sub-title">Discard with full ADLC reset</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9A40">discard_listen</a>
+            <span class="sub-title">Discard frame (gentle)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9A43">discard_after_reset</a>
+            <span class="sub-title">Return to idle listen after reset/discard</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9F5B">tx_calc_transfer</a>
+            <span class="sub-title">Calculate transfer size</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9FCB">nmi_bootstrap_entry</a>
+            <span class="sub-title">Bootstrap NMI entry point (in ROM)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9FD9">rom_set_nmi_vector</a>
+            <span class="sub-title">ROM copy of set_nmi_vector + nmi_rti</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-96DC">adlc_full_reset</a>
+            <span class="sub-title">ADLC full reset</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-96EB">adlc_rx_listen</a>
+            <span class="sub-title">Enter RX listen mode</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-96F6">nmi_rx_scout</a>
+            <span class="sub-title">NMI RX scout handler (initial byte)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9715">nmi_rx_scout_net</a>
+            <span class="sub-title">RX scout second byte handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9737">scout_error</a>
+            <span class="sub-title">Scout error/discard handler</span>
+        </li>
+        
+        
+        
+        
+        
+        <li>
+            <a href="#addr-9771">scout_complete</a>
+            <span class="sub-title">Scout completion handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9839">nmi_data_rx</a>
+            <span class="sub-title">Data frame RX handler (four-way handshake)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-989A">nmi_data_rx_bulk</a>
+            <span class="sub-title">Data frame bulk read loop</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-98CE">data_rx_complete</a>
+            <span class="sub-title">Data frame completion</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-995E">ack_tx</a>
+            <span class="sub-title">ACK transmission</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9992">nmi_ack_tx_src</a>
+            <span class="sub-title">ACK TX continuation</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9C48">inactive_poll</a>
+            <span class="sub-title">INACTIVE polling loop</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9C88">tx_line_jammed</a>
+            <span class="sub-title">Timeout error: writes CR2=&amp;07 to abort, cleans stack,</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9CA2">tx_prepare</a>
+            <span class="sub-title">TX preparation</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9D4C">nmi_tx_data</a>
+            <span class="sub-title">NMI TX data handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9D88">tx_last_data</a>
+            <span class="sub-title">TX_LAST_DATA and frame completion</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9D94">nmi_tx_complete</a>
+            <span class="sub-title">TX completion: switch to RX mode</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9DB2">nmi_reply_scout</a>
+            <span class="sub-title">RX reply scout handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9DC8">nmi_reply_cont</a>
+            <span class="sub-title">RX reply continuation handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9DE3">nmi_reply_validate</a>
+            <span class="sub-title">RX reply validation (Path 2 for FV/PSE interaction)</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9E2B">nmi_scout_ack_src</a>
+            <span class="sub-title">TX scout ACK: write source address</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9E50">nmi_data_tx</a>
+            <span class="sub-title">TX data phase: send payload</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9EDD">handshake_await_ack</a>
+            <span class="sub-title">Four-way handshake: switch to RX for final ACK</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9EE9">nmi_final_ack</a>
+            <span class="sub-title">RX final ACK handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9F15">nmi_final_ack_validate</a>
+            <span class="sub-title">Final ACK validation</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9F39">tx_result_ok</a>
+            <span class="sub-title">TX completion handler</span>
+        </li>
+        
+        
+        
+        <li>
+            <a href="#addr-9F3F">tx_store_result</a>
+            <span class="sub-title">TX error handler</span>
+        </li>
+        
+        
+        </ul>
+    </details>
 </nav>
 
 

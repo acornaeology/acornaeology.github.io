@@ -122,6 +122,13 @@ body {
     color: var(--text);
     margin: 0;
     padding: 0;
+    -webkit-text-size-adjust: 100%;
+}
+
+@media (max-width: 900px) {
+    body {
+        overflow-x: hidden;
+    }
 }
 
 /* --- Layout --- */
@@ -159,9 +166,28 @@ body {
     border-radius: 4px;
 }
 
-.subroutine-nav h2 {
+.subroutine-nav summary {
     font-size: 1.1rem;
+    font-weight: bold;
     margin-top: 0;
+    list-style: none;
+    pointer-events: none;
+    cursor: default;
+}
+
+.subroutine-nav summary::marker,
+.subroutine-nav summary::-webkit-details-marker {
+    display: none;
+}
+
+.subroutine-nav details > ul {
+    display: block;
+}
+
+/* Chrome 131+ hides <details> content via ::details-content pseudo */
+.subroutine-nav details::details-content {
+    content-visibility: visible;
+    display: block;
 }
 
 .subroutine-nav ul {
@@ -198,6 +224,48 @@ body {
         position: static;
         width: auto;
         max-height: none;
+    }
+
+    .subroutine-nav summary {
+        font-family: 'Bedstead', monospace;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 0.3em 0;
+        list-style: none;
+        pointer-events: auto;
+    }
+
+    .subroutine-nav summary::marker,
+    .subroutine-nav summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .subroutine-nav summary::before {
+        content: "\25B6  ";
+        font-size: 0.7em;
+        vertical-align: middle;
+    }
+
+    .subroutine-nav details[open] > summary::before {
+        content: "\25BC  ";
+    }
+
+    .subroutine-nav details > ul {
+        display: none;
+    }
+
+    .subroutine-nav details[open] > ul {
+        display: block;
+    }
+
+    .subroutine-nav details::details-content {
+        content-visibility: hidden;
+    }
+
+    .subroutine-nav details[open]::details-content {
+        content-visibility: visible;
+        display: block;
     }
 }
 
@@ -313,6 +381,12 @@ hr {
     font-size: 0.9rem;
 }
 
+@media (max-width: 900px) {
+    .site-header .container {
+        flex-wrap: wrap;
+    }
+}
+
 /* --- Footer --- */
 
 .site-footer {
@@ -330,6 +404,18 @@ hr {
     line-height: 1.4;
     overflow-x: auto;
     tab-size: 8;
+}
+
+@media (min-width: 901px) {
+    .listing {
+        font-size: min(18px, calc((100vw - 3rem - 240px - 2rem) / 42.3));
+    }
+}
+
+@media (max-width: 900px) {
+    .listing {
+        font-size: min(18px, calc((100vw - 3rem) / 42.3));
+    }
 }
 
 .listing table {
@@ -578,6 +664,17 @@ hr {
 
 .sub-registers td:last-of-type {
     color: var(--dim);
+}
+
+@media (max-width: 900px) {
+    .sub-header {
+        max-width: calc(100vw - 3rem);
+    }
+
+    .sub-registers {
+        max-width: calc(100vw - 3rem);
+        overflow-x: auto;
+    }
 }
 
 /* --- Index cards --- */

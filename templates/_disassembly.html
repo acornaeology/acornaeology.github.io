@@ -20,17 +20,19 @@
 <div class="disassembly-layout">
 {% if subroutines %}
 <nav class="subroutine-nav">
-    <h2>Subroutines</h2>
-    <ul>
-    {% for sub in subroutines %}
-    {% if sub.name %}
-    <li>
-        <a href="#addr-{{ '%04X' % sub.addr }}">{{ sub.name }}</a>
-        {% if sub.title %}<span class="sub-title">{{ sub.title }}</span>{% endif %}
-    </li>
-    {% endif %}
-    {% endfor %}
-    </ul>
+    <details>
+        <summary>Subroutines</summary>
+        <ul>
+        {% for sub in subroutines %}
+        {% if sub.name %}
+        <li>
+            <a href="#addr-{{ '%04X' % sub.addr }}">{{ sub.name }}</a>
+            {% if sub.title %}<span class="sub-title">{{ sub.title }}</span>{% endif %}
+        </li>
+        {% endif %}
+        {% endfor %}
+        </ul>
+    </details>
 </nav>
 {% endif %}
 
