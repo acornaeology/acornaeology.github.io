@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block title %}{{ name }} — acornaeology{% endblock %}
+{% block description %}{{ description }}{% endblock %}
+{% block og_url %}https://acornaeology.uk/{{ slug }}/{% endblock %}
 
 {% block content %}
 <h1>{{ name }}</h1>

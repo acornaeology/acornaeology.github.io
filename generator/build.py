@@ -29,15 +29,14 @@ def is_page_template(filepath):
     return "{% extends" in content
 
 
-def build_templates(env):
+def build_templates(env, roms):
     """Render all page templates to the output directory."""
     for template_filepath in TEMPLATES_DIRPATH.glob("*.html"):
         if not is_page_template(template_filepath):
             continue
         template = env.get_template(template_filepath.name)
-        # Calculate root path (relative URL prefix to site root)
         output_filepath = OUTPUT_DIRPATH / template_filepath.name
-        html = template.render(root="./")
+        html = template.render(root="./", roms=roms)
         output_filepath.write_text(html)
         print(f"  {template_filepath.name} -> {output_filepath.relative_to(REPO_ROOT)}")
 
@@ -71,31 +70,51 @@ def resolve_source(source):
     return clone_dirpath
 
 
-def build_disassemblies(env):
-    """Build disassembly pages from external disassembly repos."""
+def load_sources():
+    """Load and resolve all disassembly sources.
+
+    Returns a list of dicts with manifest metadata and resolved repo path.
+    """
     sources_filepath = DATA_DIRPATH / "sources.json"
     if not sources_filepath.exists():
-        return
+        return []
 
     sources = json.loads(sources_filepath.read_text())
-
-    rom_index_template = env.get_template("_rom_index.html")
-    disassembly_template = env.get_template("_disassembly.html")
+    result = []
 
     for source in sources:
         repo_dirpath = resolve_source(source)
         repo_url = source["repo"]
 
-        # Read project manifest
         manifest_filepath = repo_dirpath / "acornaeology.json"
         if not manifest_filepath.exists():
             print(f"  Warning: {manifest_filepath} not found, skipping")
             continue
         manifest = json.loads(manifest_filepath.read_text())
 
-        slug = manifest["slug"]
-        name = manifest["name"]
-        description = manifest.get("description", "")
+        result.append({
+            "repo_dirpath": repo_dirpath,
+            "repo_url": repo_url,
+            "slug": manifest["slug"],
+            "name": manifest["name"],
+            "description": manifest.get("description", ""),
+            "versions": manifest["versions"],
+        })
+
+    return result
+
+
+def build_disassemblies(env, sources):
+    """Build disassembly pages from external disassembly repos."""
+    rom_index_template = env.get_template("_rom_index.html")
+    disassembly_template = env.get_template("_disassembly.html")
+
+    for source in sources:
+        repo_dirpath = source["repo_dirpath"]
+        repo_url = source["repo_url"]
+        slug = source["slug"]
+        name = source["name"]
+        description = source["description"]
 
         # Create output directory
         output_dirpath = OUTPUT_DIRPATH / slug
@@ -103,7 +122,7 @@ def build_disassemblies(env):
 
         # Build version metadata for the index page
         versions = []
-        for version_id in manifest["versions"]:
+        for version_id in source["versions"]:
             rom_json_filepath = repo_dirpath / "versions" / version_id / "rom" / "rom.json"
             if rom_json_filepath.exists():
                 rom_meta = json.loads(rom_json_filepath.read_text())
@@ -115,6 +134,7 @@ def build_disassemblies(env):
         # Build per-ROM index page
         html = rom_index_template.render(
             root="../",
+            slug=slug,
             name=name,
             description=description,
             versions=versions,
@@ -124,7 +144,7 @@ def build_disassemblies(env):
         print(f"  {slug}/index.html")
 
         # Build per-version disassembly pages
-        for version_id in manifest["versions"]:
+        for version_id in source["versions"]:
             version_dirpath = repo_dirpath / "versions" / version_id
 
             # Find the disassembly JSON
@@ -158,6 +178,8 @@ def build_disassemblies(env):
 
             html = disassembly_template.render(
                 root="../",
+                slug=slug,
+                version_id=version_id,
                 title=title,
                 description=description,
                 links=links,
@@ -215,13 +237,16 @@ def main():
     print("Static assets:")
     copy_static()
 
+    # Load disassembly sources
+    sources = load_sources()
+
     # Render templates
     print("Pages:")
-    build_templates(env)
+    build_templates(env, sources)
 
     # Build disassembly pages
     print("Disassemblies:")
-    build_disassemblies(env)
+    build_disassemblies(env, sources)
 
     print("Done.")
 
