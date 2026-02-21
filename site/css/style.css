@@ -253,7 +253,7 @@ hr {
 .site-header .container {
     padding: 0;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 2rem;
 }
 
@@ -263,6 +263,14 @@ hr {
     font-weight: bold;
     color: var(--text);
     text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.site-logo {
+    height: 5.5rem;
+    width: auto;
 }
 
 .site-title:visited {

@@ -107,7 +107,7 @@ def _filter_subroutines(data):
 
 def copy_static():
     """Copy static assets (CSS, fonts, images) to the output directory."""
-    for subdir in ("css", "fonts"):
+    for subdir in ("css", "fonts", "images"):
         src = SITE_DIRPATH / subdir
         dst = OUTPUT_DIRPATH / subdir
         if src.is_dir():
