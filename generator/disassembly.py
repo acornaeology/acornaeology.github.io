@@ -19,15 +19,17 @@ def process_disassembly(data):
     for sub in data.get("subroutines", []):
         sub_lookup[sub["addr"]] = sub
 
+    item_by_addr = {item["addr"]: item for item in data["items"]}
+
     lines = []
     for item in data["items"]:
-        lines.extend(_process_item(item, sub_lookup))
+        lines.extend(_process_item(item, sub_lookup, item_by_addr))
 
     _align_inline_comments(lines)
     return lines
 
 
-def _process_item(item, sub_lookup):
+def _process_item(item, sub_lookup, item_by_addr):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
@@ -66,11 +68,16 @@ def _process_item(item, sub_lookup):
             _append_comment_lines(lines, comment_text)
 
     # Label lines
+    references = item.get("references", [])
     for label_name in item.get("labels", []):
+        ref_html = _render_ref_popup(references, item_by_addr) if references else ""
+        label_html = Markup(
+            f'<span class="label">.{escape(label_name)}{ref_html}</span>'
+        )
         lines.append({
             "id": addr_id if not addr_used else None,
             "addr": addr_display if not addr_used else None,
-            "html": Markup(f'<span class="label">.{escape(label_name)}</span>'),
+            "html": label_html,
             "hex": None,
         })
         addr_used = True
@@ -172,6 +179,28 @@ def _append_comment_lines(lines, comment_text):
 
 def _empty_line():
     return {"id": None, "addr": None, "html": Markup(""), "hex": None}
+
+
+def _render_ref_popup(references, item_by_addr):
+    """Render a come-from popup showing all callers of this label."""
+    refs_sorted = sorted(references)
+    count = len(refs_sorted)
+    parts = [
+        f'<span class="ref-badge">{count}</span>',
+        '<span class="ref-popup">',
+    ]
+    for ref_addr in refs_sorted:
+        ref_item = item_by_addr.get(ref_addr)
+        if ref_item and ref_item.get("type") == "code":
+            mnemonic = ref_item["mnemonic"].upper()
+        else:
+            mnemonic = "ref"
+        parts.append(
+            f'<a href="#addr-{ref_addr:04X}">'
+            f'{ref_addr:04X} {escape(mnemonic)}</a>'
+        )
+    parts.append('</span>')
+    return Markup("".join(parts))
 
 
 def _is_reference_comment(text):

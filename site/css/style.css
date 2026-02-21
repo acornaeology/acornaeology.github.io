@@ -330,6 +330,61 @@ hr {
 
 .listing .label {
     color: var(--cyan);
+    position: relative;
+}
+
+/* --- Come-from reference popups --- */
+
+.listing .ref-badge {
+    display: inline-block;
+    margin-left: 0.5em;
+    padding: 0 0.4em;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.7em;
+    line-height: 1.6;
+    color: var(--dim);
+    background: var(--sidebar-bg);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.listing .ref-popup {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 0.2em;
+    padding: 0.4em 0;
+    min-width: 12em;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85em;
+    white-space: nowrap;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    z-index: 20;
+}
+
+.listing .ref-popup a {
+    display: block;
+    padding: 0.15em 0.75em;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.listing .ref-popup a:visited {
+    color: var(--text);
+}
+
+.listing .ref-popup a:hover {
+    background: var(--rule);
+}
+
+.listing .label:hover .ref-popup {
+    display: block;
 }
 
 .listing .opcode {
