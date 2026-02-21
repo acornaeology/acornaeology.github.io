@@ -182,7 +182,7 @@ def _filter_subroutines(data):
 
 
 def copy_static():
-    """Copy static assets (CSS, fonts, images) to the output directory."""
+    """Copy static assets and top-level files to the output directory."""
     for subdir in ("css", "fonts", "images"):
         src = SITE_DIRPATH / subdir
         dst = OUTPUT_DIRPATH / subdir
@@ -191,6 +191,10 @@ def copy_static():
                 shutil.rmtree(dst)
             shutil.copytree(src, dst)
             print(f"  {subdir}/")
+    for filepath in SITE_DIRPATH.iterdir():
+        if filepath.is_file():
+            shutil.copy2(filepath, OUTPUT_DIRPATH / filepath.name)
+            print(f"  {filepath.name}")
 
 
 def main():
