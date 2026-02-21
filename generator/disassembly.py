@@ -35,7 +35,8 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
     addr_display = f"{addr:04X}"
-    addr_used = False
+    id_used = False
+    addr_shown = False
 
     sub = sub_lookup.get(addr)
 
@@ -55,7 +56,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
             "hex": None,
             "banner": True,
         })
-        addr_used = True
+        id_used = True
 
         # Render any comments that aren't part of the banner block
         non_banner = [c for c in comments if not _is_banner_content(c, sub)]
@@ -76,20 +77,23 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
             f'<span class="label">.{escape(label_name)}{ref_html}</span>'
         )
         lines.append({
-            "id": addr_id if not addr_used else None,
-            "addr": addr_display if not addr_used else None,
+            "id": addr_id if not id_used else None,
+            "addr": addr_display if not addr_shown else None,
+            "addr_id": addr_id,
             "html": label_html,
             "hex": None,
         })
-        addr_used = True
+        id_used = True
+        addr_shown = True
 
     # Main content line — store inline comment separately for alignment
     content_html = _render_content(item, valid_addrs)
     hex_str = " ".join(f"{b:02X}" for b in item["bytes"])
 
     lines.append({
-        "id": addr_id if not addr_used else None,
-        "addr": addr_display if not addr_used else None,
+        "id": addr_id if not id_used else None,
+        "addr": addr_display if not addr_shown else None,
+        "addr_id": addr_id,
         "html": content_html,
         "hex": hex_str,
         "_inline_comment": item.get("comment_inline"),
@@ -187,7 +191,7 @@ def _render_ref_popup(references, item_by_addr):
     refs_sorted = sorted(references)
     count = len(refs_sorted)
     parts = [
-        f'<span class="ref-badge">{count}</span>',
+        f'<span class="ref-badge">\u2190{count}</span>',
         '<span class="ref-popup">',
     ]
     for ref_addr in refs_sorted:
@@ -198,7 +202,7 @@ def _render_ref_popup(references, item_by_addr):
             mnemonic = "ref"
         parts.append(
             f'<a href="#addr-{ref_addr:04X}">'
-            f'{ref_addr:04X} {escape(mnemonic)}</a>'
+            f'\u2190 {ref_addr:04X} {escape(mnemonic)}</a>'
         )
     parts.append('</span>')
     return Markup("".join(parts))
