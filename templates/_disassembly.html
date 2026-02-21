@@ -7,6 +7,9 @@
 {% block content %}
 <h1>{{ title }}</h1>
 {% if description %}<p>{{ description }}</p>{% endif %}
+{% if links %}
+<p class="rom-links">{% for link in links %}<a href="{{ link.url }}">{{ link.label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% endif %}
 
 <div class="disassembly-layout">
 {% if subroutines %}

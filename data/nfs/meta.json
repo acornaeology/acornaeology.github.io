@@ -6,7 +6,13 @@
         {
             "id": "3.34",
             "title": "NFS 3.34",
-            "filename": "3.34.json"
+            "filename": "3.34.json",
+            "links": [
+                {
+                    "label": "Acorn NFS 3.34 in The BBC Micro ROM Library",
+                    "url": "https://tobylobster.github.io/rom_library/?md5=d6761cb566cd87b0c1117b5b600cff16"
+                }
+            ]
         }
     ]
 }

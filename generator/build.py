@@ -84,6 +84,7 @@ def build_disassemblies(env):
                 root="../",
                 title=f"{meta['name']} {version['id']}",
                 description=meta.get("description", ""),
+                links=version.get("links", []),
                 lines=lines,
                 subroutines=_filter_subroutines(data),
             )
