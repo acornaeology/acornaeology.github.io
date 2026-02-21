@@ -1193,16 +1193,21 @@
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">; The NFS ROM uses self-modifying code to implement a state
-; machine for</span></td>
+<td><span class="comment">; The NFS ROM uses self-modifying code to implement a state</span></td>
 </tr>
 
 
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">; ADLC communication. An NMI workspace shim is copied to &amp;0D00
-; at init.</span></td>
+<td><span class="comment">; machine for ADLC communication. An NMI workspace shim is</span></td>
+</tr>
+
+
+
+<tr>
+<td class="addr"></td>
+<td><span class="comment">; copied to &amp;0D00 at init.</span></td>
 </tr>
 
 
@@ -1237,7 +1242,7 @@
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">;   LDA #$nn        ; page in NFS ROM bank (self-modified at init)</span></td>
+<td><span class="comment">;   LDA #$nn        ; page in NFS ROM bank (self-modified)</span></td>
 </tr>
 
 
@@ -1335,8 +1340,7 @@
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">; NMI handler chain for outbound transmission (four-way
-; handshake):</span></td>
+<td><span class="comment">; NMI handler chain for outbound TX (four-way handshake):</span></td>
 </tr>
 
 
@@ -1539,28 +1543,42 @@
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">;   CR2=&amp;67: clear all status (CLR_TX_ST|CLR_RX_ST|FC_TDRA|2_1_BYTE|PSE)</span></td>
+<td></td>
 </tr>
 
 
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">;   CR2=&amp;E7: TX prepare (RTS|CLR_TX_ST|CLR_RX_ST|FC_TDRA|2_1_BYTE|PSE)</span></td>
+<td><span class="comment">;   CR2 values (all set FC_TDRA|2_1_BYTE|PSE):</span></td>
 </tr>
 
 
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">;   CR2=&amp;3F: TX last data (CLR_RX_ST|TX_LAST_DATA|FLAG_IDLE|FC_TDRA|2_1_BYTE|PSE)</span></td>
+<td><span class="comment">;   &amp;67: clear status  CLR_TX_ST|CLR_RX_ST</span></td>
 </tr>
 
 
 
 <tr>
 <td class="addr"></td>
-<td><span class="comment">;   CR2=&amp;A7: TX in handshake (RTS|CLR_TX_ST|FC_TDRA|2_1_BYTE|PSE)</span></td>
+<td><span class="comment">;   &amp;E7: TX prepare    RTS|CLR_TX_ST|CLR_RX_ST</span></td>
+</tr>
+
+
+
+<tr>
+<td class="addr"></td>
+<td><span class="comment">;   &amp;3F: TX last data  CLR_RX_ST|TX_LAST_DATA|FLAG_IDLE</span></td>
+</tr>
+
+
+
+<tr>
+<td class="addr"></td>
+<td><span class="comment">;   &amp;A7: TX handshake  RTS|CLR_TX_ST</span></td>
 </tr>
 
 
