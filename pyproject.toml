@@ -2,6 +2,10 @@
 name = "acornaeology"
 version = "0.1.0"
 description = "Static site generator for acornaeology.uk"
+license = "MIT"
+authors = [
+    { name = "Robert Smallshire" },
+]
 requires-python = ">=3.10"
 dependencies = [
     "jinja2",
