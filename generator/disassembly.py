@@ -389,9 +389,15 @@ def _immediate_tooltip(value):
 
 def _render_bytes(item):
     values = item.get("values", [])
-    formatted = ", ".join(f"&{v:02X}" for v in values)
+    parts = []
+    for v in values:
+        tooltip = _immediate_tooltip(v)
+        parts.append(
+            f'<span data-tip="{escape(tooltip)}">&amp;{v:02X}</span>'
+        )
+    formatted = ", ".join(parts)
     return Markup(
-        f'    <span class="directive">EQUB</span> {escape(formatted)}'
+        f'    <span class="directive">EQUB</span> {formatted}'
     )
 
 
