@@ -2655,20 +2655,14 @@
 <td colspan="3"><div class="sub-header">
 <h3>FSCV dispatch entry</h3>
 <div class="sub-desc"><p>Entered via the extended vector table when the MOS calls FSCV. Stores A/X/Y via save_fscv_args, compares A (function code) against 8, and dispatches codes 0-7 via the shared dispatch table at $8020 with base offset Y=$12 (table indices 19-26). Function codes: 0=*OPT, 1=EOF, 2=*/, 3=unrecognised *, 4=*RUN, 5=*CAT, 6=shutdown, 7=read handles.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>function code (0-7)</dd>
-<dt>X</dt><dd>depends on function</dd>
-<dt>Y</dt><dd>depends on function</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>depends on handler (preserved if A &gt;= 8)</dd>
-<dt>X</dt><dd>depends on handler (preserved if A &gt;= 8)</dd>
-<dt>Y</dt><dd>depends on handler (preserved if A &gt;= 8)</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Entry</th><td>A</td><td>function code (0-7)</td></tr>
+<tr><td>X</td><td>depends on function</td></tr>
+<tr><td>Y</td><td>depends on function</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>depends on handler (preserved if A &gt;= 8)</td></tr>
+<tr><td>X</td><td>depends on handler (preserved if A &gt;= 8)</td></tr>
+<tr><td>Y</td><td>depends on handler (preserved if A &gt;= 8)</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -5972,19 +5966,13 @@
 <td colspan="3"><div class="sub-header">
 <h3>Prepare FS command buffer (12 references)</h3>
 <div class="sub-desc"><p>Builds the 5-byte FS protocol header at $0F00: $0F00 HDRREP = reply port (set downstream, typically $90/PREPLY) $0F01 HDRFN  = Y parameter (function code) $0F02 HDRURD = URD handle (from $0E02) $0F03 HDRCSD = CSD handle (from $0E03) $0F04 HDRLIB = LIB handle (from $0E04) Command-specific data follows at $0F05 (TXBUF). Also clears V flag. Called before building specific FS commands for transmission.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>Y</dt><dd>function code for HDRFN</dd>
-<dt>X</dt><dd>preserved through header build</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>0 on success (from build_send_fs_cmd)</dd>
-<dt>X</dt><dd>0 on success, $D6 on not-found</dd>
-<dt>Y</dt><dd>1 (offset past command code in reply)</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="2">On Entry</th><td>Y</td><td>function code for HDRFN</td></tr>
+<tr><td>X</td><td>preserved through header build</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>0 on success (from build_send_fs_cmd)</td></tr>
+<tr><td>X</td><td>0 on success, $D6 on not-found</td></tr>
+<tr><td>Y</td><td>1 (offset past command code in reply)</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -6138,21 +6126,15 @@
 <td colspan="3"><div class="sub-header">
 <h3>Build and send FS command (DOFSOP)</h3>
 <div class="sub-desc"><p>Sets reply port to $90 (PREPLY) at $0F00, initialises the TX control block, then adjusts TXCB&#39;s high pointer (HPTR) to X+5 -- the 5-byte FS header (reply port, function code, URD, CSD, LIB) plus the command data -- so only meaningful bytes are transmitted, conserving Econet bandwidth. If carry is set on entry (DOFSBX byte-stream path), takes the alternate path through econet_tx_retry for direct BSXMIT transmission. Otherwise sets up the TX pointer via setup_tx_ptr_c0 and falls through to send_fs_reply_cmd for reply handling. The carry flag is the sole discriminator between byte-stream and standard FS protocol paths -- set by SEC at the BPUTV/BGETV entry points. On return from WAITFS/BSXMIT, Y=0; INY advances past the command code to read the return code. Error $D6 (&#34;not found&#34;) is detected via ADC #($100-$D6) with C=0 -- if the return code was exactly $D6, the result wraps to zero (Z=1). This is a branchless comparison returning C=1, A=0 as a soft error that callers can handle, vs hard errors which go through FSERR.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>X</dt><dd>buffer extent (command-specific data bytes)</dd>
-<dt>Y</dt><dd>function code</dd>
-<dt>A</dt><dd>timeout period for FS reply</dd>
-<dt>C</dt><dd>0 for standard FS path, 1 for byte-stream (BSXMIT)</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>0 on success</dd>
-<dt>X</dt><dd>0 on success, $D6 on not-found</dd>
-<dt>Y</dt><dd>1 (offset past command code in reply)</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="4">On Entry</th><td>X</td><td>buffer extent (command-specific data bytes)</td></tr>
+<tr><td>Y</td><td>function code</td></tr>
+<tr><td>A</td><td>timeout period for FS reply</td></tr>
+<tr><td>C</td><td>0 for standard FS path, 1 for byte-stream (BSXMIT)</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>0 on success</td></tr>
+<tr><td>X</td><td>0 on success, $D6 on not-found</td></tr>
+<tr><td>Y</td><td>1 (offset past command code in reply)</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -6483,20 +6465,14 @@
 <h3>Handle BPUT/BGET file byte I/O</h3>
 <div class="sub-desc"><p>BPUTV enters at $83A2 (CLC; fall through) and BGETV enters at $8485 (SEC; JSR here). The carry flag is preserved via PHP/PLP through the call chain and tested later (BCS) to select byte-stream transmission (BSXMIT) vs normal FS transmission (FSXMIT) -- a control-flow encoding using processor flags to avoid an extra flag variable.</p>
 <p>BSXMIT uses handle=0 for print stream transactions (which sidestep the SEQNOS sequence number manipulation) and non-zero handles for file operations. After transmission, the high pointer bytes of the CB are reset to $FF -- &#34;The BGET/PUT byte fix&#34; which prevents stale buffer pointers corrupting subsequent byte-level operations.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>C</dt><dd>0 for BPUT (write byte), 1 for BGET (read byte)</dd>
-<dt>A</dt><dd>byte to write (BPUT only)</dd>
-<dt>Y</dt><dd>file handle</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>preserved</dd>
-<dt>X</dt><dd>preserved</dd>
-<dt>Y</dt><dd>preserved</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Entry</th><td>C</td><td>0 for BPUT (write byte), 1 for BGET (read byte)</td></tr>
+<tr><td>A</td><td>byte to write (BPUT only)</td></tr>
+<tr><td>Y</td><td>file handle</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>preserved</td></tr>
+<tr><td>X</td><td>preserved</td></tr>
+<tr><td>Y</td><td>preserved</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -8385,14 +8361,11 @@
 <td colspan="3"><div class="sub-header">
 <h3>Print inline string, high-bit terminated (VSTRNG)</h3>
 <div class="sub-desc"><p>Pops the return address from the stack, prints each byte via OSASCI until a byte with bit 7 set is found, then jumps to that address. The high-bit byte serves as both the string terminator and the opcode of the first instruction after the string. N.B. Cannot be used for BRK error messages -- the stack manipulation means a BRK in the inline data would corrupt the stack rather than invoke the error handler.</p></div>
-<div class="sub-registers">
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>terminator byte (bit 7 set, also next opcode)</dd>
-<dt>X</dt><dd>corrupted (by OSASCI)</dd>
-<dt>Y</dt><dd>0</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>terminator byte (bit 7 set, also next opcode)</td></tr>
+<tr><td>X</td><td>corrupted (by OSASCI)</td></tr>
+<tr><td>Y</td><td>0</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -8627,18 +8600,12 @@
 <td colspan="3"><div class="sub-header">
 <h3>Parse decimal number from (fs_options),Y (DECIN)</h3>
 <div class="sub-desc"><p>Reads ASCII digits and accumulates in $B2 (fs_load_addr_2). Multiplication by 10 uses the identity: n*10 = n*8 + n*2, computed as ASL $B2 (x2), then A = $B2*4 via two ASLs, then ADC $B2 gives x10. Terminates on &#34;.&#34; (pathname separator), control chars, or space. The delimiter handling was revised to support dot-separated path components (e.g. &#34;1.$.PROG&#34;) -- originally stopped on any char &gt;= $40 (any letter), but the revision allows numbers followed by dots.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>Y</dt><dd>offset into (fs_options) buffer</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>parsed value (accumulated in $B2)</dd>
-<dt>X</dt><dd>corrupted</dd>
-<dt>Y</dt><dd>offset past last digit parsed</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="1">On Entry</th><td>Y</td><td>offset into (fs_options) buffer</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>parsed value (accumulated in $B2)</td></tr>
+<tr><td>X</td><td>corrupted</td></tr>
+<tr><td>Y</td><td>offset past last digit parsed</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -8904,19 +8871,13 @@
 <td colspan="3"><div class="sub-header">
 <h3>Convert file handle to bitmask (Y2FS)</h3>
 <div class="sub-desc"><p>Converts fileserver handles to single-bit masks segregated inside the BBC. NFS handles occupy the $20-$27 range (base HAND=$20), which cannot collide with local filing system or cassette handles -- the MOS routes OSFIND/OSBGET/OSBPUT to the correct filing system based on the handle value alone. The power-of-two encoding allows the EOF hint byte to track up to 8 files simultaneously with one bit per file, and enables fast set operations (ORA to add, EOR to toggle, AND to test) without loops. Handle 0 passes through unchanged (means &#34;no file&#34;). The bit-shift conversion loop has a built-in validity check: if the handle is out of range, the repeated ASL shifts all bits out, leaving A=0, which is converted to Y=$FF as a sentinel -- bad handles fail gracefully rather than indexing into garbage. Three entry points: $858A (direct), $8589 (CLC first), $8588 (TAY first).</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>Y</dt><dd>handle number</dd>
-<dt>C</dt><dd>0: convert, 1 with Y=0: skip, 1 with Y!=0: convert</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>preserved</dd>
-<dt>X</dt><dd>preserved</dd>
-<dt>Y</dt><dd>bitmask (single bit set) or $FF if handle invalid</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="2">On Entry</th><td>Y</td><td>handle number</td></tr>
+<tr><td>C</td><td>0: convert, 1 with Y=0: skip, 1 with Y!=0: convert</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>preserved</td></tr>
+<tr><td>X</td><td>preserved</td></tr>
+<tr><td>Y</td><td>bitmask (single bit set) or $FF if handle invalid</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -9134,18 +9095,12 @@
 <td colspan="3"><div class="sub-header">
 <h3>Convert bitmask to handle number (FS2A)</h3>
 <div class="sub-desc"><p>Inverse of Y2FS. Converts from the power-of-two FS format back to a sequential handle number by counting right shifts until A=0. Adds $1E to convert the 1-based bit position to a handle number (handles start at $1F+1 = $20). Used when receiving handle values from the fileserver in reply packets.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>single-bit bitmask</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>handle number ($20-$27)</dd>
-<dt>X</dt><dd>corrupted</dd>
-<dt>Y</dt><dd>preserved</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="1">On Entry</th><td>A</td><td>single-bit bitmask</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>handle number ($20-$27)</td></tr>
+<tr><td>X</td><td>corrupted</td></tr>
+<tr><td>Y</td><td>preserved</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -9437,14 +9392,11 @@
 <td colspan="3"><div class="sub-header">
 <h3>Compare two 4-byte addresses</h3>
 <div class="sub-desc"><p>Compares bytes at $B0-$B3 against $B4-$B7 using EOR. Used by the OSFILE save handler to compare the current transfer address ($C8-$CB, copied to $B0) against the end address ($B4-$B7) during multi-block file data transfers.</p></div>
-<div class="sub-registers">
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>corrupted (EOR result)</dd>
-<dt>X</dt><dd>corrupted</dd>
-<dt>Y</dt><dd>preserved</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>corrupted (EOR result)</td></tr>
+<tr><td>X</td><td>corrupted</td></tr>
+<tr><td>Y</td><td>preserved</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -10252,19 +10204,13 @@
 <td colspan="3"><div class="sub-header">
 <h3>Core transmit and poll routine (XMIT)</h3>
 <div class="sub-desc"><p>Claims the TX semaphore (tx_ctrl_status) via ASL -- a busy-wait spinlock where carry=0 means the semaphore is held by another operation. Only after claiming the semaphore is the TX pointer copied to nmi_tx_block, ensuring the low-level transmit code sees a consistent pointer. Then calls the ADLC TX setup routine and polls the control byte for completion: bit 7 set = still busy (loop) bit 6 set = error (check escape or report) bit 6 clear = success (clean return) On error, checks for escape condition and handles retries. Two entry points: setup_tx_ptr_c0 ($8644) always uses the standard TXCB; tx_poll_core ($8650) is general-purpose.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>retry count ($FF = full retry)</dd>
-<dt>Y</dt><dd>timeout parameter ($60 = standard)</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>entry A (retry count, restored from stack)</dd>
-<dt>X</dt><dd>0</dd>
-<dt>Y</dt><dd>0</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="2">On Entry</th><td>A</td><td>retry count ($FF = full retry)</td></tr>
+<tr><td>Y</td><td>timeout parameter ($60 = standard)</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>entry A (retry count, restored from stack)</td></tr>
+<tr><td>X</td><td>0</td></tr>
+<tr><td>Y</td><td>0</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -10682,20 +10628,14 @@
 <td colspan="3"><div class="sub-header">
 <h3>FILEV handler (OSFILE entry point)</h3>
 <div class="sub-desc"><p>Saves A/X/Y, copies the filename pointer from the parameter block to os_text_ptr, then uses GSINIT/GSREAD to parse the filename into $0FC5+. Sets fs_crc_lo/hi to point at the parsed filename buffer. Dispatches by function code A: A=$FF: load file (send_fs_examine at $86D0) A=$00: save file (filev_save at $8746) A=$01-$06: attribute operations (filev_attrib_dispatch at $8844) Other: restore_args_return (unsupported, no-op)</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>function code ($FF=load, $00=save, $01-$06=attrs)</dd>
-<dt>X</dt><dd>parameter block address low byte</dd>
-<dt>Y</dt><dd>parameter block address high byte</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>restored</dd>
-<dt>X</dt><dd>restored</dd>
-<dt>Y</dt><dd>restored</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Entry</th><td>A</td><td>function code ($FF=load, $00=save, $01-$06=attrs)</td></tr>
+<tr><td>X</td><td>parameter block address low byte</td></tr>
+<tr><td>Y</td><td>parameter block address high byte</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>restored</td></tr>
+<tr><td>X</td><td>restored</td></tr>
+<tr><td>Y</td><td>restored</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -13489,19 +13429,13 @@
 <td colspan="3"><div class="sub-header">
 <h3>ARGSV handler (OSARGS entry point)</h3>
 <div class="sub-desc"><p>A=0, Y=0: return filing system number (10 = network FS) A=0, Y&gt;0: read file pointer via FS command $0A (FCRDSE) A=1, Y&gt;0: write file pointer via FS command $14 (FCWRSE) A&gt;=3 (ensure): silently returns -- NFS has no local write buffer to flush, since all data is sent to the fileserver immediately The handle in Y is converted via handle_to_mask_clc. For writes (A=1), the carry flag from the mask conversion is used to branch to save_args_handle, which records the handle for later use.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>function code (0=query, 1=write ptr, &gt;=3=ensure)</dd>
-<dt>Y</dt><dd>file handle (0=FS-level query, &gt;0=per-file)</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>filing system number if A=0/Y=0 query, else restored</dd>
-<dt>X</dt><dd>restored</dd>
-<dt>Y</dt><dd>restored</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="2">On Entry</th><td>A</td><td>function code (0=query, 1=write ptr, &gt;=3=ensure)</td></tr>
+<tr><td>Y</td><td>file handle (0=FS-level query, &gt;0=per-file)</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>filing system number if A=0/Y=0 query, else restored</td></tr>
+<tr><td>X</td><td>restored</td></tr>
+<tr><td>Y</td><td>restored</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -14048,20 +13982,14 @@
 <td colspan="3"><div class="sub-header">
 <h3>FINDV handler (OSFIND entry point)</h3>
 <div class="sub-desc"><p>A=0: close file -- delegates to close_handle ($8985) A&gt;0: open file -- modes $40=read, $80=write/update, $C0=read/write For open: the mode byte is converted to the fileserver&#39;s two-flag format by flipping bit 7 (EOR #$80) and shifting. This produces Flag 1 (read/write direction) and Flag 2 (create/existing), matching the fileserver protocol. After a successful open, the new handle&#39;s bit is OR&#39;d into the EOF hint byte (marks it as &#34;might be at EOF, query the server&#34;), and into the sequence number tracking byte for the byte-stream protocol.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>operation (0=close, $40=read, $80=write, $C0=R/W)</dd>
-<dt>X</dt><dd>filename pointer low (open)</dd>
-<dt>Y</dt><dd>file handle (close) or filename pointer high (open)</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>handle on open, 0 on close-all, restored on close-one</dd>
-<dt>X</dt><dd>restored</dd>
-<dt>Y</dt><dd>restored</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Entry</th><td>A</td><td>operation (0=close, $40=read, $80=write, $C0=R/W)</td></tr>
+<tr><td>X</td><td>filename pointer low (open)</td></tr>
+<tr><td>Y</td><td>file handle (close) or filename pointer high (open)</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>handle on open, 0 on close-all, restored on close-one</td></tr>
+<tr><td>X</td><td>restored</td></tr>
+<tr><td>Y</td><td>restored</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -14858,20 +14786,14 @@
 <td colspan="3"><div class="sub-header">
 <h3>GBPBV handler (OSGBPB entry point)</h3>
 <div class="sub-desc"><p>A=1-4: file read/write operations (handle-based) A=5-8: info queries (disc title, current dir, lib, filenames) Calls 1-4 are standard file data transfers via the fileserver. Calls 5-8 were a late addition to the MOS spec and are the only NFS operations requiring Tube data transfer -- described in the original source as &#34;untidy but useful in theory.&#34; The data format uses length-prefixed strings (&lt;name length&gt;&lt;object name&gt;) rather than the CR-terminated strings used elsewhere in the FS.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>call number (1-8)</dd>
-<dt>X</dt><dd>parameter block address low byte</dd>
-<dt>Y</dt><dd>parameter block address high byte</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>0 after FS operation, else restored</dd>
-<dt>X</dt><dd>restored</dd>
-<dt>Y</dt><dd>restored</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="3">On Entry</th><td>A</td><td>call number (1-8)</td></tr>
+<tr><td>X</td><td>parameter block address low byte</td></tr>
+<tr><td>Y</td><td>parameter block address high byte</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>0 after FS operation, else restored</td></tr>
+<tr><td>X</td><td>restored</td></tr>
+<tr><td>Y</td><td>restored</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -20099,19 +20021,13 @@
 <td colspan="3"><div class="sub-header">
 <h3>OSWORD $0F handler: initiate transmit (CALLTX)</h3>
 <div class="sub-desc"><p>Checks the TX semaphore (TXCLR at $0D62) via ASL -- if carry is clear, a TX is already in progress and the call returns an error, preventing user code from corrupting a system transmit. Otherwise copies 16 bytes from the caller&#39;s OSWORD parameter block into the user TX control block (UTXCB) in static workspace. The TXCB pointer is copied to LTXCBP only after the semaphore is claimed, ensuring the low-level transmit code (BRIANX) sees a consistent pointer -- if copied before claiming, another transmitter could modify TXCBP between the copy and the claim.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>X</dt><dd>parameter block address low byte</dd>
-<dt>Y</dt><dd>parameter block address high byte</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>corrupted</dd>
-<dt>X</dt><dd>corrupted</dd>
-<dt>Y</dt><dd>$FF</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="2">On Entry</th><td>X</td><td>parameter block address low byte</td></tr>
+<tr><td>Y</td><td>parameter block address high byte</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>corrupted</td></tr>
+<tr><td>X</td><td>corrupted</td></tr>
+<tr><td>Y</td><td>$FF</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -21051,19 +20967,13 @@
 <td colspan="3"><div class="sub-header">
 <h3>OSWORD $10 handler: open/read RX control block (OPENRX)</h3>
 <div class="sub-desc"><p>If the first byte of the caller&#39;s parameter block is zero, scans for a free RXCB (flag byte = $3F = deleted) starting from RXCB #3 (RXCBs 0-2 are dedicated: printer, remote, FS). Returns the RXCB number in the first byte, or zero if none free. If the first byte is non-zero, reads the specified RXCB&#39;s data back into the caller&#39;s parameter block (12 bytes) and then deletes the RXCB by setting its flag byte to $3F -- a consume-once semantic so user code reads received data and frees the CB in a single atomic operation, preventing double-reads. The low-level user RX flag (LFLAG) is temporarily disabled via ROR/ROL during the operation to prevent the interrupt-driven receive code from modifying a CB that is being read or opened.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>X</dt><dd>parameter block address low byte</dd>
-<dt>Y</dt><dd>parameter block address high byte</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>corrupted</dd>
-<dt>X</dt><dd>corrupted</dd>
-<dt>Y</dt><dd>$FF</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="2">On Entry</th><td>X</td><td>parameter block address low byte</td></tr>
+<tr><td>Y</td><td>parameter block address high byte</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>corrupted</td></tr>
+<tr><td>X</td><td>corrupted</td></tr>
+<tr><td>Y</td><td>$FF</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -22476,18 +22386,12 @@
 <h3>NETVEC dispatch handler (ENTRY)</h3>
 <div class="sub-desc"><p>Indirected from NETVEC at $0224. Saves all registers and flags, retrieves the reason code from the stacked A, and dispatches to one of 9 handlers (codes 0-8) via the PHA/PHA/RTS trampoline at $9020. Reason codes &gt;= 9 are ignored.</p>
 <p>Dispatch targets (from NFS09): 0:   no-op (RTS) 1-3: PRINT -- chars in printer buffer / Ctrl-B / Ctrl-C 4:   NWRCH -- write character to screen (net write char) 5:   SELECT -- printer selection changed 6:   no-op (net read char -- not implemented) 7:   NBYTE -- remote OSBYTE call 8:   NWORD -- remote OSWORD call</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>A</dt><dd>reason code (0-8)</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>preserved</dd>
-<dt>X</dt><dd>preserved</dd>
-<dt>Y</dt><dd>preserved</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="1">On Entry</th><td>A</td><td>reason code (0-8)</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>preserved</td></tr>
+<tr><td>X</td><td>preserved</td></tr>
+<tr><td>Y</td><td>preserved</td></tr>
+</table></div>
 </div></td>
 </tr>
 
@@ -22889,18 +22793,12 @@
 <td colspan="3"><div class="sub-header">
 <h3>Fn 4: net write character (NWRCH)</h3>
 <div class="sub-desc"><p>Writes a character (passed in Y) to the screen via OSWRITCH. Before the write, uses TSX to reach into the stack and zero the carry flag in the caller&#39;s saved processor status byte -- ROR followed by ASL on the stacked P byte ($0106,X) shifts carry out and back in as zero. This ensures the calling code&#39;s PLP restores carry=0, signalling &#34;character accepted&#34; without needing a separate CLC/PHP sequence. A classic 6502 trick for modifying return flags without touching the actual processor status.</p></div>
-<div class="sub-registers">
-<h4>On Entry</h4>
-<dl>
-<dt>Y</dt><dd>character to write</dd>
-</dl>
-<h4>On Exit</h4>
-<dl>
-<dt>A</dt><dd>$3F</dd>
-<dt>X</dt><dd>0</dd>
-<dt>Y</dt><dd>0</dd>
-</dl>
-</div>
+<div class="sub-registers"><table>
+<tr><th rowspan="1">On Entry</th><td>Y</td><td>character to write</td></tr>
+<tr><th rowspan="3">On Exit</th><td>A</td><td>$3F</td></tr>
+<tr><td>X</td><td>0</td></tr>
+<tr><td>Y</td><td>0</td></tr>
+</table></div>
 </div></td>
 </tr>
 

@@ -510,35 +510,33 @@ hr {
 }
 
 .sub-registers {
-    display: flex;
-    gap: 2rem;
-    flex-wrap: wrap;
     margin-top: 0.5rem;
+    font-size: 0.75rem;
 }
 
-.sub-registers h4 {
+.sub-registers table {
+    border-collapse: collapse;
+}
+
+.sub-registers th {
     font-family: 'Bedstead', monospace;
     font-size: 0.85rem;
-    margin: 0 0 0.25rem 0;
+    font-weight: normal;
     color: var(--dim);
+    text-align: left;
+    vertical-align: top;
+    padding: 0 0.75rem 0 0;
 }
 
-.sub-registers dl {
-    margin: 0;
-    font-size: 0.75rem;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.1rem 0.75rem;
-}
-
-.sub-registers dt {
+.sub-registers td:first-of-type {
     font-family: 'IBM Plex Mono', monospace;
     font-weight: bold;
     color: var(--blue);
+    padding-right: 0.75rem;
+    white-space: nowrap;
 }
 
-.sub-registers dd {
-    margin: 0;
+.sub-registers td:last-of-type {
     color: var(--dim);
 }
 

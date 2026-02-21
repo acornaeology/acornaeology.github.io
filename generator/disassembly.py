@@ -242,12 +242,12 @@ def _render_subroutine_header(sub):
     entry = sub.get("on_entry", {})
     exit_ = sub.get("on_exit", {})
     if entry or exit_:
-        parts.append('<div class="sub-registers">')
+        parts.append('<div class="sub-registers"><table>')
         if entry:
-            parts.append(_render_register_table("On Entry", entry))
+            parts.append(_render_register_rows("On Entry", entry))
         if exit_:
-            parts.append(_render_register_table("On Exit", exit_))
-        parts.append("</div>")
+            parts.append(_render_register_rows("On Exit", exit_))
+        parts.append("</table></div>")
 
     parts.append("</div>")
     return Markup("\n".join(parts))
@@ -286,16 +286,21 @@ def _render_plaintext(text):
     return Markup("\n".join(parts))
 
 
-def _render_register_table(heading, regs):
-    """Render a register table (on_entry or on_exit) as a definition list."""
-    parts = [f"<h4>{escape(heading)}</h4>", "<dl>"]
-    for reg, desc in regs.items():
-        parts.append(
-            f"<dt>{escape(reg.upper())}</dt>"
-            f"<dd>{escape(desc)}</dd>"
+def _render_register_rows(heading, regs):
+    """Render register rows with the heading in the first column."""
+    rows = []
+    for i, (reg, desc) in enumerate(regs.items()):
+        if i == 0:
+            th = (f'<th rowspan="{len(regs)}">'
+                  f'{escape(heading)}</th>')
+        else:
+            th = ""
+        rows.append(
+            f"<tr>{th}"
+            f"<td>{escape(reg.upper())}</td>"
+            f"<td>{escape(desc)}</td></tr>"
         )
-    parts.append("</dl>")
-    return "\n".join(parts)
+    return "\n".join(rows)
 
 
 def _render_content(item, valid_addrs):
