@@ -12,7 +12,6 @@ def process_disassembly(data):
         id   - HTML id attribute (str or None)
         addr - address display string (str or None)
         html - pre-rendered content (Markup)
-        hex  - hex byte display (str or None)
         banner - True if this is a full-width subroutine header (optional)
     """
     sub_lookup = {}
@@ -53,7 +52,6 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
             "id": addr_id,
             "addr": None,
             "html": _render_subroutine_header(sub),
-            "hex": None,
             "banner": True,
         })
         id_used = True
@@ -81,21 +79,18 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
             "addr": addr_display if not addr_shown else None,
             "addr_id": addr_id,
             "html": label_html,
-            "hex": None,
         })
         id_used = True
         addr_shown = True
 
     # Main content line — store inline comment separately for alignment
     content_html = _render_content(item, valid_addrs)
-    hex_str = " ".join(f"{b:02X}" for b in item["bytes"])
 
     lines.append({
         "id": addr_id if not id_used else None,
         "addr": addr_display if not addr_shown else None,
         "addr_id": addr_id,
         "html": content_html,
-        "hex": hex_str,
         "_inline_comment": item.get("comment_inline"),
     })
 
@@ -179,11 +174,11 @@ def _append_comment_lines(lines, comment_text):
             )
         else:
             html = Markup("")
-        lines.append({"id": None, "addr": None, "html": html, "hex": None})
+        lines.append({"id": None, "addr": None, "html": html})
 
 
 def _empty_line():
-    return {"id": None, "addr": None, "html": Markup(""), "hex": None}
+    return {"id": None, "addr": None, "html": Markup("")}
 
 
 def _render_ref_popup(references, item_by_addr):

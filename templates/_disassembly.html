@@ -39,13 +39,12 @@
 {% for line in lines %}
 {% if line.banner %}
 <tr{% if line.id %} id="{{ line.id }}"{% endif %}>
-<td colspan="3">{{ line.html }}</td>
+<td colspan="2">{{ line.html }}</td>
 </tr>
 {% else %}
 <tr{% if line.id %} id="{{ line.id }}"{% endif %}>
 <td class="addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
 <td>{{ line.html }}</td>
-<td class="hex">{% if line.hex %}{{ line.hex }}{% endif %}</td>
 </tr>
 {% endif %}
 {% endfor %}

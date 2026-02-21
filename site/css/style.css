@@ -506,14 +506,6 @@ hr {
     display: block;
 }
 
-.listing .hex {
-    color: var(--dim);
-    user-select: none;
-    padding-left: 2em;
-    white-space: nowrap;
-    vertical-align: top;
-}
-
 /* --- Subroutine headers --- */
 
 .sub-header {
