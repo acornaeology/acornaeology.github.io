@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static site builder for acornaeology.uk"""
 
+import bisect
 import json
 import re
 import shutil
@@ -155,6 +156,7 @@ def build_disassemblies(env, sources):
         print(f"  {slug}/index.html")
 
         # Build per-version disassembly pages
+        version_anchors = {}  # version_id -> sorted list of anchor addresses
         for version_id in source["versions"]:
             version_dirpath = repo_dirpath / "versions" / version_id
 
@@ -166,6 +168,14 @@ def build_disassemblies(env, sources):
                 continue
             data_filepath = json_files[0]
             data = json.loads(data_filepath.read_text())
+
+            # Collect valid anchor addresses for this version
+            anchors = set()
+            for item in data["items"]:
+                anchors.add(item["addr"])
+                if "binary_addr" in item:
+                    anchors.add(item["binary_addr"])
+            version_anchors[version_id] = sorted(anchors)
 
             # Read version metadata
             rom_json_filepath = version_dirpath / "rom" / "rom.json"
@@ -213,7 +223,7 @@ def build_disassemblies(env, sources):
 
             # Build doc pages for this version
             _render_doc_pages(env, source, version_id, version_dirpath,
-                              rom_meta, output_dirpath)
+                              rom_meta, output_dirpath, version_anchors)
 
 
 def _doc_output_filename(version_id, doc_path):
@@ -222,12 +232,29 @@ def _doc_output_filename(version_id, doc_path):
     return f"{version_id}-{stem}.html"
 
 
-def _apply_address_links(md_text, address_links):
+def _resolve_anchor(address, anchors):
+    """Find the nearest preceding valid anchor for an address.
+
+    If the exact address has an anchor, return it unchanged. Otherwise
+    return the largest anchor address that precedes it.
+    """
+    pos = bisect.bisect_left(anchors, address)
+    if pos < len(anchors) and anchors[pos] == address:
+        return address
+    if pos > 0:
+        return anchors[pos - 1]
+    return address
+
+
+def _apply_address_links(md_text, address_links, version_anchors=None):
     """Insert Markdown links for address references before HTML conversion.
 
     Each entry in address_links specifies a pattern to match, which
     occurrence to link, and the target version/address for the anchor.
     Replacements are applied end-to-start so positions don't shift.
+
+    If version_anchors is provided, addresses that don't have a direct
+    anchor are resolved to the nearest preceding anchor address.
     """
     replacements = []
 
@@ -237,7 +264,11 @@ def _apply_address_links(md_text, address_links):
         version = link_spec["version"]
         address = int(link_spec["address"], 0)
 
-        url = f"{version}.html#addr-{address:04X}"
+        anchor_addr = address
+        if version_anchors and version in version_anchors:
+            anchor_addr = _resolve_anchor(address, version_anchors[version])
+
+        url = f"{version}.html#addr-{anchor_addr:04X}"
 
         matches = list(re.finditer(pattern, md_text))
         if not matches:
@@ -262,7 +293,7 @@ def _apply_address_links(md_text, address_links):
 
 
 def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
-                      output_dirpath):
+                      output_dirpath, version_anchors=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
     name = source["name"]
@@ -277,7 +308,8 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
 
         address_links = doc.get("address_links", [])
         if address_links:
-            md_text = _apply_address_links(md_text, address_links)
+            md_text = _apply_address_links(md_text, address_links,
+                                           version_anchors)
 
         converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
         content_html = converter.convert(md_text)
