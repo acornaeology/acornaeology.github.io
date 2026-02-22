@@ -69,4 +69,60 @@
 {% endfor %}
 </div>
 </div>
+<script>
+(function () {
+    var linkIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M6.75 9.25a3.25 3.25 0 0 0 4.596.443l1.904-1.904a3.25 3.25 0 0 0-4.596-4.596L7.5 4.347"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M9.25 6.75a3.25 3.25 0 0 0-4.596-.443L2.75 8.211a3.25 3.25 0 0 0 4.596 4.596L8.5 11.653"/></svg>';
+    var checkIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5 6.5 12 13 4"/></svg>';
+
+    var btn = document.createElement("button");
+    btn.className = "copy-link";
+    btn.title = "Copy permalink";
+    btn.innerHTML = linkIcon;
+
+    var currentTd = null;
+    var hideTimer = null;
+
+    var listing = document.querySelector(".listing");
+    if (!listing) return;
+
+    listing.addEventListener("mouseover", function (e) {
+        var a = e.target.closest("td.addr a, td.runtime-addr a");
+        if (!a) return;
+        var td = a.closest("td");
+        if (td === currentTd) return;
+        clearTimeout(hideTimer);
+        currentTd = td;
+        btn.innerHTML = linkIcon;
+        td.appendChild(btn);
+    });
+
+    listing.addEventListener("mouseout", function (e) {
+        var td = e.target.closest("td.addr, td.runtime-addr");
+        if (!td) return;
+        var related = e.relatedTarget;
+        if (related && td.contains(related)) return;
+        hideTimer = setTimeout(function () {
+            if (btn.parentNode) btn.parentNode.removeChild(btn);
+            currentTd = null;
+        }, 100);
+    });
+
+    btn.addEventListener("mouseenter", function () {
+        clearTimeout(hideTimer);
+    });
+
+    btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var td = btn.closest("td");
+        var a = td && td.querySelector("a[href^='#']");
+        if (!a) return;
+        var url = location.origin + location.pathname + a.getAttribute("href");
+        navigator.clipboard.writeText(url).then(function () {
+            btn.innerHTML = checkIcon;
+            setTimeout(function () { btn.innerHTML = linkIcon; }, 1500);
+        });
+    });
+})();
+</script>
 {% endblock %}
