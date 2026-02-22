@@ -6,6 +6,7 @@ import re
 from markupsafe import Markup, escape
 
 CONTENT_MAX_WIDTH = 64
+RELOCATED_MAX_WIDTH = 58
 
 
 def process_disassembly(data):
@@ -28,15 +29,25 @@ def process_disassembly(data):
     item_by_addr = {item["addr"]: item for item in data["items"]}
     valid_addrs = set(item_by_addr)
 
+    # Pre-scan to find which subroutine sections contain relocated code
+    relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
+
     lines = []
+    in_relocated = False
     for item in data["items"]:
-        lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs))
+        sub = sub_lookup.get(item["addr"])
+        if sub and sub.get("title"):
+            in_relocated = item["addr"] in relocated_sections
+        max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
+        lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
+                                   max_width))
 
     _align_inline_comments(lines)
     return _split_into_sections(lines)
 
 
-def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
+def _process_item(item, sub_lookup, item_by_addr, valid_addrs,
+                  max_width=CONTENT_MAX_WIDTH):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
@@ -75,13 +86,13 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
         # Render any comments that aren't part of the banner block
         non_banner = [c for c in comments if not _is_banner_content(c, sub)]
         for comment_text in non_banner:
-            _append_comment_lines(lines, comment_text)
+            _append_comment_lines(lines, comment_text, max_width)
     else:
         # Normal comment rendering
         if comments:
             lines.append(_empty_line())
         for comment_text in comments:
-            _append_comment_lines(lines, comment_text)
+            _append_comment_lines(lines, comment_text, max_width)
 
     # Label lines
     references = item.get("references", [])
@@ -102,7 +113,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
         addr_shown = True
 
     # Main content line — store inline comment separately for alignment
-    content_html = _render_content(item, valid_addrs)
+    content_html = _render_content(item, valid_addrs, max_width)
 
     lines.append({
         "id": addr_id if not id_used else None,
@@ -112,11 +123,12 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
         "binary_addr_id": binary_addr_id,
         "html": content_html,
         "_inline_comment": item.get("comment_inline"),
+        "_max_width": max_width,
     })
 
     # Comments after (rare)
     for comment_text in item.get("comments_after", []):
-        _append_comment_lines(lines, comment_text)
+        _append_comment_lines(lines, comment_text, max_width)
 
     return lines
 
@@ -158,14 +170,15 @@ def _find_break_position(word, budget):
     return min(budget, len(word))
 
 
-def _wrap_text(text, first_line_budget, continuation_indent):
+def _wrap_text(text, first_line_budget, continuation_indent,
+               max_width=CONTENT_MAX_WIDTH):
     """Wrap plain text at word boundaries, returning a list of strings.
 
     Words longer than the budget are broken at preferred positions."""
     words = text.split(" ")
     result_lines = []
     current = ""
-    continuation_budget = CONTENT_MAX_WIDTH - continuation_indent
+    continuation_budget = max_width - continuation_indent
 
     for word in words:
         budget = first_line_budget if not result_lines else continuation_budget
@@ -193,8 +206,9 @@ def _wrap_text(text, first_line_budget, continuation_indent):
     return result_lines or [""]
 
 
-def _group_values(parts, prefix_width, value_width):
-    """Group data values into lines that fit within CONTENT_MAX_WIDTH.
+def _group_values(parts, prefix_width, value_width,
+                  max_width=CONTENT_MAX_WIDTH):
+    """Group data values into lines that fit within max_width.
 
     Returns a list of lists (groups of parts per line)."""
     line_groups = []
@@ -203,7 +217,7 @@ def _group_values(parts, prefix_width, value_width):
 
     for part in parts:
         needed = (2 if current_group else 0) + value_width
-        if current_width + needed > CONTENT_MAX_WIDTH and current_group:
+        if current_width + needed > max_width and current_group:
             line_groups.append(current_group)
             current_group = [part]
             current_width = prefix_width + value_width
@@ -235,19 +249,21 @@ def _align_inline_comments(lines):
         # Merge comments with padding, wrapping if needed
         for i, line in commented:
             comment = line.pop("_inline_comment")
+            line_max = line.get("_max_width", CONTENT_MAX_WIDTH)
             code_width = _visible_width(line["html"])
             padding = " " * (max_width - code_width + 2)
             comment_col = max_width + 2 + 2  # padding + "; "
             total_width = comment_col + len(comment)
 
-            if total_width <= CONTENT_MAX_WIDTH:
+            if total_width <= line_max:
                 line["html"] = line["html"] + Markup(
                     f'{padding}<span class="comment">'
                     f'; {escape(comment)}</span>'
                 )
             else:
-                first_budget = CONTENT_MAX_WIDTH - comment_col
-                wrapped = _wrap_text(comment, first_budget, comment_col)
+                first_budget = line_max - comment_col
+                wrapped = _wrap_text(comment, first_budget, comment_col,
+                                     line_max)
                 indent_str = " " * comment_col
                 parts = [str(escape(wrapped[0]))]
                 for cont in wrapped[1:]:
@@ -258,9 +274,10 @@ def _align_inline_comments(lines):
                     f'; {comment_html}</span>'
                 )
 
-    # Clean up: remove _inline_comment from any remaining lines
+    # Clean up: remove internal keys from line dicts
     for line in lines:
         line.pop("_inline_comment", None)
+        line.pop("_max_width", None)
 
 
 def _split_into_blocks(lines):
@@ -314,12 +331,35 @@ def _split_into_sections(lines):
     return sections
 
 
+def _find_relocated_sections(items, sub_lookup):
+    """Return the set of subroutine start addresses whose sections contain
+    any relocated items (items with binary_addr)."""
+    relocated = set()
+    current_start = None
+    has_binary = False
+
+    for item in items:
+        sub = sub_lookup.get(item["addr"])
+        if sub and sub.get("title"):
+            if has_binary and current_start is not None:
+                relocated.add(current_start)
+            current_start = item["addr"]
+            has_binary = False
+        if "binary_addr" in item:
+            has_binary = True
+
+    if has_binary and current_start is not None:
+        relocated.add(current_start)
+
+    return relocated
+
+
 def _make_section(lines):
     has_binary_addr = any(line.get("binary_addr") for line in lines)
     return {"lines": lines, "has_binary_addr": has_binary_addr}
 
 
-def _append_comment_lines(lines, comment_text):
+def _append_comment_lines(lines, comment_text, max_width=CONTENT_MAX_WIDTH):
     comment_prefix_width = 2  # "; "
     for line_text in str(comment_text).split("\n"):
         if not line_text.strip():
@@ -335,14 +375,15 @@ def _append_comment_lines(lines, comment_text):
             continue
 
         total_width = comment_prefix_width + len(line_text)
-        if total_width <= CONTENT_MAX_WIDTH:
+        if total_width <= max_width:
             html = Markup(
                 f'<span class="comment">; {escape(line_text)}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
         else:
-            budget = CONTENT_MAX_WIDTH - comment_prefix_width
-            wrapped = _wrap_text(line_text, budget, comment_prefix_width)
+            budget = max_width - comment_prefix_width
+            wrapped = _wrap_text(line_text, budget, comment_prefix_width,
+                                 max_width)
             parts = [str(escape(wrapped[0]))]
             for cont in wrapped[1:]:
                 parts.append(f"\n; {escape(cont)}")
@@ -478,14 +519,14 @@ def _render_register_rows(heading, regs):
     return "\n".join(rows)
 
 
-def _render_content(item, valid_addrs):
+def _render_content(item, valid_addrs, max_width=CONTENT_MAX_WIDTH):
     t = item["type"]
     if t == "code":
         return _render_code(item, valid_addrs)
     if t == "byte":
-        return _render_bytes(item)
+        return _render_bytes(item, max_width)
     if t == "word":
-        return _render_words(item)
+        return _render_words(item, max_width)
     if t == "string":
         return _render_string(item)
     return Markup("")
@@ -558,7 +599,7 @@ def _immediate_tooltip(value):
     return "  ".join(parts)
 
 
-def _render_bytes(item):
+def _render_bytes(item, max_width=CONTENT_MAX_WIDTH):
     values = item.get("values", [])
     parts = []
     for v in values:
@@ -568,19 +609,19 @@ def _render_bytes(item):
         )
     prefix_html = '    <span class="directive">EQUB</span> '
     prefix_width = 9  # visible "    EQUB "
-    line_groups = _group_values(parts, prefix_width, 3)
+    line_groups = _group_values(parts, prefix_width, 3, max_width)
     indent = " " * prefix_width
     joined_groups = [", ".join(group) for group in line_groups]
     all_html = (",\n" + indent).join(joined_groups)
     return Markup(prefix_html + all_html)
 
 
-def _render_words(item):
+def _render_words(item, max_width=CONTENT_MAX_WIDTH):
     values = item.get("values", [])
     escaped_parts = [str(escape(f"&{v:04X}")) for v in values]
     prefix_html = '    <span class="directive">EQUW</span> '
     prefix_width = 9  # visible "    EQUW "
-    line_groups = _group_values(escaped_parts, prefix_width, 5)
+    line_groups = _group_values(escaped_parts, prefix_width, 5, max_width)
     indent = " " * prefix_width
     joined_groups = [", ".join(group) for group in line_groups]
     all_html = (",\n" + indent).join(joined_groups)
