@@ -79,6 +79,12 @@
     btn.title = "Copy permalink";
     btn.innerHTML = linkIcon;
 
+    var toast = document.createElement("div");
+    toast.className = "copy-toast";
+    toast.textContent = "Link copied";
+    document.body.appendChild(toast);
+    var toastTimer = null;
+
     var currentTd = null;
     var hideTimer = null;
 
@@ -121,6 +127,11 @@
         navigator.clipboard.writeText(url).then(function () {
             btn.innerHTML = checkIcon;
             setTimeout(function () { btn.innerHTML = linkIcon; }, 1500);
+            clearTimeout(toastTimer);
+            toast.classList.add("visible");
+            toastTimer = setTimeout(function () {
+                toast.classList.remove("visible");
+            }, 1500);
         });
     });
 })();

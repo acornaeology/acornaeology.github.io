@@ -512,6 +512,29 @@ hr {
     display: block;
 }
 
+.copy-toast {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5em 1.2em;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--sidebar-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.copy-toast.visible {
+    opacity: 1;
+}
+
 .listing .label {
     color: var(--cyan);
     position: relative;
