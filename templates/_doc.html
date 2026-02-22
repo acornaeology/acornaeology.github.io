@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — acornaeology{% endblock %}
+{% block description %}{{ title }}.{% endblock %}
+{% block og_url %}https://acornaeology.uk/{{ slug }}/{{ doc_filename }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p class="doc-back"><a href="{{ disassembly_url }}">&larr; {{ disassembly_title }} disassembly</a></p>
+
+<article class="doc-content">
+{{ content }}
+</article>
+{% endblock %}

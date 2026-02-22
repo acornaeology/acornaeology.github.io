@@ -9,9 +9,13 @@ CONTENT_MAX_WIDTH = 64
 
 
 def process_disassembly(data):
-    """Process structured JSON into a list of template-ready lines.
+    """Process structured JSON into sections of template-ready lines.
 
-    Each line is a dict with:
+    Returns a list of section dicts, each with:
+        lines           - list of line dicts
+        has_binary_addr - True if any line has a ROM source address
+
+    Each line dict has:
         id   - HTML id attribute (str or None)
         addr - address display string (str or None)
         html - pre-rendered content (Markup)
@@ -29,7 +33,7 @@ def process_disassembly(data):
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs))
 
     _align_inline_comments(lines)
-    return lines
+    return _split_into_sections(lines)
 
 
 def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
@@ -39,6 +43,15 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
     addr_display = f"{addr:04X}"
     id_used = False
     addr_shown = False
+
+    # ROM source address for relocated code
+    binary_addr_raw = item.get("binary_addr")
+    if binary_addr_raw is not None:
+        binary_addr_id = f"addr-{binary_addr_raw:04X}"
+        binary_addr_display = f"{binary_addr_raw:04X}"
+    else:
+        binary_addr_id = None
+        binary_addr_display = None
 
     sub = sub_lookup.get(addr)
 
@@ -81,6 +94,8 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
             "id": addr_id if not id_used else None,
             "addr": addr_display if not addr_shown else None,
             "addr_id": addr_id,
+            "binary_addr": binary_addr_display if not addr_shown else None,
+            "binary_addr_id": binary_addr_id,
             "html": label_html,
         })
         id_used = True
@@ -93,6 +108,8 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs):
         "id": addr_id if not id_used else None,
         "addr": addr_display if not addr_shown else None,
         "addr_id": addr_id,
+        "binary_addr": binary_addr_display if not addr_shown else None,
+        "binary_addr_id": binary_addr_id,
         "html": content_html,
         "_inline_comment": item.get("comment_inline"),
     })
@@ -270,6 +287,36 @@ def _split_into_blocks(lines):
         blocks.append(current)
 
     return blocks
+
+
+def _split_into_sections(lines):
+    """Split lines into sections at subroutine banners.
+
+    Each section is a dict with:
+        lines           - the line dicts in this section
+        has_binary_addr - whether any line has a ROM source address
+
+    This allows each section to be rendered as a separate table, so the
+    extra ROM address column only appears in relocated code sections.
+    """
+    sections = []
+    current_lines = []
+
+    for line in lines:
+        if line.get("banner") and current_lines:
+            sections.append(_make_section(current_lines))
+            current_lines = []
+        current_lines.append(line)
+
+    if current_lines:
+        sections.append(_make_section(current_lines))
+
+    return sections
+
+
+def _make_section(lines):
+    has_binary_addr = any(line.get("binary_addr") for line in lines)
+    return {"lines": lines, "has_binary_addr": has_binary_addr}
 
 
 def _append_comment_lines(lines, comment_text):

@@ -437,11 +437,12 @@ hr {
 }
 
 .listing .addr {
+    width: 4ch;
     color: var(--faint);
     user-select: none;
     padding-right: 1.5em;
     white-space: nowrap;
-    text-align: right;
+    text-align: left;
     vertical-align: top;
 }
 
@@ -451,6 +452,35 @@ hr {
 }
 
 .listing .addr a:hover {
+    color: var(--dim);
+}
+
+.listing .addr-header th {
+    color: var(--dim);
+    font-size: 0.75em;
+    font-weight: normal;
+    text-align: left;
+    padding-right: 1.5em;
+    padding-bottom: 0.3em;
+    user-select: none;
+}
+
+.listing .runtime-addr {
+    width: 4ch;
+    color: var(--faint);
+    user-select: none;
+    padding-right: 1.5em;
+    white-space: nowrap;
+    text-align: left;
+    vertical-align: top;
+}
+
+.listing .runtime-addr a {
+    color: var(--faint);
+    text-decoration: none;
+}
+
+.listing .runtime-addr a:hover {
     color: var(--dim);
 }
 
@@ -695,4 +725,92 @@ hr {
 .rom-list .version {
     color: var(--dim);
     font-size: 0.9rem;
+}
+
+/* --- Doc pages --- */
+
+.doc-back {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.doc-back a {
+    color: var(--dim);
+}
+
+.doc-back a:hover {
+    color: var(--link);
+}
+
+.doc-content {
+    line-height: 1.7;
+}
+
+.doc-content h1 {
+    display: none;
+}
+
+.doc-content h2 {
+    margin-top: 2rem;
+}
+
+.doc-content h3 {
+    margin-top: 1.5rem;
+}
+
+.doc-content table {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.doc-content th,
+.doc-content td {
+    border: 1px solid var(--rule);
+    padding: 0.4em 0.8em;
+    text-align: left;
+}
+
+.doc-content th {
+    background-color: var(--sidebar-bg);
+    font-weight: bold;
+}
+
+.doc-content code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85em;
+    padding: 0.15em 0.3em;
+    background-color: var(--sidebar-bg);
+    border-radius: 3px;
+}
+
+.doc-content pre {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding: 1em;
+    background-color: var(--sidebar-bg);
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.doc-content pre code {
+    padding: 0;
+    background: none;
+}
+
+.doc-content ul,
+.doc-content ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+.doc-content li {
+    margin-bottom: 0.3em;
+}
+
+.doc-link {
+    font-size: 0.85rem;
+    color: var(--dim);
 }

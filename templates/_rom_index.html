@@ -13,6 +13,9 @@
 {% for version in versions %}
 <li>
     <a href="{{ version.id }}.html">{{ version.title }}</a>
+    {% for doc in version.docs %}
+    <br><a href="{{ doc.url }}" class="doc-link">{{ doc.label }}</a>
+    {% endfor %}
 </li>
 {% endfor %}
 </ul>

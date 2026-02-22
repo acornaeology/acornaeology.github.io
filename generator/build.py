@@ -2,11 +2,14 @@
 """Static site builder for acornaeology.uk"""
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
+import markdown as markdown_lib
 from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
 
 from .disassembly import process_disassembly
 
@@ -127,9 +130,17 @@ def build_disassemblies(env, sources):
             if rom_json_filepath.exists():
                 rom_meta = json.loads(rom_json_filepath.read_text())
                 title = rom_meta.get("title", f"{name} {version_id}")
+                docs = [
+                    {
+                        "label": doc["label"],
+                        "url": _doc_output_filename(version_id, doc["path"]),
+                    }
+                    for doc in rom_meta.get("docs", [])
+                ]
             else:
                 title = f"{name} {version_id}"
-            versions.append({"id": version_id, "title": title})
+                docs = []
+            versions.append({"id": version_id, "title": title, "docs": docs})
 
         # Build per-ROM index page
         html = rom_index_template.render(
@@ -174,7 +185,15 @@ def build_disassemblies(env, sources):
             }
             links.insert(0, github_link)
 
-            lines = process_disassembly(data)
+            # Append doc links
+            for doc in rom_meta.get("docs", []):
+                links.append({
+                    "label": doc["label"],
+                    "url": _doc_output_filename(version_id, doc["path"]),
+                    "icon": "doc",
+                })
+
+            sections = process_disassembly(data)
 
             html = disassembly_template.render(
                 root="../",
@@ -183,13 +202,101 @@ def build_disassemblies(env, sources):
                 title=title,
                 description=description,
                 links=links,
-                lines=lines,
+                sections=sections,
                 subroutines=_filter_subroutines(data),
             )
 
             version_filepath = output_dirpath / f"{version_id}.html"
             version_filepath.write_text(html)
             print(f"  {slug}/{version_id}.html")
+
+            # Build doc pages for this version
+            _render_doc_pages(env, source, version_id, version_dirpath,
+                              rom_meta, output_dirpath)
+
+
+def _doc_output_filename(version_id, doc_path):
+    """Derive the output HTML filename for a doc entry."""
+    stem = Path(doc_path).stem.lower()
+    return f"{version_id}-{stem}.html"
+
+
+def _apply_address_links(md_text, address_links):
+    """Insert Markdown links for address references before HTML conversion.
+
+    Each entry in address_links specifies a pattern to match, which
+    occurrence to link, and the target version/address for the anchor.
+    Replacements are applied end-to-start so positions don't shift.
+    """
+    replacements = []
+
+    for link_spec in address_links:
+        pattern = link_spec["pattern"]
+        occurrence = link_spec["occurrence"]
+        version = link_spec["version"]
+        address = int(link_spec["address"], 0)
+
+        url = f"{version}.html#addr-{address:04X}"
+
+        matches = list(re.finditer(pattern, md_text))
+        if not matches:
+            print(f"  Warning: pattern '{pattern}' not found in doc")
+            continue
+
+        idx = occurrence if occurrence >= 0 else len(matches) + occurrence
+        if idx < 0 or idx >= len(matches):
+            print(f"  Warning: occurrence {occurrence} out of range "
+                  f"for pattern '{pattern}'")
+            continue
+
+        match = matches[idx]
+        replacement = f"[{match.group(0)}]({url})"
+        replacements.append((match.start(), match.end(), replacement))
+
+    replacements.sort(key=lambda r: r[0], reverse=True)
+    for start, end, replacement in replacements:
+        md_text = md_text[:start] + replacement + md_text[end:]
+
+    return md_text
+
+
+def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
+                      output_dirpath):
+    """Build document pages declared in rom.json for this version."""
+    doc_template = env.get_template("_doc.html")
+    name = source["name"]
+
+    for doc in rom_meta.get("docs", []):
+        md_filepath = version_dirpath / doc["path"]
+        if not md_filepath.exists():
+            print(f"  Warning: doc file {md_filepath} not found, skipping")
+            continue
+
+        md_text = md_filepath.read_text()
+
+        address_links = doc.get("address_links", [])
+        if address_links:
+            md_text = _apply_address_links(md_text, address_links)
+
+        converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
+        content_html = converter.convert(md_text)
+
+        doc_filename = _doc_output_filename(version_id, doc["path"])
+        html = doc_template.render(
+            root="../",
+            slug=source["slug"],
+            doc_filename=doc_filename,
+            version_id=version_id,
+            title=doc["label"],
+            description=source["description"],
+            content=Markup(content_html),
+            disassembly_url=f"{version_id}.html",
+            disassembly_title=rom_meta.get("title", f"{name} {version_id}"),
+        )
+
+        output_filepath = output_dirpath / doc_filename
+        output_filepath.write_text(html)
+        print(f"  {source['slug']}/{doc_filename}")
 
 
 def _filter_subroutines(data):
