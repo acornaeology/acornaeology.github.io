@@ -51,8 +51,13 @@
 {% else %}
 <tr{% if line.id %} id="{{ line.id }}"{% endif %}>
 {% if section.has_binary_addr %}
+{% if line.binary_addr %}
 <td class="addr">{% if line.binary_addr %}<span id="{{ line.binary_addr_id }}"></span><a href="#{{ line.binary_addr_id }}">{{ line.binary_addr }}</a>{% endif %}</td>
 <td class="addr runtime-addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
+{% else %}
+<td class="addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
+<td class="addr runtime-addr"></td>
+{% endif %}
 {% else %}
 <td class="addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
 {% endif %}
