@@ -707,38 +707,46 @@ hr {
     }
 }
 
-/* --- Index cards --- */
+/* --- Version table --- */
 
-.rom-list {
-    list-style: none;
-    padding: 0;
+.version-table {
+    border-collapse: collapse;
+    margin: 1rem 0;
 }
 
-.rom-list li {
-    margin-bottom: 1rem;
-}
-
-.rom-list a {
-    font-size: 1.1rem;
-}
-
-.rom-list .version {
+.version-table th {
+    text-align: left;
+    padding: 0.4em 1.5em 0.4em 0;
+    border-bottom: 2px solid var(--rule);
+    font-size: 0.85rem;
     color: var(--dim);
+}
+
+.version-table td {
+    padding: 0.5em 1.5em 0.5em 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+}
+
+.version-table td:last-child {
     font-size: 0.9rem;
 }
 
 /* --- Doc pages --- */
 
-.doc-back {
+.doc-back,
+.version-back {
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
 }
 
-.doc-back a {
+.doc-back a,
+.version-back a {
     color: var(--dim);
 }
 
-.doc-back a:hover {
+.doc-back a:hover,
+.version-back a:hover {
     color: var(--link);
 }
 
@@ -810,7 +818,3 @@ hr {
     margin-bottom: 0.3em;
 }
 
-.doc-link {
-    font-size: 0.85rem;
-    color: var(--dim);
-}

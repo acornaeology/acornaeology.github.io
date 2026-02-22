@@ -198,6 +198,7 @@ def build_disassemblies(env, sources):
             html = disassembly_template.render(
                 root="../",
                 slug=slug,
+                name=name,
                 version_id=version_id,
                 title=title,
                 description=description,

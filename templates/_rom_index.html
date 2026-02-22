@@ -9,14 +9,17 @@
 {% if description %}<p>{{ description }}</p>{% endif %}
 
 <h2>Annotated Disassemblies</h2>
-<ul class="rom-list">
+<table class="version-table">
+<thead>
+<tr><th>Version</th><th>Documents</th></tr>
+</thead>
+<tbody>
 {% for version in versions %}
-<li>
-    <a href="{{ version.id }}.html">{{ version.title }}</a>
-    {% for doc in version.docs %}
-    <br><a href="{{ doc.url }}" class="doc-link">{{ doc.label }}</a>
-    {% endfor %}
-</li>
+<tr>
+<td><a href="{{ version.id }}.html">{{ version.title }}</a></td>
+<td>{% for doc in version.docs %}<a href="{{ doc.url }}">{{ doc.label }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+</tr>
 {% endfor %}
-</ul>
+</tbody>
+</table>
 {% endblock %}
