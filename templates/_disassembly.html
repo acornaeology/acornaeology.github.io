@@ -136,4 +136,17 @@
     });
 })();
 </script>
+<button class="back-to-top" aria-label="Back to top"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 10 8 5 13 10"/></svg></button>
+<script>
+(function () {
+    var btn = document.querySelector(".back-to-top");
+    if (!btn) return;
+    window.addEventListener("scroll", function () {
+        btn.classList.toggle("visible", window.scrollY > window.innerHeight);
+    }, {passive: true});
+    btn.addEventListener("click", function () {
+        window.scrollTo({top: 0, behavior: "smooth"});
+    });
+})();
+</script>
 {% endblock %}
