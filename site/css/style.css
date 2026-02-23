@@ -1043,3 +1043,23 @@ hr {
     display: block;
 }
 
+/* 404 page — Mode 7 screen */
+
+.mode7-screen {
+    background: #000;
+    color: #fff;
+    font-family: 'Bedstead', monospace;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    width: 40ch;
+    min-height: 16lh;
+    overflow-wrap: break-word;
+    border: 2ch solid #000;
+    margin: 2rem 0;
+    white-space: pre-wrap;
+}
+
+.mode7-nav {
+    margin-top: 0;
+}
+

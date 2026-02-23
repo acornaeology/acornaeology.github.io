@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Silly! — acornaeology{% endblock %}
+{% block description %}Page not found.{% endblock %}
+{% block og_url %}https://acornaeology.uk/404.html{% endblock %}
+{% block content %}
+<div class="mode7-screen" aria-label="BBC Micro style error message">BBC Computer 32K
+
+BASIC
+
+<span id="mode7-command">&gt;</span>
+404 Silly!
+</div>
+<p class="mode7-nav"><a href="{{ root }}">Back to home</a></p>
+<script>
+document.getElementById("mode7-command").textContent = ">PROCbrowse(\"" + window.location.href + "\")";
+</script>
+{% endblock %}
