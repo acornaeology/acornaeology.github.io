@@ -991,6 +991,7 @@ hr {
     color: var(--link);
     text-decoration: none;
     border-bottom: 1px dotted var(--dim);
+    position: relative;
 }
 
 .glossary-ref:visited {
@@ -1001,22 +1002,20 @@ hr {
     border-bottom-style: solid;
 }
 
-.glossary-ref[data-tip] {
-    position: static;
-}
-
 .glossary-ref[data-tip]::after {
     content: attr(data-tip);
     display: none;
     position: absolute;
-    left: 1.5rem;
-    right: 1.5rem;
+    left: 0;
+    top: 100%;
     margin-top: 0.3em;
     padding: 0.5em 0.75em;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 0.85rem;
+    font-weight: normal;
     line-height: 1.4;
     white-space: normal;
-    width: auto;
+    width: 25em;
     color: var(--text);
     background: var(--sidebar-bg);
     border: 1px solid var(--rule);

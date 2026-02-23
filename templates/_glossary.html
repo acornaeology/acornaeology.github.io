@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Glossary — {{ name }} — acornaeology{% endblock %}
+{% block title %}{{ name }} Glossary — acornaeology{% endblock %}
 {% block description %}Glossary of terms used in the {{ name }} disassembly.{% endblock %}
 {% block og_url %}https://acornaeology.uk/{{ slug }}/glossary.html{% endblock %}
 
 {% block content %}
-<h1>Glossary</h1>
+<h1>{{ name }} Glossary</h1>
 <p class="doc-back"><a href="./">&larr; {{ name }}</a></p>
 
 {% if preamble %}

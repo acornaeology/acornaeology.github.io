@@ -153,11 +153,17 @@ def build_glossary_lookup(glossary):
     return lookup
 
 
+def _strip_markdown(text):
+    """Strip inline markdown syntax for use in plain-text contexts."""
+    return text.replace("`", "")
+
+
 def _build_tooltip(entry):
     """Build tooltip text from a glossary lookup entry."""
+    brief = _strip_markdown(entry["brief"])
     if entry["expansion"]:
-        return f"{entry['expansion']}: {entry['brief']}"
-    return entry["brief"]
+        return f"{entry['expansion']}: {brief}"
+    return brief
 
 
 def _find_text_occurrences(html_text, pattern):
