@@ -13,6 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
 from .disassembly import process_disassembly
+from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossary
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -102,6 +103,7 @@ def load_sources():
             "slug": manifest["slug"],
             "name": manifest["name"],
             "description": manifest.get("description", ""),
+            "glossary": manifest.get("glossary"),
             "versions": manifest["versions"],
         })
 
@@ -123,6 +125,19 @@ def build_disassemblies(env, sources):
         # Create output directory
         output_dirpath = OUTPUT_DIRPATH / slug
         output_dirpath.mkdir(parents=True, exist_ok=True)
+
+        # Load and parse glossary if present
+        glossary = None
+        glossary_lookup = {}
+        glossary_filepath_rel = source.get("glossary")
+        if glossary_filepath_rel:
+            glossary_filepath = repo_dirpath / glossary_filepath_rel
+            if glossary_filepath.exists():
+                glossary = parse_glossary(glossary_filepath.read_text())
+                glossary_lookup = build_glossary_lookup(glossary)
+            else:
+                print(f"  Warning: glossary file {glossary_filepath} "
+                      f"not found")
 
         # Build version metadata for the index page
         versions = []
@@ -150,10 +165,15 @@ def build_disassemblies(env, sources):
             name=name,
             description=description,
             versions=versions,
+            has_glossary=glossary is not None,
         )
         index_filepath = output_dirpath / "index.html"
         index_filepath.write_text(html)
         print(f"  {slug}/index.html")
+
+        # Build glossary page if glossary data exists
+        if glossary:
+            _render_glossary_page(env, slug, name, glossary, output_dirpath)
 
         # Build per-version disassembly pages
         version_anchors = {}  # version_id -> sorted list of anchor addresses
@@ -223,7 +243,8 @@ def build_disassemblies(env, sources):
 
             # Build doc pages for this version
             _render_doc_pages(env, source, version_id, version_dirpath,
-                              rom_meta, output_dirpath, version_anchors)
+                              rom_meta, output_dirpath, version_anchors,
+                              glossary_lookup)
 
 
 def _doc_output_filename(version_id, doc_path):
@@ -292,8 +313,47 @@ def _apply_address_links(md_text, address_links, version_anchors=None):
     return md_text
 
 
+def _render_glossary_page(env, slug, name, glossary, output_dirpath):
+    """Build the glossary page from parsed glossary data."""
+    glossary_template = env.get_template("_glossary.html")
+
+    # Convert preamble markdown to HTML
+    preamble_html = ""
+    if glossary["preamble"]:
+        converter = markdown_lib.Markdown()
+        preamble_html = Markup(converter.convert(glossary["preamble"]))
+
+    # Convert brief and extended text to HTML for each term
+    for category in glossary["categories"]:
+        for entry in category["terms"]:
+            converter = markdown_lib.Markdown()
+            brief_html = converter.convert(entry["brief"])
+            if brief_html.startswith("<p>") and brief_html.endswith("</p>"):
+                brief_html = brief_html[3:-4]
+            entry["brief_html"] = Markup(brief_html)
+
+            if entry["extended"]:
+                converter = markdown_lib.Markdown()
+                entry["extended_html"] = Markup(
+                    converter.convert(entry["extended"]))
+            else:
+                entry["extended_html"] = None
+
+    html = glossary_template.render(
+        root="../",
+        slug=slug,
+        name=name,
+        preamble=preamble_html,
+        categories=glossary["categories"],
+    )
+    glossary_output_filepath = output_dirpath / "glossary.html"
+    glossary_output_filepath.write_text(html)
+    print(f"  {slug}/glossary.html")
+
+
 def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
-                      output_dirpath, version_anchors=None):
+                      output_dirpath, version_anchors=None,
+                      glossary_lookup=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
     name = source["name"]
@@ -313,6 +373,13 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
 
         converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
         content_html = converter.convert(md_text)
+
+        # Apply glossary links (post-HTML-conversion)
+        glossary_links = doc.get("glossary_links", [])
+        if glossary_links and glossary_lookup:
+            content_html = apply_glossary_links(
+                content_html, glossary_links, glossary_lookup,
+                source["slug"])
 
         doc_filename = _doc_output_filename(version_id, doc["path"])
         html = doc_template.render(

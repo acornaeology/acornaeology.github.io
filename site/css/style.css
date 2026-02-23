@@ -911,3 +911,122 @@ hr {
     margin-bottom: 0.3em;
 }
 
+/* --- Glossary page --- */
+
+.glossary-preamble {
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+}
+
+.glossary-toc {
+    margin: 1rem 0 2rem;
+}
+
+.glossary-toc ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 1.5em;
+}
+
+.glossary-toc a {
+    font-size: 0.9rem;
+}
+
+.glossary-list {
+    margin: 0 0 2rem;
+}
+
+.glossary-entry {
+    scroll-margin-top: 2rem;
+}
+
+.glossary-list dt {
+    margin-top: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.glossary-entry:first-child dt {
+    margin-top: 0;
+}
+
+.glossary-term {
+    font-weight: bold;
+    color: var(--cyan);
+}
+
+.glossary-expansion {
+    font-weight: normal;
+    color: var(--dim);
+    margin-left: 0.3em;
+}
+
+.glossary-list dd {
+    margin: 0.3rem 0 0 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text);
+    max-width: 60ch;
+}
+
+.glossary-extended {
+    margin-top: 0.5rem;
+    color: var(--dim);
+}
+
+.glossary-list dd code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85em;
+    padding: 0.15em 0.3em;
+    background-color: var(--sidebar-bg);
+    border-radius: 3px;
+}
+
+/* --- Glossary references in doc pages --- */
+
+.glossary-ref {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--dim);
+}
+
+.glossary-ref:visited {
+    color: var(--link-visited);
+}
+
+.glossary-ref:hover {
+    border-bottom-style: solid;
+}
+
+.glossary-ref[data-tip] {
+    position: static;
+}
+
+.glossary-ref[data-tip]::after {
+    content: attr(data-tip);
+    display: none;
+    position: absolute;
+    left: 1.5rem;
+    right: 1.5rem;
+    margin-top: 0.3em;
+    padding: 0.5em 0.75em;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: normal;
+    width: auto;
+    color: var(--text);
+    background: var(--sidebar-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.glossary-ref[data-tip]:hover::after {
+    display: block;
+}
+

@@ -24,6 +24,22 @@ Static site generator for annotated 6502 disassemblies of Acorn ROMs. Transforms
 4. `generator/disassembly.py` converts JSON items into template-ready line dicts with pre-rendered HTML (`Markup` objects)
 5. `templates/_disassembly.html` renders the two-column layout (subroutine nav + listing table)
 
+### Glossary
+
+`generator/glossary.py` parses `GLOSSARY.md` from source repos. Each entry uses the Pandoc multi-paragraph definition list convention to encode brief and extended descriptions:
+
+```
+**TERM** (Expansion)
+: Brief definition — one or two sentences. What the term IS.
+
+  Extended detail — how NFS uses it, implementation specifics,
+  or additional context. Shown only on the glossary page.
+```
+
+First paragraph (the `: ` line and its continuations before any blank line) = **brief**, used for tooltip text in doc pages. Subsequent indented paragraphs after a blank line = **extended**, shown only on the glossary page. Entries without extended detail keep a single paragraph.
+
+Doc pages link terms to the glossary via `glossary_links` in `rom.json`. These are applied post-HTML-conversion (unlike `address_links` which are pre-conversion) to avoid wrapping text already inside `<a>` elements.
+
 ### Key constants
 
 - `CONTENT_MAX_WIDTH = 64` in `disassembly.py` — maximum character width for all content lines (code, data, comments are wrapped/grouped to fit)

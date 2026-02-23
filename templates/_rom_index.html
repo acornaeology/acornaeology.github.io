@@ -8,6 +8,10 @@
 <h1>{{ name }}</h1>
 {% if description %}<p>{{ description }}</p>{% endif %}
 
+{% if has_glossary %}
+<p><a href="glossary.html">Glossary of terms</a></p>
+{% endif %}
+
 <h2>Annotated Disassemblies</h2>
 <table class="version-table">
 <thead>
