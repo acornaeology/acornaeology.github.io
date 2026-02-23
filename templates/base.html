@@ -9,6 +9,7 @@
     <meta property="og:description" content="{% block og_description %}{{ self.description() }}{% endblock %}">
     <meta property="og:image" content="https://acornaeology.uk/images/logo.png">
     <meta property="og:url" content="{% block og_url %}https://acornaeology.uk/{% endblock %}">
+    <link rel="canonical" href="{{ self.og_url() }}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="acornaeology">
     <meta name="twitter:card" content="summary">
