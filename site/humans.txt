@@ -1,0 +1,17 @@
+/* TEAM */
+
+rob-smallshire
+GitHub: https://github.com/rob-smallshire
+
+IanSmallshire
+GitHub: https://github.com/IanSmallshire
+
+/* SITE */
+
+Site: https://acornaeology.uk
+Description: Software archaeology for Acorn Computer artefacts
+
+/* TECHNOLOGY */
+
+Python, Jinja2, GitHub Pages
+Annotated 6502 disassembly
