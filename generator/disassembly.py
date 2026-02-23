@@ -134,10 +134,13 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs,
 
 
 def _visible_width(markup):
-    """Compute the visible character width of an HTML string."""
+    """Compute the visible character width of an HTML string.
+
+    For multi-line content (e.g. grouped EQUB values), returns the width
+    of the longest individual line."""
     text = re.sub(r"<[^>]+>", "", str(markup))
     text = html_mod.unescape(text)
-    return len(text)
+    return max(len(line) for line in text.split("\n"))
 
 
 def _find_break_position(word, budget):
@@ -178,7 +181,7 @@ def _wrap_text(text, first_line_budget, continuation_indent,
     words = text.split(" ")
     result_lines = []
     current = ""
-    continuation_budget = max_width - continuation_indent
+    continuation_budget = max(1, max_width - continuation_indent)
 
     for word in words:
         budget = first_line_budget if not result_lines else continuation_budget
