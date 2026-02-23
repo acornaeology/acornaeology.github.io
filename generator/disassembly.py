@@ -1,5 +1,6 @@
 """Processes structured disassembly JSON into template-ready data."""
 
+import bisect
 import html as html_mod
 import re
 
@@ -28,6 +29,7 @@ def process_disassembly(data):
 
     item_by_addr = {item["addr"]: item for item in data["items"]}
     valid_addrs = set(item_by_addr)
+    sorted_addrs = sorted(valid_addrs)
 
     # Pre-scan to find which subroutine sections contain relocated code
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
@@ -40,13 +42,13 @@ def process_disassembly(data):
             in_relocated = item["addr"] in relocated_sections
         max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
-                                   max_width))
+                                   sorted_addrs, max_width))
 
-    _align_inline_comments(lines)
+    _align_inline_comments(lines, valid_addrs, sorted_addrs)
     return _split_into_sections(lines)
 
 
-def _process_item(item, sub_lookup, item_by_addr, valid_addrs,
+def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                   max_width=CONTENT_MAX_WIDTH):
     lines = []
     addr = item["addr"]
@@ -78,7 +80,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs,
         lines.append({
             "id": addr_id,
             "addr": None,
-            "html": _render_subroutine_header(sub),
+            "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs),
             "banner": True,
         })
         id_used = True
@@ -86,13 +88,15 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs,
         # Render any comments that aren't part of the banner block
         non_banner = [c for c in comments if not _is_banner_content(c, sub)]
         for comment_text in non_banner:
-            _append_comment_lines(lines, comment_text, max_width)
+            _append_comment_lines(lines, comment_text, max_width,
+                                  valid_addrs, sorted_addrs)
     else:
         # Normal comment rendering
         if comments:
             lines.append(_empty_line())
         for comment_text in comments:
-            _append_comment_lines(lines, comment_text, max_width)
+            _append_comment_lines(lines, comment_text, max_width,
+                                  valid_addrs, sorted_addrs)
 
     # Label lines
     references = item.get("references", [])
@@ -128,7 +132,8 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs,
 
     # Comments after (rare)
     for comment_text in item.get("comments_after", []):
-        _append_comment_lines(lines, comment_text, max_width)
+        _append_comment_lines(lines, comment_text, max_width, valid_addrs,
+                              sorted_addrs)
 
     return lines
 
@@ -233,7 +238,7 @@ def _group_values(parts, prefix_width, value_width,
     return line_groups
 
 
-def _align_inline_comments(lines):
+def _align_inline_comments(lines, valid_addrs, sorted_addrs):
     """Align inline comments within blocks separated by labels/banners.
 
     Within each block, all inline comments start at the same column —
@@ -261,16 +266,18 @@ def _align_inline_comments(lines):
             if total_width <= line_max:
                 line["html"] = line["html"] + Markup(
                     f'{padding}<span class="comment">'
-                    f'; {escape(comment)}</span>'
+                    f'; {_linkify_comment_text(comment, valid_addrs, sorted_addrs)}</span>'
                 )
             else:
                 first_budget = line_max - comment_col
                 wrapped = _wrap_text(comment, first_budget, comment_col,
                                      line_max)
                 indent_str = " " * comment_col
-                parts = [str(escape(wrapped[0]))]
+                parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs))]
                 for cont in wrapped[1:]:
-                    parts.append(f"\n{indent_str}{escape(cont)}")
+                    parts.append(
+                        f"\n{indent_str}"
+                        f"{_linkify_comment_text(cont, valid_addrs, sorted_addrs)}")
                 comment_html = "".join(parts)
                 line["html"] = line["html"] + Markup(
                     f'{padding}<span class="comment">'
@@ -362,7 +369,8 @@ def _make_section(lines):
     return {"lines": lines, "has_binary_addr": has_binary_addr}
 
 
-def _append_comment_lines(lines, comment_text, max_width=CONTENT_MAX_WIDTH):
+def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
+                          sorted_addrs):
     comment_prefix_width = 2  # "; "
     for line_text in str(comment_text).split("\n"):
         if not line_text.strip():
@@ -372,7 +380,8 @@ def _append_comment_lines(lines, comment_text, max_width=CONTENT_MAX_WIDTH):
         # Skip wrapping for indented lines (preformatted content)
         if line_text.startswith("  "):
             html = Markup(
-                f'<span class="comment">; {escape(line_text)}</span>'
+                '<span class="comment">; '
+                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs)}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
             continue
@@ -380,16 +389,18 @@ def _append_comment_lines(lines, comment_text, max_width=CONTENT_MAX_WIDTH):
         total_width = comment_prefix_width + len(line_text)
         if total_width <= max_width:
             html = Markup(
-                f'<span class="comment">; {escape(line_text)}</span>'
+                '<span class="comment">; '
+                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs)}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
         else:
             budget = max_width - comment_prefix_width
             wrapped = _wrap_text(line_text, budget, comment_prefix_width,
                                  max_width)
-            parts = [str(escape(wrapped[0]))]
+            parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs))]
             for cont in wrapped[1:]:
-                parts.append(f"\n; {escape(cont)}")
+                parts.append(
+                    f"\n; {_linkify_comment_text(cont, valid_addrs, sorted_addrs)}")
             comment_html = "".join(parts)
             html = Markup(
                 f'<span class="comment">; {comment_html}</span>'
@@ -443,7 +454,7 @@ def _is_banner_content(text, sub):
     return False
 
 
-def _render_subroutine_header(sub):
+def _render_subroutine_header(sub, valid_addrs, sorted_addrs):
     """Render a subroutine's structured data as a styled HTML block."""
     parts = []
     parts.append('<div class="sub-header">')
@@ -455,7 +466,9 @@ def _render_subroutine_header(sub):
     # Description
     desc = sub.get("description", "")
     if desc:
-        parts.append(f'<div class="sub-desc">{_render_plaintext(desc)}</div>')
+        parts.append(
+            '<div class="sub-desc">'
+            f'{_render_plaintext(desc, valid_addrs, sorted_addrs)}</div>')
 
     # On Entry / On Exit
     entry = sub.get("on_entry", {})
@@ -463,16 +476,18 @@ def _render_subroutine_header(sub):
     if entry or exit_:
         parts.append('<div class="sub-registers"><table>')
         if entry:
-            parts.append(_render_register_rows("On Entry", entry))
+            parts.append(_render_register_rows("On Entry", entry,
+                                               valid_addrs, sorted_addrs))
         if exit_:
-            parts.append(_render_register_rows("On Exit", exit_))
+            parts.append(_render_register_rows("On Exit", exit_,
+                                               valid_addrs, sorted_addrs))
         parts.append("</table></div>")
 
     parts.append("</div>")
     return Markup("\n".join(parts))
 
 
-def _render_plaintext(text):
+def _render_plaintext(text, valid_addrs, sorted_addrs):
     """Render plain text as HTML, preserving the author's intended structure.
 
     Blank-line-separated blocks become paragraphs or preformatted blocks.
@@ -496,16 +511,19 @@ def _render_plaintext(text):
         if all(line.startswith("  ") for line in block):
             # Indented block -> preformatted
             content = "\n".join(block)
-            parts.append(f'<pre class="sub-detail">{escape(content)}</pre>')
+            parts.append(
+                '<pre class="sub-detail">'
+                f'{_linkify_comment_text(content, valid_addrs, sorted_addrs)}</pre>')
         else:
             # Prose block -- join hard-wrapped lines with spaces
             content = " ".join(line.strip() for line in block)
-            parts.append(f"<p>{escape(content)}</p>")
+            parts.append(
+                f"<p>{_linkify_comment_text(content, valid_addrs, sorted_addrs)}</p>")
 
     return Markup("\n".join(parts))
 
 
-def _render_register_rows(heading, regs):
+def _render_register_rows(heading, regs, valid_addrs, sorted_addrs):
     """Render register rows with the heading in the first column."""
     rows = []
     for i, (reg, desc) in enumerate(regs.items()):
@@ -517,7 +535,7 @@ def _render_register_rows(heading, regs):
         rows.append(
             f"<tr>{th}"
             f"<td>{escape(reg.upper())}</td>"
-            f"<td>{escape(desc)}</td></tr>"
+            f"<td>{_linkify_comment_text(desc, valid_addrs, sorted_addrs)}</td></tr>"
         )
     return "\n".join(rows)
 
@@ -575,6 +593,48 @@ def _linkify_operand(operand, item, valid_addrs):
         return Markup(escaped_operand.replace(escaped_label, replacement, 1))
 
     return escape(operand)
+
+
+_COMMENT_ADDR_RE = re.compile(r'(?<!#)&([0-9A-Fa-f]{4,})')
+
+
+def _linkify_comment_text(text, valid_addrs, sorted_addrs):
+    """Escape comment text, hyperlinking any &XXXX addresses that fall
+    within the disassembly's address range.  When the exact address isn't
+    an item boundary, links to the nearest preceding valid address."""
+    result = []
+    last_end = 0
+    for m in _COMMENT_ADDR_RE.finditer(text):
+        hex_digits = m.group(1)
+        result.append(str(escape(text[last_end:m.start()])))
+        if len(hex_digits) == 4:
+            addr = int(hex_digits, 16)
+            target = _resolve_addr(addr, valid_addrs, sorted_addrs)
+            if target is not None:
+                addr_id = f"addr-{target:04X}"
+                result.append(
+                    f'<a href="#{addr_id}">&amp;{hex_digits}</a>'
+                )
+                last_end = m.end()
+                continue
+        result.append(str(escape(m.group(0))))
+        last_end = m.end()
+    result.append(str(escape(text[last_end:])))
+    return Markup("".join(result))
+
+
+def _resolve_addr(addr, valid_addrs, sorted_addrs):
+    """Return the item address to link to for a given address, or None.
+
+    If addr is an exact item boundary, returns it directly.  Otherwise
+    returns the nearest preceding item address (the item that contains
+    this address).  Returns None if addr is before the first item."""
+    if addr in valid_addrs:
+        return addr
+    idx = bisect.bisect_right(sorted_addrs, addr) - 1
+    if idx >= 0:
+        return sorted_addrs[idx]
+    return None
 
 
 _CONTROL_CHARS = {

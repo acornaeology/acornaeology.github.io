@@ -677,6 +677,20 @@ hr {
     color: var(--green);
 }
 
+.listing .comment a {
+    color: var(--green);
+    border-bottom: 1px dotted var(--dim);
+    text-decoration: none;
+}
+
+.listing .comment a:visited {
+    color: var(--green);
+}
+
+.listing .comment a:hover {
+    border-bottom-style: solid;
+}
+
 .listing .directive {
     color: var(--magenta);
 }
