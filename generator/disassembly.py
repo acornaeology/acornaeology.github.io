@@ -35,14 +35,36 @@ def process_disassembly(data):
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
 
     lines = []
+    current_sub = None
     in_relocated = False
     for item in data["items"]:
         sub = sub_lookup.get(item["addr"])
+        if sub:
+            if current_sub and current_sub.get("fall_through"):
+                lines.append({
+                    "id": None,
+                    "addr": None,
+                    "html": Markup(
+                        '<span class="fall-through">'
+                        'fall through \u2193</span>'
+                    ),
+                })
+            current_sub = sub
         if sub and sub.get("title"):
             in_relocated = item["addr"] in relocated_sections
         max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
                                    sorted_addrs, max_width))
+
+    if current_sub and current_sub.get("fall_through"):
+        lines.append({
+            "id": None,
+            "addr": None,
+            "html": Markup(
+                '<span class="fall-through">'
+                'fall through \u2193</span>'
+            ),
+        })
 
     _align_inline_comments(lines, valid_addrs, sorted_addrs)
     return _split_into_sections(lines)
