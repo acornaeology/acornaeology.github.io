@@ -13,10 +13,12 @@ from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
 from .disassembly import process_disassembly
+from .feed import generate_atom_feed, generate_sitemap
 from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossary
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+BASE_URL = "https://acornaeology.uk/"
 SITE_DIRPATH = REPO_ROOT / "site"
 TEMPLATES_DIRPATH = REPO_ROOT / "templates"
 DATA_DIRPATH = REPO_ROOT / "data"
@@ -34,7 +36,7 @@ def is_page_template(filepath):
     return "{% extends" in content
 
 
-def build_templates(env, roms):
+def build_templates(env, roms, pages):
     """Render all page templates to the output directory."""
     for template_filepath in TEMPLATES_DIRPATH.glob("*.html"):
         if not is_page_template(template_filepath):
@@ -44,6 +46,10 @@ def build_templates(env, roms):
         html = template.render(root="./", roms=roms)
         output_filepath.write_text(html)
         print(f"  {template_filepath.name} -> {output_filepath.relative_to(REPO_ROOT)}")
+
+        if template_filepath.name != "404.html":
+            url = BASE_URL + template_filepath.name.replace("index.html", "")
+            pages.append({"url": url})
 
 
 def resolve_source(source):
@@ -110,7 +116,7 @@ def load_sources():
     return result
 
 
-def build_disassemblies(env, sources):
+def build_disassemblies(env, sources, pages):
     """Build disassembly pages from external disassembly repos."""
     rom_index_template = env.get_template("_rom_index.html")
     disassembly_template = env.get_template("_disassembly.html")
@@ -170,10 +176,12 @@ def build_disassemblies(env, sources):
         index_filepath = output_dirpath / "index.html"
         index_filepath.write_text(html)
         print(f"  {slug}/index.html")
+        pages.append({"url": f"{BASE_URL}{slug}/"})
 
         # Build glossary page if glossary data exists
         if glossary:
-            _render_glossary_page(env, slug, name, glossary, output_dirpath)
+            _render_glossary_page(env, slug, name, glossary, output_dirpath,
+                                  pages)
 
         # Build per-version disassembly pages
         version_anchors = {}  # version_id -> sorted list of anchor addresses
@@ -240,11 +248,17 @@ def build_disassemblies(env, sources):
             version_filepath = output_dirpath / f"{version_id}.html"
             version_filepath.write_text(html)
             print(f"  {slug}/{version_id}.html")
+            pages.append({
+                "url": f"{BASE_URL}{slug}/{version_id}.html",
+                "title": title,
+                "description": description,
+                "is_disassembly": True,
+            })
 
             # Build doc pages for this version
             _render_doc_pages(env, source, version_id, version_dirpath,
                               rom_meta, output_dirpath, version_anchors,
-                              glossary_lookup)
+                              glossary_lookup, pages)
 
 
 def _doc_output_filename(version_id, doc_path):
@@ -313,7 +327,7 @@ def _apply_address_links(md_text, address_links, version_anchors=None):
     return md_text
 
 
-def _render_glossary_page(env, slug, name, glossary, output_dirpath):
+def _render_glossary_page(env, slug, name, glossary, output_dirpath, pages):
     """Build the glossary page from parsed glossary data."""
     glossary_template = env.get_template("_glossary.html")
 
@@ -349,11 +363,12 @@ def _render_glossary_page(env, slug, name, glossary, output_dirpath):
     glossary_output_filepath = output_dirpath / "glossary.html"
     glossary_output_filepath.write_text(html)
     print(f"  {slug}/glossary.html")
+    pages.append({"url": f"{BASE_URL}{slug}/glossary.html"})
 
 
 def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
                       output_dirpath, version_anchors=None,
-                      glossary_lookup=None):
+                      glossary_lookup=None, pages=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
     name = source["name"]
@@ -397,6 +412,10 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         output_filepath = output_dirpath / doc_filename
         output_filepath.write_text(html)
         print(f"  {source['slug']}/{doc_filename}")
+        if pages is not None:
+            pages.append({
+                "url": f"{BASE_URL}{source['slug']}/{doc_filename}",
+            })
 
 
 def _filter_subroutines(data):
@@ -447,13 +466,23 @@ def main():
     # Load disassembly sources
     sources = load_sources()
 
+    # Track all pages for sitemap and feed
+    pages = []
+
     # Render templates
     print("Pages:")
-    build_templates(env, sources)
+    build_templates(env, sources, pages)
 
     # Build disassembly pages
     print("Disassemblies:")
-    build_disassemblies(env, sources)
+    build_disassemblies(env, sources, pages)
+
+    # Generate sitemap and feed
+    print("Feeds:")
+    generate_sitemap(pages, OUTPUT_DIRPATH / "sitemap.xml")
+    print("  sitemap.xml")
+    generate_atom_feed(pages, OUTPUT_DIRPATH / "atom.xml", BASE_URL)
+    print("  atom.xml")
 
     print("Done.")
 
