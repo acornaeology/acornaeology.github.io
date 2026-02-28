@@ -12,6 +12,7 @@ RELOCATED_MAX_WIDTH = 58
 _PREFIX_WIDTH = 9   # visible width of "    EQUB " / "    EQUW "
 _SEP_WIDTH = 2      # ", "
 _COMMENT_GAP = 4    # "  ; "
+_OUTLIER_GAP = 16   # min gap in sorted widths to split alignment groups
 
 
 def _optimal_data_max_width(n_values, comment, value_width,
@@ -349,6 +350,43 @@ def _group_values(parts, prefix_width, value_width,
     return line_groups
 
 
+def _split_width_outliers(items):
+    """Sub-group single-line items by width, splitting at large gaps.
+
+    Sorts the distinct widths and finds the largest gap between
+    consecutive values.  If that gap exceeds _OUTLIER_GAP, items are
+    split into a normal group (at or below the gap) and an outlier
+    group (above it), so outliers get independent comment alignment."""
+    if len(items) < 3:
+        return [items]
+
+    widths = [_visible_width(l["html"]) for _, l in items]
+    sorted_w = sorted(set(widths))
+
+    if len(sorted_w) < 2:
+        return [items]
+
+    max_gap = 0
+    split_above = None
+    for a, b in zip(sorted_w, sorted_w[1:]):
+        gap = b - a
+        if gap > max_gap:
+            max_gap = gap
+            split_above = a
+
+    if max_gap < _OUTLIER_GAP:
+        return [items]
+
+    normal = [(i, l) for (i, l), w in zip(items, widths) if w <= split_above]
+    outliers = [(i, l) for (i, l), w in zip(items, widths) if w > split_above]
+    groups = []
+    if normal:
+        groups.append(normal)
+    if outliers:
+        groups.append(outliers)
+    return groups
+
+
 def _align_inline_comments(lines, valid_addrs, sorted_addrs):
     """Align inline comments within blocks separated by labels/banners.
 
@@ -371,12 +409,14 @@ def _align_inline_comments(lines, valid_addrs, sorted_addrs):
         multi = [(i, l) for i, l in commented
                  if "\n" in str(l["html"])]
 
-        # Align single-line comments to a shared column
+        # Align single-line comments to a shared column, splitting
+        # width outliers into their own alignment group
         if single:
-            align_w = max(_visible_width(l["html"]) for _, l in single)
-            for _, line in single:
-                _merge_inline_comment(line, align_w, valid_addrs,
-                                     sorted_addrs)
+            for group in _split_width_outliers(single):
+                align_w = max(_visible_width(l["html"]) for _, l in group)
+                for _, line in group:
+                    _merge_inline_comment(line, align_w, valid_addrs,
+                                         sorted_addrs)
 
         # Multi-line: balanced layout aligns to widest data line;
         # trailing layout aligns to the last data line.
