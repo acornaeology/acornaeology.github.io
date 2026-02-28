@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import quote
 
 import markdown as markdown_lib
 from jinja2 import Environment, FileSystemLoader
@@ -223,6 +224,31 @@ def build_disassemblies(env, sources, pages):
             }
             links.insert(0, github_link)
 
+            # Add report-issue link with prefilled title and body
+            issue_title = f"[{title}] "
+            page_url = f"{BASE_URL}{slug}/{version_id}.html"
+            issue_body = (
+                f"**Version:** {title}\n"
+                f"**Page:** {page_url}\n"
+                f"**Memory address:** \n\n"
+                "---\n\n"
+                "\n\n"
+                "---\n"
+                "_Tip: to link to a specific address, hover over an address "
+                "in the listing and click the link icon to copy a permalink, "
+                "then paste it in the **Memory address** field above._\n"
+            )
+            issue_url = (
+                f"{repo_url}/issues/new"
+                f"?title={quote(issue_title)}"
+                f"&body={quote(issue_body)}"
+            )
+            report_link = {
+                "label": "Report an issue with this disassembly",
+                "url": issue_url,
+                "icon": "bug",
+            }
+
             # Append doc links
             for doc in rom_meta.get("docs", []):
                 links.append({
@@ -230,6 +256,8 @@ def build_disassemblies(env, sources, pages):
                     "url": _doc_output_filename(version_id, doc["path"]),
                     "icon": "doc",
                 })
+
+            links.append(report_link)
 
             sections = process_disassembly(data)
 
