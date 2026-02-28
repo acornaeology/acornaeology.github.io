@@ -9,6 +9,69 @@ from markupsafe import Markup, escape
 CONTENT_MAX_WIDTH = 64
 RELOCATED_MAX_WIDTH = 58
 
+_PREFIX_WIDTH = 9   # visible width of "    EQUB " / "    EQUW "
+_SEP_WIDTH = 2      # ", "
+_COMMENT_GAP = 4    # "  ; "
+
+
+def _optimal_data_max_width(n_values, comment, value_width,
+                            max_width=CONTENT_MAX_WIDTH):
+    """Find the optimal max_width for _group_values to balance data and
+    comment wrapping.
+
+    Returns a (possibly narrower) max_width for _group_values, or the
+    original max_width if the comment fits at the end of standard packing.
+    """
+    if not comment:
+        return max_width
+
+    step = value_width + _SEP_WIDTH
+
+    def vpr_at(mw):
+        usable = mw - _PREFIX_WIDTH
+        return max(1, 1 + (usable - value_width) // step) if usable >= value_width else 1
+
+    def row_width(vpr):
+        return _PREFIX_WIDTH + vpr * value_width + max(0, vpr - 1) * _SEP_WIDTH
+
+    # Standard packing — does the comment fit on the last line?
+    std_vpr = vpr_at(max_width)
+    last_count = n_values % std_vpr or std_vpr
+    trailing = row_width(last_count)
+    if max_width - trailing - _COMMENT_GAP >= len(comment):
+        return max_width
+
+    # Search over values-per-row for balanced layout
+    def wrap_lines(text, width):
+        if width < 1:
+            return len(text)
+        lines, col = 1, 0
+        for word in text.split():
+            need = (1 if col else 0) + len(word)
+            if col and col + need > width:
+                lines += 1
+                col = len(word)
+            else:
+                col += need
+        return lines
+
+    best_vpr = std_vpr
+    best_score = (float('inf'), float('inf'))
+
+    for vpr in range(1, std_vpr + 1):
+        widest = row_width(vpr) + (1 if n_values > vpr else 0)
+        cw = max_width - widest - _COMMENT_GAP
+        if cw < 1:
+            continue
+        d = -(-n_values // vpr)  # ceil division
+        c = wrap_lines(comment, cw)
+        score = (max(d, c), abs(d - c))
+        if score < best_score:
+            best_score = score
+            best_vpr = vpr
+
+    return row_width(best_vpr)
+
 
 def process_disassembly(data):
     """Process structured JSON into sections of template-ready lines.
@@ -138,19 +201,34 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         id_used = True
         addr_shown = True
 
-    # Main content line — store inline comment separately for alignment
-    content_html = _render_content(item, valid_addrs, max_width)
+    # Main content line — store inline comment separately for alignment.
+    # For byte/word items with an inline comment, compute a narrower data
+    # width so both data rows and comment rows wrap over a balanced number
+    # of lines rather than squeezing the comment into a tiny column.
+    inline_comment = item.get("comment_inline")
+    render_width = max_width
+    if inline_comment and item["type"] in ("byte", "word"):
+        vw = 3 if item["type"] == "byte" else 5
+        render_width = _optimal_data_max_width(
+            len(item.get("values", [])), inline_comment, vw, max_width)
+    content_html = _render_content(item, valid_addrs, render_width)
 
-    lines.append({
+    line_dict = {
         "id": addr_id if not id_used else None,
         "addr": addr_display if not addr_shown else None,
         "addr_id": addr_id,
         "binary_addr": binary_addr_display if not addr_shown else None,
         "binary_addr_id": binary_addr_id,
         "html": content_html,
-        "_inline_comment": item.get("comment_inline"),
+        "_inline_comment": inline_comment,
         "_max_width": max_width,
-    })
+    }
+    # For multi-line data with balanced layout, store the intended comment
+    # alignment width so _align_inline_comments uses the widest data line.
+    # For trailing layout (render_width unchanged), it uses the last line.
+    if render_width < max_width:
+        line_dict["_balanced"] = True
+    lines.append(line_dict)
 
     # Comments after (rare)
     for comment_text in item.get("comments_after", []):
@@ -168,6 +246,17 @@ def _visible_width(markup):
     text = re.sub(r"<[^>]+>", "", str(markup))
     text = html_mod.unescape(text)
     return max(len(line) for line in text.split("\n"))
+
+
+def _trailing_line_width(markup):
+    """Width of the last visible line of an HTML string.
+
+    For single-line content this equals _visible_width.  For multi-line
+    content (grouped EQUB/EQUW) the inline comment is appended after the
+    last line, so this is the relevant width for comment placement."""
+    text = re.sub(r"<[^>]+>", "", str(markup))
+    text = html_mod.unescape(text)
+    return len(text.split("\n")[-1])
 
 
 def _find_break_position(word, budget):
@@ -263,69 +352,140 @@ def _group_values(parts, prefix_width, value_width,
 def _align_inline_comments(lines, valid_addrs, sorted_addrs):
     """Align inline comments within blocks separated by labels/banners.
 
-    Within each block, all inline comments start at the same column —
-    the position of the widest code line in that block, plus padding."""
+    Single-line content (code instructions) within each block shares a
+    common comment column — the position of the widest line, plus
+    padding.  Multi-line content (grouped EQUB/EQUW) is excluded from
+    block-wide alignment so its width doesn't push other comments off
+    the edge; its comment is placed after its own last line instead."""
     blocks = _split_into_blocks(lines)
 
     for block in blocks:
-        # Find lines with inline comments and the max code width in this block
         commented = [(i, line) for i, line in block
                      if line.get("_inline_comment")]
         if not commented:
             continue
 
-        max_width = max(_visible_width(line["html"]) for _, line in commented)
+        # Separate single-line and multi-line content for alignment
+        single = [(i, l) for i, l in commented
+                  if "\n" not in str(l["html"])]
+        multi = [(i, l) for i, l in commented
+                 if "\n" in str(l["html"])]
 
-        # Merge comments with padding, wrapping if needed
-        for i, line in commented:
-            comment = line.pop("_inline_comment")
-            line_max = line.get("_max_width", CONTENT_MAX_WIDTH)
-            code_width = _visible_width(line["html"])
-            padding = " " * (max_width - code_width + 2)
-            comment_col = max_width + 2 + 2  # padding + "; "
-            total_width = comment_col + len(comment)
+        # Align single-line comments to a shared column
+        if single:
+            align_w = max(_visible_width(l["html"]) for _, l in single)
+            for _, line in single:
+                _merge_inline_comment(line, align_w, valid_addrs,
+                                     sorted_addrs)
 
-            if total_width <= line_max:
-                line["html"] = line["html"] + Markup(
-                    f'{padding}<span class="comment">'
-                    f'; {_linkify_comment_text(comment, valid_addrs, sorted_addrs)}</span>'
-                )
+        # Multi-line: balanced layout aligns to widest data line;
+        # trailing layout aligns to the last data line.
+        for _, line in multi:
+            if line.get("_balanced"):
+                align_w = _visible_width(line["html"])
+                _merge_inline_comment(line, align_w, valid_addrs,
+                                      sorted_addrs, balanced=True)
             else:
-                first_budget = line_max - comment_col
-                wrapped = _wrap_text(comment, first_budget, comment_col,
-                                     line_max)
-                indent_str = " " * comment_col
-                parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs))]
-                for cont in wrapped[1:]:
-                    parts.append(
-                        f"\n{indent_str}"
-                        f"{_linkify_comment_text(cont, valid_addrs, sorted_addrs)}")
-                comment_html = "".join(parts)
-                line["html"] = line["html"] + Markup(
-                    f'{padding}<span class="comment">'
-                    f'; {comment_html}</span>'
-                )
+                align_w = _trailing_line_width(line["html"])
+                _merge_inline_comment(line, align_w, valid_addrs,
+                                      sorted_addrs)
 
     # Clean up: remove internal keys from line dicts
     for line in lines:
         line.pop("_inline_comment", None)
         line.pop("_max_width", None)
+        line.pop("_balanced", None)
+
+
+def _merge_inline_comment(line, align_width, valid_addrs, sorted_addrs,
+                          balanced=False):
+    """Merge an inline comment into a line's HTML at the given alignment.
+
+    When balanced=True (two-column EQUB layout), comment lines are
+    interleaved alongside data lines from the top, producing a
+    side-by-side two-column layout."""
+    comment = line.pop("_inline_comment")
+    line_max = line.get("_max_width", CONTENT_MAX_WIDTH)
+
+    if balanced:
+        _merge_balanced_comment(line, align_width, comment, line_max,
+                                valid_addrs, sorted_addrs)
+        return
+
+    code_width = _trailing_line_width(line["html"])
+    padding = " " * (align_width - code_width + 2)
+    comment_col = align_width + 2 + 2  # padding + "; "
+    total_width = comment_col + len(comment)
+
+    if total_width <= line_max:
+        line["html"] = line["html"] + Markup(
+            f'{padding}<span class="comment">'
+            f'; {_linkify_comment_text(comment, valid_addrs, sorted_addrs)}</span>'
+        )
+    else:
+        first_budget = line_max - comment_col
+        wrapped = _wrap_text(comment, first_budget, comment_col,
+                             line_max)
+        indent_str = " " * comment_col
+        parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs))]
+        for cont in wrapped[1:]:
+            parts.append(
+                f"\n{indent_str}"
+                f"{_linkify_comment_text(cont, valid_addrs, sorted_addrs)}")
+        comment_html = "".join(parts)
+        line["html"] = line["html"] + Markup(
+            f'{padding}<span class="comment">'
+            f'; {comment_html}</span>'
+        )
+
+
+def _merge_balanced_comment(line, align_width, comment, line_max,
+                            valid_addrs, sorted_addrs):
+    """Interleave comment lines alongside data lines from the top.
+
+    Produces a two-column layout where data fills the left and the
+    comment fills the right, both starting on the first line."""
+    comment_w = line_max - align_width - _COMMENT_GAP
+    wrapped = _wrap_text(comment, comment_w, 0, comment_w)
+    data_lines = str(line["html"]).split("\n")
+
+    result = []
+    for i in range(max(len(data_lines), len(wrapped))):
+        if i < len(data_lines):
+            data_html = data_lines[i]
+            data_w = _visible_width(Markup(data_html))
+        else:
+            data_html = ""
+            data_w = 0
+        if i < len(wrapped):
+            pad = " " * (align_width - data_w + 2)
+            ctext = _linkify_comment_text(wrapped[i], valid_addrs,
+                                          sorted_addrs)
+            result.append(
+                f'{data_html}{pad}'
+                f'<span class="comment">; {ctext}</span>')
+        else:
+            result.append(data_html)
+
+    line["html"] = Markup("\n".join(result))
 
 
 def _split_into_blocks(lines):
-    """Split lines into blocks at label boundaries and subroutine headers.
+    """Split lines into blocks at label boundaries, subroutine headers,
+    and multi-line content (EQUB/EQUW blocks).
 
     Returns a list of blocks, where each block is a list of (index, line)
-    tuples."""
+    tuples.  Multi-line content gets its own block so its width doesn't
+    affect comment alignment of adjacent code instructions."""
     blocks = []
     current = []
 
     for i, line in enumerate(lines):
-        # Start a new block at labels, banners, or blank separators
         is_label = '<span class="label">' in str(line.get("html", ""))
         is_banner = line.get("banner")
+        is_multiline = "\n" in str(line.get("html", ""))
 
-        if is_label or is_banner:
+        if is_label or is_banner or is_multiline:
             if current:
                 blocks.append(current)
             current = [(i, line)]
