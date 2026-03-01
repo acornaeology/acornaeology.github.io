@@ -55,7 +55,9 @@ def build_templates(env, roms, pages):
             continue
         template = env.get_template(template_filepath.name)
         output_filepath = OUTPUT_DIRPATH / template_filepath.name
-        html = template.render(root="./", roms=roms)
+        # 404 page can be served from any URL path, so use absolute root
+        root = "/" if template_filepath.name == "404.html" else "./"
+        html = template.render(root=root, roms=roms)
         output_filepath.write_text(html)
         print(f"  {template_filepath.name} -> {output_filepath.relative_to(REPO_ROOT)}")
 
