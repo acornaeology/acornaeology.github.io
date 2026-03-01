@@ -20,11 +20,22 @@ from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossar
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASE_URL = "https://acornaeology.uk/"
+VERSION_PREFIXES = ("anfs", "nfs")
 SITE_DIRPATH = REPO_ROOT / "site"
 TEMPLATES_DIRPATH = REPO_ROOT / "templates"
 DATA_DIRPATH = REPO_ROOT / "data"
 OUTPUT_DIRPATH = REPO_ROOT / "output"
 CACHE_DIRPATH = REPO_ROOT / ".cache"
+
+
+def resolve_version_dirpath(repo_dirpath, version_id):
+    """Map a version ID to its prefixed directory (anfs-/nfs-)."""
+    versions_dirpath = repo_dirpath / "versions"
+    for prefix in VERSION_PREFIXES:
+        dirpath = versions_dirpath / f"{prefix}-{version_id}"
+        if dirpath.is_dir():
+            return dirpath
+    return None
 
 
 def is_page_template(filepath):
@@ -149,7 +160,12 @@ def build_disassemblies(env, sources, pages):
         # Build version metadata for the index page
         versions = []
         for version_id in source["versions"]:
-            rom_json_filepath = repo_dirpath / "versions" / version_id / "rom" / "rom.json"
+            version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
+            if version_dirpath is None:
+                print(f"  Warning: version directory not found for "
+                      f"'{version_id}', skipping")
+                continue
+            rom_json_filepath = version_dirpath / "rom" / "rom.json"
             if rom_json_filepath.exists():
                 rom_meta = json.loads(rom_json_filepath.read_text())
                 title = rom_meta.get("title", f"{name} {version_id}")
@@ -187,7 +203,11 @@ def build_disassemblies(env, sources, pages):
         # Build per-version disassembly pages
         version_anchors = {}  # version_id -> sorted list of anchor addresses
         for version_id in source["versions"]:
-            version_dirpath = repo_dirpath / "versions" / version_id
+            version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
+            if version_dirpath is None:
+                print(f"  Warning: version directory not found for "
+                      f"'{version_id}', skipping")
+                continue
 
             # Find the disassembly JSON
             output_json_dirpath = version_dirpath / "output"
