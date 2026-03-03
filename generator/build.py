@@ -238,13 +238,13 @@ def build_disassemblies(env, sources, pages):
                 title = f"{name} {version_id}"
                 links = []
 
-            # Prepend the GitHub link
-            github_link = {
-                "label": "Disassembly source on GitHub",
-                "url": repo_url,
-                "icon": "github",
-            }
-            links.insert(0, github_link)
+            # Prepend a GitHub link unless rom.json already supplies one
+            if not any(l.get("icon") == "github" for l in links):
+                links.insert(0, {
+                    "label": "Disassembly source on GitHub",
+                    "url": repo_url,
+                    "icon": "github",
+                })
 
             # Add report-issue link with prefilled title and body
             issue_title = f"[{title}] "
