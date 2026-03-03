@@ -266,8 +266,7 @@ def build_disassemblies(env, sources, pages):
                 f"&body={quote(issue_body)}"
             )
             report_link = {
-                "prefix": "Found a mistake or could a comment be clearer?",
-                "label": "Report an issue.",
+                "label": "Found a mistake or a comment that could be clearer? Report an issue.",
                 "url": issue_url,
                 "icon": "bug",
             }
