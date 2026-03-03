@@ -327,20 +327,23 @@ def _wrap_text(text, first_line_budget, continuation_indent,
 
 
 def _group_values(parts, prefix_width, value_width,
-                  max_width=CONTENT_MAX_WIDTH):
+                  max_width=CONTENT_MAX_WIDTH, widths=None):
     """Group data values into lines that fit within max_width.
 
-    Returns a list of lists (groups of parts per line)."""
+    Returns a list of lists (groups of parts per line).
+    If *widths* is given, it supplies per-part visible widths instead
+    of using the fixed *value_width* for every part."""
     line_groups = []
     current_group = []
     current_width = prefix_width
 
-    for part in parts:
-        needed = (2 if current_group else 0) + value_width
+    for i, part in enumerate(parts):
+        w = widths[i] if widths else value_width
+        needed = (2 if current_group else 0) + w
         if current_width + needed > max_width and current_group:
             line_groups.append(current_group)
             current_group = [part]
-            current_width = prefix_width + value_width
+            current_width = prefix_width + w
         else:
             current_group.append(part)
             current_width += needed
@@ -886,15 +889,29 @@ def _immediate_tooltip(value):
 
 def _render_bytes(item, max_width=CONTENT_MAX_WIDTH):
     values = item.get("values", [])
+    expressions = item.get("expressions")
     parts = []
-    for v in values:
+    widths = [] if expressions else None
+    for i, v in enumerate(values):
+        expr = expressions[i] if expressions and i < len(expressions) else None
         tooltip = _immediate_tooltip(v)
-        parts.append(
-            f'<span data-tip="{escape(tooltip)}">&amp;{v:02X}</span>'
-        )
+        if expr:
+            parts.append(
+                f'<span data-tip="{escape(tooltip)}">'
+                f'{escape(expr)}</span>'
+            )
+            if widths is not None:
+                widths.append(len(expr))
+        else:
+            parts.append(
+                f'<span data-tip="{escape(tooltip)}">&amp;{v:02X}</span>'
+            )
+            if widths is not None:
+                widths.append(3)
     prefix_html = '    <span class="directive">EQUB</span> '
     prefix_width = 9  # visible "    EQUB "
-    line_groups = _group_values(parts, prefix_width, 3, max_width)
+    line_groups = _group_values(parts, prefix_width, 3, max_width,
+                                widths=widths)
     indent = " " * prefix_width
     joined_groups = [", ".join(group) for group in line_groups]
     all_html = (",\n" + indent).join(joined_groups)
@@ -903,10 +920,26 @@ def _render_bytes(item, max_width=CONTENT_MAX_WIDTH):
 
 def _render_words(item, max_width=CONTENT_MAX_WIDTH):
     values = item.get("values", [])
-    escaped_parts = [str(escape(f"&{v:04X}")) for v in values]
+    expressions = item.get("expressions")
+    parts = []
+    widths = [] if expressions else None
+    for i, v in enumerate(values):
+        expr = expressions[i] if expressions and i < len(expressions) else None
+        if expr:
+            tooltip = f"&amp;{v:04X}"
+            parts.append(
+                f'<span data-tip="{tooltip}">{escape(expr)}</span>'
+            )
+            if widths is not None:
+                widths.append(len(expr))
+        else:
+            parts.append(str(escape(f"&{v:04X}")))
+            if widths is not None:
+                widths.append(5)
     prefix_html = '    <span class="directive">EQUW</span> '
     prefix_width = 9  # visible "    EQUW "
-    line_groups = _group_values(escaped_parts, prefix_width, 5, max_width)
+    line_groups = _group_values(parts, prefix_width, 5, max_width,
+                                widths=widths)
     indent = " " * prefix_width
     joined_groups = [", ".join(group) for group in line_groups]
     all_html = (",\n" + indent).join(joined_groups)
