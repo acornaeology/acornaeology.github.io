@@ -44,7 +44,7 @@ def generate_atom_feed(pages, output_filepath, base_url):
         ET.SubElement(entry, "title").text = page["title"]
         ET.SubElement(entry, "link", href=page["url"])
         ET.SubElement(entry, "id").text = page["url"]
-        ET.SubElement(entry, "updated").text = now
+        ET.SubElement(entry, "updated").text = page.get("updated") or now
         if page.get("description"):
             ET.SubElement(entry, "summary").text = page["description"]
 

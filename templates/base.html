@@ -16,6 +16,7 @@
     <meta name="twitter:title" content="{{ self.og_title() }}">
     <meta name="twitter:description" content="{{ self.og_description() }}">
     <meta name="twitter:image" content="https://acornaeology.uk/images/logo.png">
+    {% block head_extra %}{% endblock %}
     <link rel="icon" href="{{ root }}favicon.ico" sizes="32x32">
     <link rel="icon" href="{{ root }}images/favicon-32.png" type="image/png" sizes="32x32">
     <link rel="apple-touch-icon" href="{{ root }}images/apple-touch-icon.png">

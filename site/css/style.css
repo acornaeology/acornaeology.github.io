@@ -858,6 +858,12 @@ hr {
     color: var(--link);
 }
 
+.updated-date {
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin: -0.3em 0 0.5em;
+}
+
 .doc-content {
     line-height: 1.7;
 }

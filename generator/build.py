@@ -13,6 +13,8 @@ import markdown as markdown_lib
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
+from datetime import datetime
+
 from .disassembly import process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossary
@@ -26,6 +28,30 @@ TEMPLATES_DIRPATH = REPO_ROOT / "templates"
 DATA_DIRPATH = REPO_ROOT / "data"
 OUTPUT_DIRPATH = REPO_ROOT / "output"
 CACHE_DIRPATH = REPO_ROOT / ".cache"
+
+
+def git_last_modified_iso(repo_dirpath, target_dirpath):
+    """Get the ISO 8601 author date of the latest commit touching target_dirpath."""
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%aI", "--", str(target_dirpath)],
+            cwd=str(repo_dirpath),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        date_str = result.stdout.strip()
+        return date_str if date_str else None
+    except subprocess.CalledProcessError:
+        return None
+
+
+def format_display_date(iso_date):
+    """Format an ISO 8601 date as '7 Mar 2026'."""
+    dt = datetime.fromisoformat(iso_date)
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    return f"{dt.day} {months[dt.month - 1]} {dt.year}"
 
 
 def resolve_version_dirpath(repo_dirpath, version_id):
@@ -88,7 +114,7 @@ def resolve_source(source):
     print(f"  Cloning {repo_url}...")
     CACHE_DIRPATH.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["git", "clone", "--depth", "1", repo_url, str(clone_dirpath)],
+        ["git", "clone", repo_url, str(clone_dirpath)],
         check=True,
         capture_output=True,
     )
@@ -211,6 +237,10 @@ def build_disassemblies(env, sources, pages):
                       f"'{version_id}', skipping")
                 continue
 
+            # Get last-modified date from git history
+            updated_iso = git_last_modified_iso(repo_dirpath, version_dirpath)
+            updated_display = format_display_date(updated_iso) if updated_iso else None
+
             # Find the disassembly JSON
             output_json_dirpath = version_dirpath / "output"
             json_files = list(output_json_dirpath.glob("*.json"))
@@ -293,6 +323,8 @@ def build_disassemblies(env, sources, pages):
                 links=links,
                 sections=sections,
                 subroutines=_filter_subroutines(data),
+                updated_iso=updated_iso,
+                updated_display=updated_display,
             )
 
             version_filepath = output_dirpath / f"{version_id}.html"
@@ -303,6 +335,7 @@ def build_disassemblies(env, sources, pages):
                 "title": title,
                 "description": description,
                 "is_disassembly": True,
+                "updated": updated_iso,
             })
 
             # Build doc pages for this version

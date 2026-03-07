@@ -6,8 +6,13 @@
 
 {% block body_attrs %} class="page-disassembly"{% endblock %}
 
+{% block head_extra %}{% if updated_iso %}
+<meta property="article:modified_time" content="{{ updated_iso }}">
+{% endif %}{% endblock %}
+
 {% block content %}
 <h1>{{ title }}</h1>
+{% if updated_display %}<p class="updated-date">Updated {{ updated_display }}</p>{% endif %}
 <p class="version-back"><a href="./">&larr; All {{ name }} versions</a></p>
 {% if links %}
 <ul class="rom-links">
