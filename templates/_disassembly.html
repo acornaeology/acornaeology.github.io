@@ -51,7 +51,7 @@
 <td colspan="{{ 3 if section.has_binary_addr else 2 }}">{{ line.html }}</td>
 </tr>
 {% if section.has_binary_addr %}
-<tr class="addr-header"><th>ROM</th><th>Reloc</th><th></th></tr>
+<tr class="addr-header"><th>ROM</th><th>Exec</th><th></th></tr>
 {% endif %}
 {% else %}
 <tr{% if line.id %} id="{{ line.id }}"{% endif %}>
