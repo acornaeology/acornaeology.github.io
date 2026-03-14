@@ -22,7 +22,6 @@ from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossar
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASE_URL = "https://acornaeology.uk/"
-VERSION_PREFIXES = ("anfs", "nfs")
 SITE_DIRPATH = REPO_ROOT / "site"
 TEMPLATES_DIRPATH = REPO_ROOT / "templates"
 DATA_DIRPATH = REPO_ROOT / "data"
@@ -55,11 +54,15 @@ def format_display_date(iso_date):
 
 
 def resolve_version_dirpath(repo_dirpath, version_id):
-    """Map a version ID to its prefixed directory (anfs-/nfs-)."""
+    """Map a version ID to its prefixed directory.
+
+    Searches for any subdirectory of versions/ whose name ends with
+    '-{version_id}', allowing any prefix (nfs, anfs, tube-6502-client, etc.).
+    """
     versions_dirpath = repo_dirpath / "versions"
-    for prefix in VERSION_PREFIXES:
-        dirpath = versions_dirpath / f"{prefix}-{version_id}"
-        if dirpath.is_dir():
+    suffix = f"-{version_id}"
+    for dirpath in sorted(versions_dirpath.iterdir()):
+        if dirpath.is_dir() and dirpath.name.endswith(suffix):
             return dirpath
     return None
 

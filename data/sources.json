@@ -2,5 +2,9 @@
     {
         "repo": "https://github.com/acornaeology/acorn-nfs",
         "path": "../../acorn-nfs"
+    },
+    {
+        "repo": "https://github.com/acornaeology/acorn-6502-tube-client",
+        "path": "../../acorn-6502-tube-client"
     }
 ]
