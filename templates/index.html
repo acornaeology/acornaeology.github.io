@@ -11,7 +11,7 @@
 {% for rom in roms %}
     <li>
         <a href="{{ rom.slug }}/">{{ rom.name }}</a>
-        <span class="version">{{ rom.description }}</span>
+        <span class="version">{{ rom.short_description }}</span>
     </li>
 {% endfor %}
 </ul>

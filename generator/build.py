@@ -146,12 +146,18 @@ def load_sources():
             continue
         manifest = json.loads(manifest_filepath.read_text())
 
+        description = manifest.get("description", "")
+        # Extract first sentence for use on the index page.
+        m = re.match(r'(.*?\.) (?=[A-Z]|$)', description)
+        short_description = m.group(1) if m else description
+
         result.append({
             "repo_dirpath": repo_dirpath,
             "repo_url": repo_url,
             "slug": manifest["slug"],
             "name": manifest["name"],
-            "description": manifest.get("description", ""),
+            "description": description,
+            "short_description": short_description,
             "glossary": manifest.get("glossary"),
             "versions": manifest["versions"],
         })
