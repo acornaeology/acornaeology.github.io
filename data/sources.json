@@ -6,5 +6,9 @@
     {
         "repo": "https://github.com/acornaeology/acorn-6502-tube-client",
         "path": "../../acorn-6502-tube-client"
+    },
+    {
+        "repo": "https://github.com/acornaeology/acorn-adfs",
+        "path": "../../acorn-adfs"
     }
 ]
