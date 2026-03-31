@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
 {% block title %}{{ name }} — acornaeology{% endblock %}
 {% block description %}{{ description }}{% endblock %}
@@ -27,4 +28,13 @@
 {% endfor %}
 </tbody>
 </table>
+
+{% if references %}
+<h2>References</h2>
+<ul class="rom-links">
+{% for ref in references %}
+<li><a href="{{ ref.url }}">{{ icon(ref.icon) }}{{ ref.label }}</a></li>
+{% endfor %}
+</ul>
+{% endif %}
 {% endblock %}

@@ -151,6 +151,16 @@ def load_sources():
         m = re.match(r'(.*?\.) (?=[A-Z]|$)', description)
         short_description = m.group(1) if m else description
 
+        references = [
+            {
+                "label": ref["label"],
+                "url": ref["url"],
+                "icon": ref.get("icon", "ref"),
+                "note": ref.get("note", ""),
+            }
+            for ref in manifest.get("references", [])
+        ]
+
         result.append({
             "repo_dirpath": repo_dirpath,
             "repo_url": repo_url,
@@ -160,6 +170,7 @@ def load_sources():
             "short_description": short_description,
             "glossary": manifest.get("glossary"),
             "versions": manifest["versions"],
+            "references": references,
         })
 
     return result
@@ -219,6 +230,7 @@ def build_disassemblies(env, sources, pages):
             versions.append({"id": version_id, "title": title, "docs": docs})
 
         # Build per-ROM index page
+        references = source.get("references", [])
         html = rom_index_template.render(
             root="../",
             slug=slug,
@@ -226,6 +238,7 @@ def build_disassemblies(env, sources, pages):
             description=description,
             versions=versions,
             has_glossary=glossary is not None,
+            references=references,
         )
         index_filepath = output_dirpath / "index.html"
         index_filepath.write_text(html)
