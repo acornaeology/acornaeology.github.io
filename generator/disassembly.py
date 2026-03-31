@@ -89,7 +89,8 @@ def process_disassembly(data):
     """
     sub_lookup = {}
     for sub in data.get("subroutines", []):
-        sub_lookup[sub["addr"]] = sub
+        key = (sub["addr"], sub.get("binary_addr"))
+        sub_lookup[key] = sub
 
     item_by_addr = {item["addr"]: item for item in data["items"]}
     valid_addrs = set(item_by_addr)
@@ -102,7 +103,8 @@ def process_disassembly(data):
     current_sub = None
     in_relocated = False
     for item in data["items"]:
-        sub = sub_lookup.get(item["addr"])
+        key = (item["addr"], item.get("binary_addr"))
+        sub = sub_lookup.get(key)
         if sub:
             if current_sub and current_sub.get("fall_through"):
                 lines.append({
@@ -115,7 +117,7 @@ def process_disassembly(data):
                 })
             current_sub = sub
         if sub and sub.get("title"):
-            in_relocated = item["addr"] in relocated_sections
+            in_relocated = (item["addr"], item.get("binary_addr")) in relocated_sections
         max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
                                    sorted_addrs, max_width))
@@ -152,7 +154,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         binary_addr_id = None
         binary_addr_display = None
 
-    sub = sub_lookup.get(addr)
+    sub = sub_lookup.get((addr, item.get("binary_addr")))
 
     # Filter comments
     comments = [
@@ -574,11 +576,11 @@ def _find_relocated_sections(items, sub_lookup):
     has_binary = False
 
     for item in items:
-        sub = sub_lookup.get(item["addr"])
+        sub = sub_lookup.get((item["addr"], item.get("binary_addr")))
         if sub and sub.get("title"):
             if has_binary and current_start is not None:
                 relocated.add(current_start)
-            current_start = item["addr"]
+            current_start = (item["addr"], item.get("binary_addr"))
             has_binary = False
         if "binary_addr" in item:
             has_binary = True
