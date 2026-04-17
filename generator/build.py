@@ -161,6 +161,22 @@ def load_sources():
             for ref in manifest.get("references", [])
         ]
 
+        # Project-level analyses: Markdown writeups about the ROM's
+        # architecture or behaviour that aren't specific to a single
+        # version. Each entry points to a .md file inside the source
+        # repo and is rendered to <slug>/<stem>.html.
+        analyses = [
+            {
+                "label": a["label"],
+                "url": a["url"],
+                "icon": a.get("icon", "doc"),
+                "note": a.get("note", ""),
+                "address_links": a.get("address_links", []),
+                "glossary_links": a.get("glossary_links", []),
+            }
+            for a in manifest.get("analyses", [])
+        ]
+
         result.append({
             "repo_dirpath": repo_dirpath,
             "repo_url": repo_url,
@@ -171,6 +187,7 @@ def load_sources():
             "glossary": manifest.get("glossary"),
             "versions": manifest["versions"],
             "references": references,
+            "analyses": analyses,
         })
 
     return result
@@ -231,6 +248,15 @@ def build_disassemblies(env, sources, pages):
 
         # Build per-ROM index page
         references = source.get("references", [])
+        analyses_for_index = [
+            {
+                "label": a["label"],
+                "url": _analysis_output_filename(a["url"]),
+                "icon": a.get("icon", "doc"),
+                "note": a.get("note", ""),
+            }
+            for a in source.get("analyses", [])
+        ]
         html = rom_index_template.render(
             root="../",
             slug=slug,
@@ -238,6 +264,7 @@ def build_disassemblies(env, sources, pages):
             description=description,
             versions=versions,
             has_glossary=glossary is not None,
+            analyses=analyses_for_index,
             references=references,
         )
         index_filepath = output_dirpath / "index.html"
@@ -365,11 +392,27 @@ def build_disassemblies(env, sources, pages):
                               rom_meta, output_dirpath, version_anchors,
                               glossary_lookup, pages)
 
+        # Build project-level analysis pages (after all versions, so
+        # analyses can link into any version's anchors)
+        _render_analysis_pages(env, source, output_dirpath,
+                               version_anchors, glossary_lookup, pages)
+
 
 def _doc_output_filename(version_id, doc_path):
     """Derive the output HTML filename for a doc entry."""
     stem = Path(doc_path).stem.lower()
     return f"{version_id}-{stem}.html"
+
+
+def _analysis_output_filename(analysis_url):
+    """Derive the output HTML filename for a project-level analysis.
+
+    No version prefix: analyses are project-level, so the filename is
+    just the Markdown stem. Collisions between analyses with the same
+    stem must be avoided by the source manifest.
+    """
+    stem = Path(analysis_url).stem.lower()
+    return f"{stem}.html"
 
 
 def _resolve_anchor(address, anchors):
@@ -502,6 +545,7 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
                 source["slug"])
 
         doc_filename = _doc_output_filename(version_id, doc["path"])
+        disassembly_title = rom_meta.get("title", f"{name} {version_id}")
         html = doc_template.render(
             root="../",
             slug=source["slug"],
@@ -510,8 +554,8 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
             title=doc["label"],
             description=source["description"],
             content=Markup(content_html),
-            disassembly_url=f"{version_id}.html",
-            disassembly_title=rom_meta.get("title", f"{name} {version_id}"),
+            back_url=f"{version_id}.html",
+            back_label=f"{disassembly_title} disassembly",
         )
 
         output_filepath = output_dirpath / doc_filename
@@ -520,6 +564,102 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         if pages is not None:
             pages.append({
                 "url": f"{BASE_URL}{source['slug']}/{doc_filename}",
+            })
+
+
+def _rewrite_md_links_to_html(html, analyses):
+    """Rewrite href="<stem>.md" to href="<stem>.html" for every
+    analysis in the project.
+
+    Each analysis becomes a flat `<slug>/<stem>.html` page, so any
+    sibling-analysis link of the form `href="<stem>.md"` (same
+    directory) or `href="../analysis/<stem>.md"` (the GitHub-style
+    path we often see in Markdown sources) needs to point at the
+    rendered sibling. We only rewrite links whose basename stem
+    matches one of the rendered analyses, leaving unrelated `.md`
+    URLs (e.g. external GitHub links) alone.
+    """
+    known_stems = {Path(a["url"]).stem.lower() for a in analyses}
+    if not known_stems:
+        return html
+
+    def repl(match):
+        href = match.group(1)
+        stem = Path(href).stem.lower()
+        if stem in known_stems:
+            return f'href="{stem}.html"'
+        return match.group(0)
+
+    # Match href="..." where the target ends in .md and isn't an
+    # absolute URL (no scheme, no leading //).
+    return re.sub(r'href="((?!https?:|//)[^"#?]+\.md)(?:#[^"]*)?"', repl, html)
+
+
+def _render_analysis_pages(env, source, output_dirpath,
+                           version_anchors=None, glossary_lookup=None,
+                           pages=None):
+    """Build project-level analysis pages from acornaeology.json.
+
+    Each entry in `source["analyses"]` points to a Markdown file
+    inside the source repo and is rendered to a standalone HTML
+    page at `<slug>/<stem>.html`. `address_links` and
+    `glossary_links` behave as for per-version docs.
+    """
+    analyses = source.get("analyses", [])
+    if not analyses:
+        return
+
+    doc_template = env.get_template("_doc.html")
+    repo_dirpath = source["repo_dirpath"]
+    slug = source["slug"]
+
+    for analysis in analyses:
+        md_filepath = repo_dirpath / analysis["url"]
+        if not md_filepath.exists():
+            print(f"  Warning: analysis file {md_filepath} not found, skipping")
+            continue
+
+        md_text = md_filepath.read_text()
+
+        address_links = analysis.get("address_links", [])
+        if address_links:
+            md_text = _apply_address_links(md_text, address_links,
+                                           version_anchors)
+
+        converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
+        content_html = converter.convert(md_text)
+
+        # Rewrite inter-analysis links: the Markdown sources link to
+        # sibling writeups as `foo.md` (a valid GitHub link) but the
+        # site renders each as `foo.html`. Remap same-directory
+        # `.md` hrefs to `.html` so the rendered pages are
+        # navigable.
+        content_html = _rewrite_md_links_to_html(content_html, analyses)
+
+        glossary_links = analysis.get("glossary_links", [])
+        if glossary_links and glossary_lookup:
+            content_html = apply_glossary_links(
+                content_html, glossary_links, glossary_lookup, slug)
+
+        analysis_filename = _analysis_output_filename(analysis["url"])
+        html = doc_template.render(
+            root="../",
+            slug=slug,
+            doc_filename=analysis_filename,
+            version_id=None,
+            title=analysis["label"],
+            description=source["description"],
+            content=Markup(content_html),
+            back_url="index.html",
+            back_label=source["name"],
+        )
+
+        output_filepath = output_dirpath / analysis_filename
+        output_filepath.write_text(html)
+        print(f"  {slug}/{analysis_filename}")
+        if pages is not None:
+            pages.append({
+                "url": f"{BASE_URL}{slug}/{analysis_filename}",
             })
 
 

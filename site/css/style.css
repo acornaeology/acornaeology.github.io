@@ -304,6 +304,11 @@ a:hover {
     margin: 0.3rem 0;
 }
 
+.analysis-note {
+    margin: 0.2rem 0 0.8rem 1.8rem;
+    color: var(--dim);
+}
+
 .link-icon {
     width: 1.5em;
     height: 1.5em;

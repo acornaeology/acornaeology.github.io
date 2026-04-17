@@ -29,6 +29,15 @@
 </tbody>
 </table>
 
+{% if analyses %}
+<h2>Analyses</h2>
+<ul class="rom-links">
+{% for a in analyses %}
+<li><a href="{{ a.url }}">{{ icon(a.icon) }}{{ a.label }}</a>{% if a.note %}<p class="analysis-note">{{ a.note }}</p>{% endif %}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
 {% if references %}
 <h2>References</h2>
 <ul class="rom-links">
