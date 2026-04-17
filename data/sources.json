@@ -10,5 +10,9 @@
     {
         "repo": "https://github.com/acornaeology/acorn-adfs",
         "path": "../../acorn-adfs"
+    },
+    {
+        "repo": "https://github.com/acornaeology/acorn-econet-bridge",
+        "path": "../../acorn-econet-bridge"
     }
 ]

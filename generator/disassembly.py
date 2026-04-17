@@ -777,6 +777,8 @@ def _render_content(item, valid_addrs, max_width=CONTENT_MAX_WIDTH):
         return _render_words(item, max_width)
     if t == "string":
         return _render_string(item)
+    if t == "fill":
+        return _render_fill(item)
     return Markup("")
 
 
@@ -918,6 +920,26 @@ def _render_bytes(item, max_width=CONTENT_MAX_WIDTH):
     joined_groups = [", ".join(group) for group in line_groups]
     all_html = (",\n" + indent).join(joined_groups)
     return Markup(prefix_html + all_html)
+
+
+def _render_fill(item):
+    """Render a Fill item as `FILL N × &XX` (an N-byte run of a constant).
+
+    The underlying py8dis disassembler emits this as a compact beebasm
+    FOR/NEXT loop; we don't need to reproduce the FOR syntax in the
+    pretty output, just tell the reader how many bytes are being
+    filled with what value.
+    """
+    value = item.get("value", 0)
+    length = item.get("length", 0)
+    tooltip = _immediate_tooltip(value)
+    value_html = (
+        f'<span data-tip="{escape(tooltip)}">&amp;{value:02X}</span>'
+    )
+    return Markup(
+        f'    <span class="directive">FILL</span> '
+        f'{length} &times; {value_html}'
+    )
 
 
 def _render_words(item, max_width=CONTENT_MAX_WIDTH):
