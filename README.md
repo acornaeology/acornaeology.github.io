@@ -68,9 +68,10 @@ A GitHub Actions workflow builds and deploys the site to GitHub Pages on every p
 Per-version docs (`rom.json.docs`) and project-level analyses (`acornaeology.json.analyses`) can use an `address:` URI scheme inside regular Markdown link syntax to turn a label into a clickable disassembly anchor:
 
 ```markdown
-[rx_frame_b](address:E263)             ← defaults to the current doc's version
-[rx_frame_b (&E263)](address:E263)     ← label with hex in it, same target
-[legacy init](address:80F3@3.60)       ← explicit version (required in analyses)
+[rx_frame_b](address:E263)                ← label-only link
+[rx_frame_b](address:E263?hex)            ← appends " (&E263)" as a second link
+[legacy init](address:80F3@3.60?hex)      ← explicit version (required in analyses)
+[rx_frame_b (&E263)](address:E263@1)      ← author wrote label by hand
 ```
 
 The `address:` scheme is resolved at render time:
@@ -79,7 +80,13 @@ The `address:` scheme is resolved at render time:
 - Inside a **project-level analysis**, authors must always specify `@version` — analyses aren't tied to a single version, so there's no implicit default.
 - Hex is 4+ digits, case-insensitive. If the exact address isn't an anchor in the target version, the link falls back to the nearest preceding anchor.
 
-Unresolvable URIs (unknown version, missing `@version` in an analysis, address before the first anchor) print a build warning and leave the link unchanged rather than failing the build.
+### Flags
+
+A `?flag` suffix tweaks the rendered output:
+
+- **`?hex`** — append `` (&<HEX>) `` after the label as a *second* hyperlink to the same anchor. The label and the hex each become their own `<a>` tag; the space, parentheses, and `&` sigil between them are deliberately outside both links, so a reader can click either the name or the address. The hex is `<code>`-styled and upper-cased for consistency regardless of how the author typed it.
+
+Unresolvable URIs (unknown version, missing `@version` in an analysis, address before the first anchor, unknown flag) print a build warning and leave the link unchanged rather than failing the build.
 
 ## Author
 

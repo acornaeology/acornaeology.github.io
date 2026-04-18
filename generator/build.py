@@ -429,39 +429,58 @@ def _resolve_anchor(address, anchors):
     return address
 
 
-_ADDRESS_URI_HREF_RE = re.compile(
-    r'<a href="address:([0-9A-Fa-f]{4,})(?:@([^"]+))?">',
-    re.IGNORECASE,
+_ADDRESS_URI_RE = re.compile(
+    r'<a href="address:'
+    r'([0-9A-Fa-f]{4,})'     # hex address
+    r'(?:@([^"?]+))?'        # optional @version
+    r'(?:\?([^"]*))?'        # optional ?flag1[&flag2...]
+    r'">'
+    r'(.*?)'                 # label (markdown-converted, may contain HTML)
+    r'</a>',
+    re.IGNORECASE | re.DOTALL,
 )
 
 
 def apply_address_uri_links(html, version_anchors, default_version=None,
                             source_label=""):
-    """Rewrite Markdown-authored `address:HEX[@version]` URIs to anchors.
+    """Rewrite Markdown-authored `address:HEX[@version][?flag]` URIs.
 
-    Authors can write `[rx_frame_b](address:E263)` or
-    `[rx_frame_b (&E263)](address:E263@3.60)` in Markdown sources;
-    Markdown converts those to `<a href="address:E263[@version]">...</a>`.
-    This post-processor resolves each such href to the matching
-    disassembly page and anchor and rewrites it.
+    Authors write inline links in their Markdown sources such as
+
+        [rx_frame_b](address:E263)                  — label-only link
+        [rx_frame_b](address:E263?hex)              — append " (&E263)"
+        [rx_frame_b](address:E263@3.60?hex)         — explicit version
+        [rx_frame_b (&E263)](address:E263@3.60)     — author wrote label
+                                                      fully by hand
+
+    Markdown converts those to `<a href="address:…">label</a>`; this
+    post-processor resolves each URI to the matching disassembly page
+    and anchor and rewrites the output.
+
+    Flags (after `?`) supported:
+
+    - `hex` — append ` (&<HEX>)` as a second hyperlink to the same
+      anchor, with the hex formatted in `<code>` for visual parity
+      with backticked labels. The space between the two links and the
+      enclosing parentheses are deliberately outside the `<a>` tags so
+      only the label and the hex itself are clickable.
 
     - `version_anchors` is the per-version sorted-anchor dict built
       during the disassembly-rendering pass.
     - `default_version` supplies the version for unqualified URIs
       (omit `@version`). Pass the doc's own `version_id` inside
-      per-version docs; pass `None` inside project-level analyses (where
-      authors are required to be explicit).
+      per-version docs; pass `None` inside project-level analyses.
     - `source_label` appears in warning messages so authors can find
       the offending source.
 
     Unresolvable references (no default, unknown version, no anchor
-    at-or-before the address) print a warning and leave the `<a>` tag
-    unchanged rather than crashing the build.
+    at-or-before the address, unknown flag) print a warning and leave
+    the `<a>` tag unchanged rather than crashing the build.
     """
 
     def rewrite(match):
-        hex_str = match.group(1)
-        version = match.group(2) or default_version
+        hex_str, version, flag, label = match.groups()
+        version = version or default_version
         src = f" ({source_label})" if source_label else ""
 
         if version is None:
@@ -486,9 +505,21 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
                   f"or before &{hex_str}{src}")
             return match.group(0)
 
-        return f'<a href="{version}.html#addr-{anchor:04X}">'
+        url = f"{version}.html#addr-{anchor:04X}"
 
-    return _ADDRESS_URI_HREF_RE.sub(rewrite, html)
+        if not flag:
+            return f'<a href="{url}">{label}</a>'
+
+        if flag.lower() == "hex":
+            hex_display = f'<code>&amp;{hex_str.upper()}</code>'
+            return (f'<a href="{url}">{label}</a> '
+                    f'(<a href="{url}">{hex_display}</a>)')
+
+        print(f"  Warning: address:{hex_str}@{version} — unknown flag "
+              f"'?{flag}'{src}")
+        return match.group(0)
+
+    return _ADDRESS_URI_RE.sub(rewrite, html)
 
 
 def _apply_address_links(md_text, address_links, version_anchors=None):
