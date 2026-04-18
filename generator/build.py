@@ -889,12 +889,18 @@ def _render_memory_map_page(env, source, version_id, version_title,
             if name is None:
                 return match.group(0)
             url = f"#mm-{name}"
+            # `mm-link` is the cyan "memory-location reference" class;
+            # used here for same-page jumps between memory-map entries
+            # and on the listing page for cross-window navigation. The
+            # shared class gives the two views a consistent palette:
+            # memory locations read cyan regardless of which page the
+            # reader is on.
             if not flag:
-                return f'<a href="{url}">{label}</a>'
+                return f'<a class="mm-link" href="{url}">{label}</a>'
             if flag.lower() == "hex":
                 hex_display = f'<code>&amp;{hex_str.upper()}</code>'
-                return (f'<a href="{url}">{label}</a> '
-                        f'(<a href="{url}">{hex_display}</a>)')
+                return (f'<a class="mm-link" href="{url}">{label}</a> '
+                        f'(<a class="mm-link" href="{url}">{hex_display}</a>)')
             return match.group(0)
         return _ADDRESS_URI_RE.sub(repl, html)
 

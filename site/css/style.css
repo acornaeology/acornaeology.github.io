@@ -671,29 +671,43 @@ hr {
     color: var(--text);
 }
 
-/* Cross-window links paint in cyan: the listing page uses them to
-   reach the memory-map window (`.mm-link`), and the memory-map
-   page uses them to reach the listing window (`.listing-link`).
-   Same shape as a jump-label link (dotted underline, solid on
-   hover), a distinct colour from jump-label references so readers
-   can tell at a glance which links will surface the partner window
-   when clicked. */
+/* Reference colour convention, consistent across both the listing
+   page and the memory-map page:
+   - Cyan (`.mm-link`) means "memory location". Used on the listing
+     for operand labels and inline-comment refs that point to a
+     memory-map entry (cross-window to the memory-map page), and on
+     the memory-map page for same-page jumps between entries.
+   - Magenta (`.listing-link`, same hue as `.listing .operand a`)
+     means "jump to code". Used on the memory-map page for refs
+     pointing into the ROM, so the reader sees the same colour for
+     a code reference whether they're reading the listing or the
+     memory-map.
+   Both families use a dotted underline that turns solid on hover. */
 .listing .operand a.mm-link,
 .listing .comment a.mm-link,
+.memory-map a.mm-link,
 .memory-map a.listing-link {
-    color: var(--cyan);
     text-decoration: none;
     border-bottom: 1px dotted var(--dim);
 }
 
+.listing .operand a.mm-link,
+.listing .comment a.mm-link,
+.memory-map a.mm-link,
 .listing .operand a.mm-link:visited,
 .listing .comment a.mm-link:visited,
-.memory-map a.listing-link:visited {
+.memory-map a.mm-link:visited {
     color: var(--cyan);
+}
+
+.memory-map a.listing-link,
+.memory-map a.listing-link:visited {
+    color: var(--operand-link);
 }
 
 .listing .operand a.mm-link:hover,
 .listing .comment a.mm-link:hover,
+.memory-map a.mm-link:hover,
 .memory-map a.listing-link:hover {
     border-bottom-style: solid;
 }
