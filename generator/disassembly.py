@@ -105,30 +105,39 @@ def process_disassembly(data, version_id=None):
     valid_addrs = set(item_by_addr)
     sorted_addrs = sorted(valid_addrs)
 
-    # Build two companion lookups over the memory-map entries:
+    # Build two companion lookups for label references in the listing:
     #
-    # - `mm_tooltips: {addr: "&XXXX - brief"}` drives the `data-tip`
-    #   on operand label references and `[label](address:HEX)` links
-    #   in comments, so hovering e.g. `STA adlc_a_cr1` shows "&C800
-    #   - ADLC A control/status port 0.".
+    # - `label_tooltips: {addr: "&XXXX - text"}` drives the `data-tip`
+    #   on label references (operand labels and `[label](address:HEX)`
+    #   comment links). The text comes from the memory-map `brief` for
+    #   non-ROM labels and from the subroutine `title` for ROM labels,
+    #   so hovering `STA adlc_a_cr1` shows "&C800 - ADLC A control
+    #   /status port 0." and hovering `JSR rx_frame_a` shows "&E0E2 -
+    #   RX frame handler, side A". Addresses without a memory-map
+    #   brief or subroutine title fall back to the bare "&XXXX" form.
     #
-    # - `mm_links: {addr: href}` turns the same references into real
+    # - `mm_links: {addr: href}` turns memory-map references into real
     #   `<a>` elements pointing at the memory-map page, with
     #   `target="memory-map"` so a side-by-side memory-map window is
     #   reused across clicks.
     #
-    # Both are keyed by runtime address. Py8dis' `brief` is already
-    # Markdown-stripped per the author-controlled `\n`-in-first-
-    # paragraph convention.
-    mm_tooltips = {}
+    # Py8dis' `brief` is Markdown-stripped per the author-controlled
+    # `\n`-in-first-paragraph convention; subroutine titles are plain
+    # text by convention.
+    label_tooltips = {}
     mm_links = {}
     for entry in data.get("memory_map", []):
         addr = entry["addr"]
         brief = entry.get("brief")
         if brief:
-            mm_tooltips[addr] = f"&{addr:04X} \u2013 {brief}"
+            label_tooltips[addr] = f"&{addr:04X} \u2013 {brief}"
         if version_id is not None:
             mm_links[addr] = f"{version_id}-memory-map.html#mm-{entry['name']}"
+    for sub in data.get("subroutines", []):
+        title = sub.get("title")
+        if title:
+            addr = sub["addr"]
+            label_tooltips[addr] = f"&{addr:04X} \u2013 {title}"
 
     # Pre-scan to find which subroutine sections contain relocated code
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
@@ -154,7 +163,7 @@ def process_disassembly(data, version_id=None):
             in_relocated = (item["addr"], item.get("binary_addr")) in relocated_sections
         max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
-                                   sorted_addrs, mm_tooltips, mm_links,
+                                   sorted_addrs, label_tooltips, mm_links,
                                    max_width))
 
     if current_sub and current_sub.get("fall_through"):
@@ -167,12 +176,12 @@ def process_disassembly(data, version_id=None):
             ),
         })
 
-    _align_inline_comments(lines, valid_addrs, sorted_addrs, mm_links)
+    _align_inline_comments(lines, valid_addrs, sorted_addrs, label_tooltips, mm_links)
     return _split_into_sections(lines)
 
 
 def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
-                  mm_tooltips, mm_links, max_width=CONTENT_MAX_WIDTH):
+                  label_tooltips, mm_links, max_width=CONTENT_MAX_WIDTH):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
@@ -204,7 +213,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
             "id": addr_id,
             "addr": None,
             "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
-                                              mm_links),
+                                              label_tooltips, mm_links),
             "banner": True,
         })
         id_used = True
@@ -213,14 +222,14 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         non_banner = [c for c in comments if not _is_banner_content(c, sub)]
         for comment_text in non_banner:
             _append_comment_lines(lines, comment_text, max_width,
-                                  valid_addrs, sorted_addrs, mm_links)
+                                  valid_addrs, sorted_addrs, label_tooltips, mm_links)
     else:
         # Normal comment rendering
         if comments:
             lines.append(_empty_line())
         for comment_text in comments:
             _append_comment_lines(lines, comment_text, max_width,
-                                  valid_addrs, sorted_addrs, mm_links)
+                                  valid_addrs, sorted_addrs, label_tooltips, mm_links)
 
     # Label lines
     references = item.get("references", [])
@@ -250,7 +259,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         vw = 3 if item["type"] == "byte" else 5
         render_width = _optimal_data_max_width(
             len(item.get("values", [])), inline_comment, vw, max_width)
-    content_html = _render_content(item, valid_addrs, mm_tooltips, mm_links,
+    content_html = _render_content(item, valid_addrs, label_tooltips, mm_links,
                                     render_width)
 
     line_dict = {
@@ -273,7 +282,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
     # Comments after (rare)
     for comment_text in item.get("comments_after", []):
         _append_comment_lines(lines, comment_text, max_width, valid_addrs,
-                              sorted_addrs, mm_links)
+                              sorted_addrs, label_tooltips, mm_links)
 
     return lines
 
@@ -429,7 +438,7 @@ def _split_width_outliers(items):
     return groups
 
 
-def _align_inline_comments(lines, valid_addrs, sorted_addrs, mm_links):
+def _align_inline_comments(lines, valid_addrs, sorted_addrs, label_tooltips, mm_links):
     """Align inline comments within blocks separated by labels/banners.
 
     Single-line content (code instructions) within each block shares a
@@ -458,7 +467,7 @@ def _align_inline_comments(lines, valid_addrs, sorted_addrs, mm_links):
                 align_w = max(_visible_width(l["html"]) for _, l in group)
                 for _, line in group:
                     _merge_inline_comment(line, align_w, valid_addrs,
-                                         sorted_addrs, mm_links)
+                                         sorted_addrs, label_tooltips, mm_links)
 
         # Multi-line: balanced layout aligns to widest data line;
         # trailing layout aligns to the last data line.
@@ -466,11 +475,11 @@ def _align_inline_comments(lines, valid_addrs, sorted_addrs, mm_links):
             if line.get("_balanced"):
                 align_w = _visible_width(line["html"])
                 _merge_inline_comment(line, align_w, valid_addrs,
-                                      sorted_addrs, mm_links, balanced=True)
+                                      sorted_addrs, label_tooltips, mm_links, balanced=True)
             else:
                 align_w = _trailing_line_width(line["html"])
                 _merge_inline_comment(line, align_w, valid_addrs,
-                                      sorted_addrs, mm_links)
+                                      sorted_addrs, label_tooltips, mm_links)
 
     # Clean up: remove internal keys from line dicts
     for line in lines:
@@ -480,7 +489,7 @@ def _align_inline_comments(lines, valid_addrs, sorted_addrs, mm_links):
 
 
 def _merge_inline_comment(line, align_width, valid_addrs, sorted_addrs,
-                          mm_links, balanced=False):
+                          label_tooltips, mm_links, balanced=False):
     """Merge an inline comment into a line's HTML at the given alignment.
 
     When balanced=True (two-column EQUB layout), comment lines are
@@ -491,7 +500,7 @@ def _merge_inline_comment(line, align_width, valid_addrs, sorted_addrs,
 
     if balanced:
         _merge_balanced_comment(line, align_width, comment, line_max,
-                                valid_addrs, sorted_addrs, mm_links)
+                                valid_addrs, sorted_addrs, label_tooltips, mm_links)
         return
 
     code_width = _trailing_line_width(line["html"])
@@ -502,18 +511,18 @@ def _merge_inline_comment(line, align_width, valid_addrs, sorted_addrs,
     if total_width <= line_max:
         line["html"] = line["html"] + Markup(
             f'{padding}<span class="comment">'
-            f'; {_linkify_comment_text(comment, valid_addrs, sorted_addrs, mm_links)}</span>'
+            f'; {_linkify_comment_text(comment, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</span>'
         )
     else:
         first_budget = line_max - comment_col
         wrapped = _wrap_text(comment, first_budget, comment_col,
                              line_max)
         indent_str = " " * comment_col
-        parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs, mm_links))]
+        parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs, label_tooltips, mm_links))]
         for cont in wrapped[1:]:
             parts.append(
                 f"\n{indent_str}"
-                f"{_linkify_comment_text(cont, valid_addrs, sorted_addrs, mm_links)}")
+                f"{_linkify_comment_text(cont, valid_addrs, sorted_addrs, label_tooltips, mm_links)}")
         comment_html = "".join(parts)
         line["html"] = line["html"] + Markup(
             f'{padding}<span class="comment">'
@@ -522,7 +531,7 @@ def _merge_inline_comment(line, align_width, valid_addrs, sorted_addrs,
 
 
 def _merge_balanced_comment(line, align_width, comment, line_max,
-                            valid_addrs, sorted_addrs, mm_links):
+                            valid_addrs, sorted_addrs, label_tooltips, mm_links):
     """Interleave comment lines alongside data lines from the top.
 
     Produces a two-column layout where data fills the left and the
@@ -542,7 +551,7 @@ def _merge_balanced_comment(line, align_width, comment, line_max,
         if i < len(wrapped):
             pad = " " * (align_width - data_w + 2)
             ctext = _linkify_comment_text(wrapped[i], valid_addrs,
-                                          sorted_addrs, mm_links)
+                                          sorted_addrs, label_tooltips, mm_links)
             result.append(
                 f'{data_html}{pad}'
                 f'<span class="comment">; {ctext}</span>')
@@ -634,7 +643,7 @@ def _make_section(lines):
 
 
 def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
-                          sorted_addrs, mm_links):
+                          sorted_addrs, label_tooltips, mm_links):
     comment_prefix_width = 2  # "; "
     for line_text in str(comment_text).split("\n"):
         if not line_text.strip():
@@ -645,7 +654,7 @@ def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
         if line_text.startswith("  "):
             html = Markup(
                 '<span class="comment">; '
-                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs, mm_links)}</span>'
+                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
             continue
@@ -654,17 +663,17 @@ def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
         if total_width <= max_width:
             html = Markup(
                 '<span class="comment">; '
-                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs, mm_links)}</span>'
+                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
         else:
             budget = max_width - comment_prefix_width
             wrapped = _wrap_text(line_text, budget, comment_prefix_width,
                                  max_width)
-            parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs, mm_links))]
+            parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs, label_tooltips, mm_links))]
             for cont in wrapped[1:]:
                 parts.append(
-                    f"\n; {_linkify_comment_text(cont, valid_addrs, sorted_addrs, mm_links)}")
+                    f"\n; {_linkify_comment_text(cont, valid_addrs, sorted_addrs, label_tooltips, mm_links)}")
             comment_html = "".join(parts)
             html = Markup(
                 f'<span class="comment">; {comment_html}</span>'
@@ -718,7 +727,7 @@ def _is_banner_content(text, sub):
     return False
 
 
-def _render_subroutine_header(sub, valid_addrs, sorted_addrs, mm_links):
+def _render_subroutine_header(sub, valid_addrs, sorted_addrs, label_tooltips, mm_links):
     """Render a subroutine's structured data as a styled HTML block."""
     parts = []
     parts.append('<div class="sub-header">')
@@ -726,14 +735,14 @@ def _render_subroutine_header(sub, valid_addrs, sorted_addrs, mm_links):
     # Title
     title = sub.get("title", sub.get("name", ""))
     parts.append(
-        f'<h3>{_linkify_comment_text(title, valid_addrs, sorted_addrs, mm_links)}</h3>')
+        f'<h3>{_linkify_comment_text(title, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</h3>')
 
     # Description
     desc = sub.get("description", "")
     if desc:
         parts.append(
             '<div class="sub-desc">'
-            f'{_render_plaintext(desc, valid_addrs, sorted_addrs, mm_links)}</div>')
+            f'{_render_plaintext(desc, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</div>')
 
     # On Entry / On Exit
     entry = sub.get("on_entry", {})
@@ -743,18 +752,18 @@ def _render_subroutine_header(sub, valid_addrs, sorted_addrs, mm_links):
         if entry:
             parts.append(_render_register_rows("On Entry", entry,
                                                valid_addrs, sorted_addrs,
-                                               mm_links))
+                                               label_tooltips, mm_links))
         if exit_:
             parts.append(_render_register_rows("On Exit", exit_,
                                                valid_addrs, sorted_addrs,
-                                               mm_links))
+                                               label_tooltips, mm_links))
         parts.append("</table></div>")
 
     parts.append("</div>")
     return Markup("\n".join(parts))
 
 
-def _render_plaintext(text, valid_addrs, sorted_addrs, mm_links):
+def _render_plaintext(text, valid_addrs, sorted_addrs, label_tooltips, mm_links):
     """Render Markdown text as block-level HTML for subroutine descriptions
     and standalone comment blocks.
 
@@ -765,10 +774,11 @@ def _render_plaintext(text, valid_addrs, sorted_addrs, mm_links):
     Markdown renderer; bare `&XXXX` in prose is left as plain text.
     """
     return render_markdown(str(text), valid_addrs, sorted_addrs,
-                           inline=False, mm_links=mm_links)
+                           inline=False, mm_links=mm_links,
+                           label_tooltips=label_tooltips)
 
 
-def _render_register_rows(heading, regs, valid_addrs, sorted_addrs, mm_links):
+def _render_register_rows(heading, regs, valid_addrs, sorted_addrs, label_tooltips, mm_links):
     """Render register rows with the heading in the first column."""
     rows = []
     for i, (reg, desc) in enumerate(regs.items()):
@@ -780,16 +790,16 @@ def _render_register_rows(heading, regs, valid_addrs, sorted_addrs, mm_links):
         rows.append(
             f"<tr>{th}"
             f"<td>{escape(reg.upper())}</td>"
-            f"<td>{_linkify_comment_text(desc, valid_addrs, sorted_addrs, mm_links)}</td></tr>"
+            f"<td>{_linkify_comment_text(desc, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</td></tr>"
         )
     return "\n".join(rows)
 
 
-def _render_content(item, valid_addrs, mm_tooltips, mm_links,
+def _render_content(item, valid_addrs, label_tooltips, mm_links,
                     max_width=CONTENT_MAX_WIDTH):
     t = item["type"]
     if t == "code":
-        return _render_code(item, valid_addrs, mm_tooltips, mm_links)
+        return _render_code(item, valid_addrs, label_tooltips, mm_links)
     if t == "byte":
         return _render_bytes(item, max_width)
     if t == "word":
@@ -801,14 +811,14 @@ def _render_content(item, valid_addrs, mm_tooltips, mm_links,
     return Markup("")
 
 
-def _render_code(item, valid_addrs, mm_tooltips, mm_links):
+def _render_code(item, valid_addrs, label_tooltips, mm_links):
     mnemonic = escape(item["mnemonic"].upper())
     operand = item.get("operand", "")
 
     html = Markup(f'    <span class="opcode">{mnemonic}</span>')
     if operand:
         operand_html = _linkify_operand(operand, item, valid_addrs,
-                                        mm_tooltips, mm_links)
+                                        label_tooltips, mm_links)
         if _is_immediate(operand, item):
             tooltip = _immediate_tooltip(item["bytes"][1])
             operand_html = Markup(
@@ -819,7 +829,7 @@ def _render_code(item, valid_addrs, mm_tooltips, mm_links):
     return html
 
 
-def _linkify_operand(operand, item, valid_addrs, mm_tooltips, mm_links):
+def _linkify_operand(operand, item, valid_addrs, label_tooltips, mm_links):
     """Wrap label references in the operand text with anchor links.
 
     Three cases, in priority order:
@@ -830,7 +840,7 @@ def _linkify_operand(operand, item, valid_addrs, mm_tooltips, mm_links):
     - `target` is a ROM item: emit a same-page `<a href="#addr-">`.
     - Otherwise: emit a plain `<span class="ext-label">` (no link).
 
-    `mm_tooltips` supplies the `data-tip` brief for any non-ROM label
+    `label_tooltips` supplies the `data-tip` brief for any non-ROM label
     that has a memory-map description; it replaces the bare `&XXXX`
     fallback.
     """
@@ -840,7 +850,7 @@ def _linkify_operand(operand, item, valid_addrs, mm_tooltips, mm_links):
     target_label = item["target_label"]
     target = item["target"]
     target_addr = f"&{target:04X}"
-    tip = mm_tooltips.get(target, target_addr)
+    tip = label_tooltips.get(target, target_addr)
 
     escaped_operand = str(escape(operand))
     escaped_label = str(escape(target_label))
@@ -864,7 +874,7 @@ def _linkify_operand(operand, item, valid_addrs, mm_tooltips, mm_links):
     return escape(operand)
 
 
-def _linkify_comment_text(text, valid_addrs, sorted_addrs, mm_links):
+def _linkify_comment_text(text, valid_addrs, sorted_addrs, label_tooltips, mm_links):
     """Render a comment string (inline Markdown) as HTML.
 
     Thin wrapper around `render_markdown(inline=True)`. The Markdown
@@ -877,7 +887,8 @@ def _linkify_comment_text(text, valid_addrs, sorted_addrs, mm_links):
     exact address has no anchor).
     """
     return render_markdown(str(text), valid_addrs, sorted_addrs,
-                           inline=True, mm_links=mm_links)
+                           inline=True, mm_links=mm_links,
+                           label_tooltips=label_tooltips)
 
 
 def _resolve_addr(addr, valid_addrs, sorted_addrs):

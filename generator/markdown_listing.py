@@ -76,6 +76,7 @@ class ListingHTMLRenderer(HTMLRenderer):
         self.mm_links = {}
         self.valid_addrs = set()
         self.sorted_addrs = []
+        self.label_tooltips = {}
 
     def render_code_fence(self, token):
         language = getattr(token, "language", "") or ""
@@ -96,10 +97,17 @@ class ListingHTMLRenderer(HTMLRenderer):
 
         href, extra_attrs = self._resolve_address_href(addr, hex_str)
 
+        # Enrich the tooltip from the label_tooltips lookup so hovering
+        # a comment link gives the same "&XXXX - title / brief" text as
+        # hovering the equivalent operand label. Falls back to the bare
+        # "&XXXX" for unannotated targets.
+        tip = self.label_tooltips.get(addr, f"&{hex_str}")
+        tip_attr = f' data-tip="{html_escape(tip)}"'
+
         if flag == "hex":
-            return (f'<a{extra_attrs} href="{href}">{inner}</a> '
-                    f'(<a{extra_attrs} href="{href}"><code>&amp;{hex_str}</code></a>)')
-        return f'<a{extra_attrs} href="{href}">{inner}</a>'
+            return (f'<a{extra_attrs} href="{href}"{tip_attr}>{inner}</a> '
+                    f'(<a{extra_attrs} href="{href}"{tip_attr}><code>&amp;{hex_str}</code></a>)')
+        return f'<a{extra_attrs} href="{href}"{tip_attr}>{inner}</a>'
 
     def _resolve_address_href(self, addr, hex_str):
         """Resolve `address:HEX` to (href, extra_attrs).
@@ -133,7 +141,7 @@ class ListingHTMLRenderer(HTMLRenderer):
 
 
 def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
-                    mm_links=None):
+                    mm_links=None, label_tooltips=None):
     """Render `text` (Markdown) as HTML for the disassembly listing.
 
     `valid_addrs` / `sorted_addrs` supply the ROM-range anchor set
@@ -144,6 +152,12 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
     when rendering listing content so those targets pick up the
     cross-window link. Pass `None` (or omit) in other contexts --
     resolution then falls back to ROM-range anchors only.
+
+    `label_tooltips` is `{addr: "&XXXX - text"}` for labels that
+    have a memory-map brief or subroutine title. Renders as a
+    `data-tip` on each emitted `<a>` for `[label](address:HEX)`
+    links. Addresses without an entry fall back to the bare
+    `&XXXX` tooltip.
 
     `inline=True` strips the outer `<p>` wrapper, which is what
     callers want for single-line contexts (titles, inline comments,
@@ -157,6 +171,7 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
         renderer.mm_links = mm_links or {}
         renderer.valid_addrs = valid_addrs
         renderer.sorted_addrs = sorted_addrs
+        renderer.label_tooltips = label_tooltips or {}
         doc = mistletoe.Document(text)
         html = renderer.render(doc)
 
