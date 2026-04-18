@@ -63,6 +63,24 @@ A GitHub Actions workflow builds and deploys the site to GitHub Pages on every p
 2. Add an entry to `data/sources.json` with the repo URL and optional local path.
 3. Rebuild the site.
 
+## Linkable addresses in Markdown writeups
+
+Per-version docs (`rom.json.docs`) and project-level analyses (`acornaeology.json.analyses`) can use an `address:` URI scheme inside regular Markdown link syntax to turn a label into a clickable disassembly anchor:
+
+```markdown
+[rx_frame_b](address:E263)             ← defaults to the current doc's version
+[rx_frame_b (&E263)](address:E263)     ← label with hex in it, same target
+[legacy init](address:80F3@3.60)       ← explicit version (required in analyses)
+```
+
+The `address:` scheme is resolved at render time:
+
+- Inside a **per-version doc**, an unqualified URI (`address:E263`) links to that doc's own version. Use `@version` to link to a different version.
+- Inside a **project-level analysis**, authors must always specify `@version` — analyses aren't tied to a single version, so there's no implicit default.
+- Hex is 4+ digits, case-insensitive. If the exact address isn't an anchor in the target version, the link falls back to the nearest preceding anchor.
+
+Unresolvable URIs (unknown version, missing `@version` in an analysis, address before the first anchor) print a build warning and leave the link unchanged rather than failing the build.
+
 ## Author
 
 [Robert Smallshire](https://github.com/rob-smallshire)
