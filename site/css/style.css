@@ -769,7 +769,8 @@ hr {
     font-size: 0.85rem;
     line-height: 1.4;
     white-space: normal;
-    width: 24em;
+    width: max-content;
+    max-width: 24em;
     overflow-wrap: break-word;
     color: var(--text);
     background: var(--sidebar-bg);
