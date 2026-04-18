@@ -578,7 +578,8 @@ hr {
 }
 
 .listing .label {
-    color: var(--cyan);
+    color: var(--operand-link);
+    font-weight: bold;
     position: relative;
 }
 
@@ -668,6 +669,29 @@ hr {
 
 .listing .operand .ext-label {
     color: var(--text);
+}
+
+/* Memory-map cross-window link: same shape as a jump-label link
+   (dotted underline, solid on hover) but a distinct colour (cyan)
+   so readers can tell at a glance which labels live outside the
+   ROM and will open the memory-map window when clicked. Applied
+   to operand-side labels and to `[label](address:HEX)` references
+   in comments. */
+.listing .operand a.mm-link,
+.listing .comment a.mm-link {
+    color: var(--cyan);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--dim);
+}
+
+.listing .operand a.mm-link:visited,
+.listing .comment a.mm-link:visited {
+    color: var(--cyan);
+}
+
+.listing .operand a.mm-link:hover,
+.listing .comment a.mm-link:hover {
+    border-bottom-style: solid;
 }
 
 .listing .comment {
@@ -1114,5 +1138,65 @@ hr {
 
 .mode7-nav {
     margin-top: 0;
+}
+
+/* Memory-map page — per-group table of RAM workspace / buffers / MMIO
+   entries. Mirrors the `.sub-desc` table borders (subtle column rules,
+   header underline) but at full document width and larger type. */
+
+.memory-map-toc ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5em 0 1.5em 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 1.25em;
+}
+
+.memory-map {
+    border-collapse: collapse;
+    margin: 0.25em 0 2rem 0;
+    font-size: 0.9rem;
+    width: 100%;
+    table-layout: auto;
+}
+
+.memory-map th,
+.memory-map td {
+    padding: 0.25em 0.75em;
+    text-align: left;
+    border-left: 1px solid var(--rule);
+    vertical-align: top;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+.memory-map th:first-child,
+.memory-map td:first-child {
+    border-left: none;
+    padding-left: 0;
+}
+
+.memory-map th {
+    font-weight: bold;
+    border-bottom: 1px solid var(--rule);
+}
+
+.memory-map td.addr,
+.memory-map td.name {
+    white-space: nowrap;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.memory-map td.access {
+    white-space: nowrap;
+}
+
+.memory-map td.desc > :first-child {
+    margin-top: 0;
+}
+
+.memory-map td.desc > :last-child {
+    margin-bottom: 0;
 }
 

@@ -4,29 +4,32 @@ The py8dis JSON carries the raw Markdown source for subroutine titles,
 descriptions, standalone comments, inline comments, and register
 descriptions. This module parses that source as CommonMark (plus GFM
 tables) via `mistletoe` and emits HTML suited to the per-version
-disassembly listing page:
+disassembly listing page.
 
-- code fences get `<pre><code class="language-XXX">...</code></pre>`
-  so a client-side highlighter can be added later with no renderer
-  change;
-- bare `&XXXX` addresses inside text nodes become anchor links to
-  the same-page `#addr-XXXX` (the "legacy" auto-link continues to
-  work so existing comments stay clickable without conversion);
-- `[label](address:HEX[?hex])` links are emitted by mistletoe as
-  ordinary `<a href="address:...">` tags; the existing
-  `apply_address_uri_links` HTML post-processor in build.py rewrites
-  those to the correct `#addr-XXXX` anchor.
+Address linking is driven entirely by explicit `[label](address:HEX)`
+Markdown syntax -- bare `&XXXX` in prose renders as plain text, to
+keep the authored intent explicit (and so we don't silently manufacture
+a link when the author didn't ask for one).
 
-Two rendering modes are exposed:
+`address:HEX` targets are resolved in this priority order:
 
-- `render_markdown(..., inline=False)` -- block-level rendering for
-  subroutine descriptions and standalone (pre-instruction) comments.
-  Produces paragraphs, lists, tables, code blocks, the lot.
+1. Memory-map entry. Links to the per-version memory-map page, with
+   `target="memory-map"` so a side-by-side memory-map window is
+   reused across clicks.
 
-- `render_markdown(..., inline=True)` -- inline rendering for
-  subroutine titles, single-line inline comments, and register-
-  cell descriptions. Strips the outer paragraph so the output
-  drops cleanly into an <h3>, a <td>, or an inline comment span.
+2. ROM-range anchor. Links to `#addr-HEX` on the same listing page.
+   If the exact address has no anchor (the reference points into the
+   middle of a multi-byte item), resolves to the nearest preceding
+   anchor.
+
+3. Unknown. Left as the input `<a>` with the original `address:HEX`
+   href and a build warning; the site renderer's upstream
+   `apply_address_uri_links` catches nothing here but the broken
+   state is still visible in the output.
+
+`render_link` accepts a `?hex` flag which appends a second hyperlink
+of the form `(&XXXX)` to the rendered label, symmetric with the same
+flag in writeup-doc rendering.
 """
 
 import re
@@ -35,23 +38,6 @@ from html import escape as html_escape
 import mistletoe
 from markupsafe import Markup
 from mistletoe.html_renderer import HTMLRenderer
-
-
-# Bare `&XXXX` in a text node that should auto-link to an anchor on the
-# same page. The HTML escaper turns `&` into `&amp;`, so the pattern we
-# scan for *after* rendering is `&amp;XXXX`. (We'd rather post-process
-# on the rendered HTML than hook a new regex into every render_raw_text
-# call -- it's simpler and keeps the default escaping behaviour.)
-_BARE_ADDR_RE = re.compile(r'&amp;([0-9A-Fa-f]{4,})')
-
-# Mark off HTML regions where bare-address auto-linking must NOT run:
-# - inside an existing <a>...</a> (double-linking would corrupt the DOM)
-# - inside <code>...</code> (addresses inside code should be literal --
-#   code spans often carry machine code that happens to use &)
-_SKIP_REGION_RE = re.compile(
-    r'<(?P<tag>a|code)\b[^>]*>.*?</(?P=tag)>',
-    re.IGNORECASE | re.DOTALL,
-)
 
 
 _ADDRESS_URI_TARGET_RE = re.compile(
@@ -65,23 +51,31 @@ _ADDRESS_URI_TARGET_RE = re.compile(
 
 
 class ListingHTMLRenderer(HTMLRenderer):
-    """HTMLRenderer subclass customised for same-page disassembly listings.
+    """HTMLRenderer subclass customised for the disassembly listing.
 
     Two overrides:
 
     - `render_code_fence` tags the emitted `<code>` with a
       `language-XXX` class, matching the highlight.js / Prism
-      convention, so future client-side highlighting can slot in
-      without renderer changes.
+      convention.
 
-    - `render_link` resolves `address:HEX[@version][?hex]` targets to
-      `#addr-HEX` anchors on the current listing page. The `?hex` flag
-      appends a second link to the same anchor displaying the hex
-      itself (symmetric with how writeup-doc rendering in build.py
-      handles the same syntax). `@version` is ignored in the
-      listing context -- comments in a listing always refer to their
-      own version.
+    - `render_link` resolves `address:HEX[@version][?hex]` targets
+      intelligently -- see the module docstring for the priority
+      order. `@version` is ignored in the listing context because
+      comments in a listing always refer to their own version.
+
+    The renderer reads `self.mm_links`, `self.valid_addrs`, and
+    `self.sorted_addrs` for address resolution. Callers must set
+    those attributes on the instance before calling `render` (see
+    `render_markdown`).
     """
+
+    def __init__(self):
+        super().__init__()
+        # Populated by `render_markdown` before each render pass.
+        self.mm_links = {}
+        self.valid_addrs = set()
+        self.sorted_addrs = []
 
     def render_code_fence(self, token):
         language = getattr(token, "language", "") or ""
@@ -97,20 +91,59 @@ class ListingHTMLRenderer(HTMLRenderer):
 
         hex_str = m.group("hex").upper()
         flag = (m.group("flag") or "").lower()
-        href = f"#addr-{hex_str}"
+        addr = int(hex_str, 16)
         inner = self.render_inner(token)
 
+        href, extra_attrs = self._resolve_address_href(addr, hex_str)
+
         if flag == "hex":
-            return (f'<a href="{href}">{inner}</a> '
-                    f'(<a href="{href}"><code>&amp;{hex_str}</code></a>)')
-        return f'<a href="{href}">{inner}</a>'
+            return (f'<a{extra_attrs} href="{href}">{inner}</a> '
+                    f'(<a{extra_attrs} href="{href}"><code>&amp;{hex_str}</code></a>)')
+        return f'<a{extra_attrs} href="{href}">{inner}</a>'
+
+    def _resolve_address_href(self, addr, hex_str):
+        """Resolve `address:HEX` to (href, extra_attrs).
+
+        Priority: memory-map entry -> ROM-range anchor (exact or
+        nearest preceding) -> unresolved (leave as `address:HEX`).
+        Returns a pair so the caller can attach `class=""` /
+        `target=""` for memory-map links without rebuilding them.
+        """
+        if addr in self.mm_links:
+            return self.mm_links[addr], ' class="mm-link" target="memory-map"'
+
+        if addr in self.valid_addrs:
+            return f"#addr-{addr:04X}", ""
+
+        if self.sorted_addrs:
+            import bisect
+            idx = bisect.bisect_right(self.sorted_addrs, addr) - 1
+            if idx >= 0:
+                nearest = self.sorted_addrs[idx]
+                # Only use nearest-preceding if the address is inside
+                # the anchored range (between first and last). Outside
+                # that range it's neither a memory-map entry nor a ROM
+                # reference -- almost certainly an author typo.
+                if nearest <= addr <= self.sorted_addrs[-1]:
+                    return f"#addr-{nearest:04X}", ""
+
+        print(f"  Warning: address:{hex_str} -- no memory-map entry "
+              f"and not in ROM range")
+        return f"address:{hex_str}", ""
 
 
-def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False):
+def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
+                    mm_links=None):
     """Render `text` (Markdown) as HTML for the disassembly listing.
 
-    `valid_addrs` / `sorted_addrs` supply the same-page anchor set
-    used to auto-link bare `&XXXX` references in text nodes.
+    `valid_addrs` / `sorted_addrs` supply the ROM-range anchor set
+    used to resolve `address:HEX` targets that point into the ROM.
+
+    `mm_links` is `{addr: href}` for non-ROM labels that have a
+    memory-map entry on the per-version memory-map page; supply it
+    when rendering listing content so those targets pick up the
+    cross-window link. Pass `None` (or omit) in other contexts --
+    resolution then falls back to ROM-range anchors only.
 
     `inline=True` strips the outer `<p>` wrapper, which is what
     callers want for single-line contexts (titles, inline comments,
@@ -121,10 +154,11 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False):
         return Markup("")
 
     with ListingHTMLRenderer() as renderer:
+        renderer.mm_links = mm_links or {}
+        renderer.valid_addrs = valid_addrs
+        renderer.sorted_addrs = sorted_addrs
         doc = mistletoe.Document(text)
         html = renderer.render(doc)
-
-    html = _autolink_bare_addrs(html, valid_addrs, sorted_addrs)
 
     if inline:
         html = _strip_outer_paragraph(html)
@@ -146,53 +180,3 @@ def _strip_outer_paragraph(html):
         if "</p>" not in inner:
             return inner
     return html
-
-
-def _autolink_bare_addrs(html, valid_addrs, sorted_addrs):
-    """Find bare `&XXXX` (post-escape: `&amp;XXXX`) references in text
-    nodes and wrap them in `<a href="#addr-XXXX">` links, matching
-    the behaviour of the legacy `_linkify_comment_text` auto-linker.
-
-    Skips any regions inside `<a>...</a>` or `<code>...</code>` so we
-    don't double-link or linkify literals.
-    """
-
-    # Collect no-go regions first: start/end offsets we must not touch.
-    skip_spans = [(m.start(), m.end()) for m in _SKIP_REGION_RE.finditer(html)]
-
-    def in_skip_region(pos):
-        for start, end in skip_spans:
-            if start <= pos < end:
-                return True
-        return False
-
-    def rewrite(m):
-        if in_skip_region(m.start()):
-            return m.group(0)
-        hex_digits = m.group(1)
-        if len(hex_digits) != 4:
-            return m.group(0)
-        addr = int(hex_digits, 16)
-        target = _resolve_addr(addr, valid_addrs, sorted_addrs)
-        if target is None:
-            return m.group(0)
-        addr_id = f"addr-{target:04X}"
-        return f'<a href="#{addr_id}">&amp;{hex_digits}</a>'
-
-    return _BARE_ADDR_RE.sub(rewrite, html)
-
-
-def _resolve_addr(addr, valid_addrs, sorted_addrs):
-    """Return the item address to link to for `addr`.
-
-    Mirrors `disassembly._resolve_addr`: if `addr` is an exact item
-    boundary, returns it; otherwise returns the nearest preceding
-    item address. Returns None if `addr` is before the first item.
-    """
-    import bisect
-    if addr in valid_addrs:
-        return addr
-    idx = bisect.bisect_right(sorted_addrs, addr) - 1
-    if idx >= 0:
-        return sorted_addrs[idx]
-    return None

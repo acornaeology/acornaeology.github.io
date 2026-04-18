@@ -155,4 +155,26 @@
     });
 })();
 </script>
+<script>
+// Memory-map cross-window links: the browser handles reuse of the
+// named "memory-map" window natively (repeat clicks on any mm-link
+// navigate the same window), but some browsers leave the window
+// in the background instead of raising it. `window.open` + `.focus()`
+// fixes that without changing the navigation: the named target still
+// gets updated, and the existing window surfaces.
+(function () {
+    document.querySelectorAll("a.mm-link").forEach(function (a) {
+        a.addEventListener("click", function (e) {
+            // Let modifier-clicks (cmd/ctrl/shift/middle) fall through
+            // to the browser's default new-tab / background handling.
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+                return;
+            }
+            e.preventDefault();
+            var win = window.open(a.href, a.target || "memory-map");
+            if (win) win.focus();
+        });
+    });
+})();
+</script>
 {% endblock %}

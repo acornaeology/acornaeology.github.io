@@ -222,7 +222,11 @@ def build_disassemblies(env, sources, pages):
                 print(f"  Warning: glossary file {glossary_filepath} "
                       f"not found")
 
-        # Build version metadata for the index page
+        # Build version metadata for the index page. A single peek at
+        # each version's JSON tells us whether a per-version memory-map
+        # page will be rendered later; the rom.json docs array has a
+        # `"type": "changes"` marker distinguishing the changes-from doc
+        # from any other per-version docs.
         versions = []
         for version_id in source["versions"]:
             version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
@@ -230,21 +234,51 @@ def build_disassemblies(env, sources, pages):
                 print(f"  Warning: version directory not found for "
                       f"'{version_id}', skipping")
                 continue
+
+            output_json_dirpath = version_dirpath / "output"
+            vjson_filepaths = list(output_json_dirpath.glob("*.json"))
+            has_memory_map = False
+            if vjson_filepaths:
+                vdata = json.loads(vjson_filepaths[0].read_text())
+                has_memory_map = bool(vdata.get("memory_map"))
+
             rom_json_filepath = version_dirpath / "rom" / "rom.json"
             if rom_json_filepath.exists():
                 rom_meta = json.loads(rom_json_filepath.read_text())
                 title = rom_meta.get("title", f"{name} {version_id}")
-                docs = [
-                    {
-                        "label": doc["label"],
-                        "url": _doc_output_filename(version_id, doc["path"]),
-                    }
-                    for doc in rom_meta.get("docs", [])
-                ]
+                doc_entries = rom_meta.get("docs", [])
             else:
                 title = f"{name} {version_id}"
-                docs = []
-            versions.append({"id": version_id, "title": title, "docs": docs})
+                doc_entries = []
+
+            changes_doc = None
+            other_docs = []
+            for doc in doc_entries:
+                if doc.get("type") == "changes":
+                    changes_doc = doc
+                else:
+                    other_docs.append(doc)
+
+            versions.append({
+                "id": version_id,
+                "title": title,
+                "disassembly_url": f"{version_id}.html",
+                "memory_map_url": (
+                    f"{version_id}-memory-map.html" if has_memory_map else None
+                ),
+                "changes_url": (
+                    _doc_output_filename(version_id, changes_doc["path"])
+                    if changes_doc else None
+                ),
+                "changes_label": changes_doc["label"] if changes_doc else None,
+                "other_docs": [
+                    {
+                        "label": d["label"],
+                        "url": _doc_output_filename(version_id, d["path"]),
+                    }
+                    for d in other_docs
+                ],
+            })
 
         # Build per-ROM index page
         references = source.get("references", [])
@@ -360,7 +394,7 @@ def build_disassemblies(env, sources, pages):
 
             links.append(report_link)
 
-            sections = process_disassembly(data)
+            sections = process_disassembly(data, version_id=version_id)
 
             html = disassembly_template.render(
                 root="../",
@@ -391,6 +425,14 @@ def build_disassemblies(env, sources, pages):
             _render_doc_pages(env, source, version_id, version_dirpath,
                               rom_meta, output_dirpath, version_anchors,
                               glossary_lookup, pages)
+
+            # Build the memory-map page for this version (if the driver
+            # enriched any non-ROM labels with memory-map metadata).
+            mm_entries = data.get("memory_map", [])
+            if mm_entries:
+                _render_memory_map_page(env, source, version_id, title,
+                                        mm_entries, output_dirpath,
+                                        version_anchors, pages)
 
         # Build project-level analysis pages (after all versions, so
         # analyses can link into any version's anchors)
@@ -771,6 +813,141 @@ def _render_analysis_pages(env, source, output_dirpath,
             pages.append({
                 "url": f"{BASE_URL}{slug}/{analysis_filename}",
             })
+
+
+_GROUP_TITLES = {
+    "zero_page": "Zero page",
+    "ram_workspace": "RAM workspace",
+    "ram_buffers": "RAM buffers",
+    "io_a": "I/O — side A",
+    "io_b": "I/O — side B",
+    "io": "Memory-mapped I/O",
+    "mmio": "Memory-mapped I/O",
+}
+
+
+def _render_memory_map_page(env, source, version_id, version_title,
+                            memory_map, output_dirpath, version_anchors,
+                            pages=None):
+    """Render {version_id}-memory-map.html for one version of a project.
+
+    `memory_map` is the list of entries produced by py8dis's
+    `structured.emit_structured()["memory_map"]` for this specific
+    version. Each entry is:
+
+        {addr, name, [length, group, access, description]}
+
+    The memory map is version-scoped because workspace layout can shift
+    between ROM releases. Descriptions pass through the standard
+    Markdown pipeline; `[label](address:HEX)` links resolve to either
+    `{version_id}.html#addr-XXXX` (ROM code) or `#mm-NAME` (other
+    entries on the same memory-map page).
+    """
+    if not memory_map:
+        return
+
+    # Preserve the first-seen order of groups, rather than alphabetising,
+    # so authors' mental ordering (ZP -> workspace -> buffers -> MMIO)
+    # survives.
+    group_order = []
+    group_entries = {}
+    for entry in memory_map:
+        g = entry.get("group") or "other"
+        if g not in group_entries:
+            group_order.append(g)
+            group_entries[g] = []
+        group_entries[g].append(entry)
+
+    # Map of memory-map addresses -> entry name, so descriptions that
+    # cross-reference another memory-map entry (e.g. mem_ptr_lo mentions
+    # mem_ptr_hi via `address:0081`) resolve to the entry's in-page
+    # `#mm-NAME` anchor instead of falling through to the ROM-range
+    # resolver (which would warn and leave the tag unchanged).
+    mm_addr_to_name = {e["addr"]: e["name"] for e in memory_map}
+
+    def rewrite_mm_refs(html):
+        def repl(match):
+            hex_str, version, flag, label = match.groups()
+            # Only intercept unqualified URIs (no @version). Explicitly
+            # versioned URIs still go to the ROM-range resolver, which
+            # also handles multi-version anchor disambiguation.
+            if version:
+                return match.group(0)
+            addr = int(hex_str, 16)
+            name = mm_addr_to_name.get(addr)
+            if name is None:
+                return match.group(0)
+            url = f"#mm-{name}"
+            if not flag:
+                return f'<a href="{url}">{label}</a>'
+            if flag.lower() == "hex":
+                hex_display = f'<code>&amp;{hex_str.upper()}</code>'
+                return (f'<a href="{url}">{label}</a> '
+                        f'(<a href="{url}">{hex_display}</a>)')
+            return match.group(0)
+        return _ADDRESS_URI_RE.sub(repl, html)
+
+    output_filename = f"{version_id}-memory-map.html"
+
+    def render_description(md):
+        if not md:
+            return Markup("")
+        # Use the cross-page Markdown pipeline (same as analyses/docs):
+        # mistletoe-on-listing emits same-page `#addr-XXXX`, but here we
+        # want `{version_id}.html#addr-XXXX` for ROM refs and `#mm-NAME`
+        # for intra-memory-map cross-references.
+        converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
+        html = converter.convert(md)
+        html = rewrite_mm_refs(html)
+        html = apply_address_uri_links(
+            html, version_anchors,
+            default_version=version_id,
+            source_label=f"{source['slug']}/{output_filename}")
+        return Markup(html)
+
+    def access_display(v):
+        if not v:
+            return ""
+        return {"r": "R", "w": "W", "rw": "R/W"}.get(v.lower(), v.upper())
+
+    def addr_display(entry):
+        start = entry["addr"]
+        length = entry.get("length") or 1
+        if length <= 1:
+            return f"&{start:04X}"
+        return f"&{start:04X}–&{start + length - 1:04X}"
+
+    groups = []
+    for g in group_order:
+        entries = [
+            {
+                "addr_display": addr_display(e),
+                "name": e["name"],
+                "access_display": access_display(e.get("access")),
+                "description_html": render_description(e.get("description")),
+            }
+            for e in group_entries[g]
+        ]
+        groups.append({
+            "name": _GROUP_TITLES.get(g, g.replace("_", " ").title()),
+            "slug": g.replace("_", "-"),
+            "entries": entries,
+        })
+
+    template = env.get_template("_memory_map.html")
+    html = template.render(
+        root="../",
+        slug=source["slug"],
+        name=source["name"],
+        version_id=version_id,
+        title=version_title,
+        output_filename=output_filename,
+        groups=groups,
+    )
+    (output_dirpath / output_filename).write_text(html)
+    print(f"  {source['slug']}/{output_filename}")
+    if pages is not None:
+        pages.append({"url": f"{BASE_URL}{source['slug']}/{output_filename}"})
 
 
 def _filter_subroutines(data):

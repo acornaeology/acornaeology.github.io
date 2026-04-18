@@ -17,13 +17,20 @@
 <h2>Annotated Disassemblies</h2>
 <table class="version-table">
 <thead>
-<tr><th>Version</th><th>Documents</th></tr>
+<tr>
+    <th>Version</th>
+    <th>Disassembly</th>
+    <th>Memory Map</th>
+    <th>Changes</th>
+</tr>
 </thead>
 <tbody>
 {% for version in versions %}
 <tr>
-<td><a href="{{ version.id }}.html">{{ version.title }}</a></td>
-<td>{% for doc in version.docs %}<a href="{{ doc.url }}">{{ doc.label }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+    <td>{{ version.title }}</td>
+    <td><a href="{{ version.disassembly_url }}">Listing</a></td>
+    <td>{% if version.memory_map_url %}<a href="{{ version.memory_map_url }}">Memory map</a>{% endif %}</td>
+    <td>{% if version.changes_url %}<a href="{{ version.changes_url }}">{{ version.changes_label }}</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

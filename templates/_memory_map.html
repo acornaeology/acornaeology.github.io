@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} Memory Map — acornaeology{% endblock %}
+{% block description %}Memory map for {{ title }}: RAM workspace, RAM buffers, and memory-mapped I/O registers with short descriptions and byte ranges.{% endblock %}
+{% block og_url %}https://acornaeology.uk/{{ slug }}/{{ output_filename }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }} Memory Map</h1>
+<p class="doc-back"><a href="./">&larr; {{ name }}</a></p>
+
+<p>Addresses outside the ROM used by {{ title }} at run time — zero-page
+workspace, RAM buffers, and memory-mapped I/O. For the code that lives
+at <code>&amp;E000</code> upward, see the <a href="{{ version_id }}.html">disassembly
+listing</a>.</p>
+
+<nav class="memory-map-toc">
+<ul>
+{% for group in groups %}
+<li><a href="#group-{{ group.slug }}">{{ group.name }}</a></li>
+{% endfor %}
+</ul>
+</nav>
+
+{% for group in groups %}
+<h2 id="group-{{ group.slug }}">{{ group.name }}</h2>
+<table class="memory-map">
+<thead>
+<tr>
+    <th class="addr">Address</th>
+    <th class="name">Name</th>
+    <th class="access">Access</th>
+    <th class="desc">Description</th>
+</tr>
+</thead>
+<tbody>
+{% for entry in group.entries %}
+<tr id="mm-{{ entry.name }}">
+    <td class="addr"><code>{{ entry.addr_display }}</code></td>
+    <td class="name"><code>{{ entry.name }}</code></td>
+    <td class="access">{{ entry.access_display }}</td>
+    <td class="desc">{{ entry.description_html }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endfor %}
+{% endblock %}
