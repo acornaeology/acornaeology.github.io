@@ -688,7 +688,8 @@ def _render_subroutine_header(sub, valid_addrs, sorted_addrs):
 
     # Title
     title = sub.get("title", sub.get("name", ""))
-    parts.append(f'<h3>{escape(title)}</h3>')
+    parts.append(
+        f'<h3>{_linkify_comment_text(title, valid_addrs, sorted_addrs)}</h3>')
 
     # Description
     desc = sub.get("description", "")
@@ -826,30 +827,129 @@ def _linkify_operand(operand, item, valid_addrs):
 
 _COMMENT_ADDR_RE = re.compile(r'(?<!#)&([0-9A-Fa-f]{4,})')
 
+# Markdown-style link that py8dis comment/title/description strings may
+# contain. The author writes, e.g., "[rx_frame_b](address:E263?hex)" in
+# the driver; the asm renderer strips the markup (see py8dis's
+# `strip_address_uri_links`), the structured JSON preserves it intact,
+# and this module turns it into hyperlinks when rendering the listing.
+_COMMENT_LINK_RE = re.compile(
+    r'\[(?P<label>[^\]\[]+)\]\(address:'
+    r'(?P<hex>[0-9A-Fa-f]{4,})'
+    r'(?:@[^)?]+)?'                 # @version: ignored, listing is always
+                                    # same-version-relative
+    r'(?:\?(?P<flag>[^)]*))?'
+    r'\)',
+    re.IGNORECASE,
+)
+
 
 def _linkify_comment_text(text, valid_addrs, sorted_addrs):
-    """Escape comment text, hyperlinking any &XXXX addresses that fall
-    within the disassembly's address range.  When the exact address isn't
-    an item boundary, links to the nearest preceding valid address."""
+    """Render a comment string with address references hyperlinked.
+
+    Recognises two forms:
+
+      1. Explicit Markdown links `[label](address:HEX[?hex])`. The label
+         becomes an <a> pointing at the addr-HEX anchor; with `?hex`,
+         ` (&HEX)` is appended as a second independent <a> to the same
+         anchor, so the parentheses and space between the two links
+         aren't clickable.
+
+      2. Bare `&XXXX` that falls within the disassembly's address
+         range (the legacy auto-linkifier, retained for back-compat
+         with the many comments that haven't yet been migrated to the
+         explicit form).
+
+    Everything else in the text is HTML-escaped verbatim. Pass 1 is
+    applied first on the raw source, and pass 2 runs over the
+    interstitial fragments only — so bare-`&XXXX` scans can never
+    match inside an already-consumed Markdown link.
+    """
     result = []
+    last_end = 0
+    for m in _COMMENT_LINK_RE.finditer(text):
+        # Autolink any &XXXX in the text *before* this Markdown link.
+        result.append(_autolink_bare_addrs(text[last_end:m.start()],
+                                           valid_addrs, sorted_addrs))
+        # Emit the Markdown link itself.
+        result.append(_render_comment_link(m, valid_addrs, sorted_addrs))
+        last_end = m.end()
+    # And the final trailing fragment after the last Markdown link.
+    result.append(_autolink_bare_addrs(text[last_end:],
+                                       valid_addrs, sorted_addrs))
+    return Markup("".join(result))
+
+
+def _autolink_bare_addrs(text, valid_addrs, sorted_addrs):
+    """Legacy helper: turn bare &XXXX references into <a> tags."""
+    chunks = []
     last_end = 0
     for m in _COMMENT_ADDR_RE.finditer(text):
         hex_digits = m.group(1)
-        result.append(str(escape(text[last_end:m.start()])))
+        chunks.append(str(escape(text[last_end:m.start()])))
         if len(hex_digits) == 4:
             addr = int(hex_digits, 16)
             target = _resolve_addr(addr, valid_addrs, sorted_addrs)
             if target is not None:
                 addr_id = f"addr-{target:04X}"
-                result.append(
+                chunks.append(
                     f'<a href="#{addr_id}">&amp;{hex_digits}</a>'
                 )
                 last_end = m.end()
                 continue
-        result.append(str(escape(m.group(0))))
+        chunks.append(str(escape(m.group(0))))
         last_end = m.end()
-    result.append(str(escape(text[last_end:])))
-    return Markup("".join(result))
+    chunks.append(str(escape(text[last_end:])))
+    return "".join(chunks)
+
+
+def _render_comment_link(match, valid_addrs, sorted_addrs):
+    """Render one `[label](address:HEX[?hex])` match as HTML."""
+    label = match.group("label")
+    hex_str = match.group("hex")
+    flag = (match.group("flag") or "").lower()
+
+    addr = int(hex_str, 16)
+    target = _resolve_addr(addr, valid_addrs, sorted_addrs)
+    if target is None:
+        # Out-of-range / no-preceding-anchor fallback: render the
+        # Markdown source unchanged (escaped) so the author sees that
+        # something didn't resolve.
+        return str(escape(match.group(0)))
+
+    addr_id = f"addr-{target:04X}"
+
+    # The label may contain backticks the author wrote to force
+    # `<code>` styling in normal Markdown rendering. We're not in a
+    # Markdown pass here, so convert `xxx` → <code>xxx</code> manually;
+    # everything else goes through the escape.
+    label_html = _render_backticked_label(label)
+
+    if flag == "hex":
+        hex_html = f'<code>&amp;{hex_str.upper()}</code>'
+        return (f'<a href="#{addr_id}">{label_html}</a> '
+                f'(<a href="#{addr_id}">{hex_html}</a>)')
+
+    if flag and flag != "hex":
+        # Unknown flag: still render the primary link, but keep it
+        # obvious in the source that a flag slipped through.
+        return str(escape(match.group(0)))
+
+    return f'<a href="#{addr_id}">{label_html}</a>'
+
+
+_BACKTICK_RUN_RE = re.compile(r'`([^`]+)`')
+
+
+def _render_backticked_label(label):
+    """Return an HTML-escaped label with `...` pairs mapped to <code>...</code>."""
+    pieces = []
+    last_end = 0
+    for m in _BACKTICK_RUN_RE.finditer(label):
+        pieces.append(str(escape(label[last_end:m.start()])))
+        pieces.append(f'<code>{escape(m.group(1))}</code>')
+        last_end = m.end()
+    pieces.append(str(escape(label[last_end:])))
+    return "".join(pieces)
 
 
 def _resolve_addr(addr, valid_addrs, sorted_addrs):
