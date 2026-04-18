@@ -781,6 +781,34 @@ hr {
     white-space: pre;
 }
 
+/* Markdown tables inside subroutine descriptions. Thin grey rules
+   between columns and under the header; no outer border, no row
+   separators -- subtle enough to stay out of the way but enough
+   to anchor the eye in a wide dispatch/field table. */
+.sub-desc table {
+    border-collapse: collapse;
+    margin: 0.5em 0 0.75em 0;
+    font-size: 0.8rem;
+}
+
+.sub-desc th,
+.sub-desc td {
+    padding: 0.2em 0.7em;
+    text-align: left;
+    border-left: 1px solid var(--rule);
+}
+
+.sub-desc th:first-child,
+.sub-desc td:first-child {
+    border-left: none;
+    padding-left: 0;
+}
+
+.sub-desc th {
+    font-weight: bold;
+    border-bottom: 1px solid var(--rule);
+}
+
 .sub-registers {
     margin-top: 0.5rem;
     font-size: 0.75rem;
