@@ -338,38 +338,146 @@ def _find_break_position(word, budget):
     return min(budget, len(word))
 
 
-def _wrap_text(text, first_line_budget, continuation_indent,
-               max_width=CONTENT_MAX_WIDTH):
-    """Wrap plain text at word boundaries, returning a list of strings.
+# HTML-level tokeniser for comment-text wrapping. We wrap AFTER
+# rendering to HTML so we can measure on visible width rather than
+# Markdown-source width -- a `[ram_test_fail](address:F28C)` atom
+# renders to 13 visible chars, not 30. The tokeniser recognises
+# three kinds of atom: `<a>` and `<code>` spans (treated as
+# indivisible units up to the split step), whitespace runs, and
+# plain words.
+_HTML_ATOM_RE = re.compile(
+    r'(?P<tag><a\s[^>]*>.*?</a>|<code>[^<]*</code>)'
+    r'|(?P<ws>\s+)'
+    r'|(?P<word>[^<\s]+)',
+    re.DOTALL,
+)
 
-    Words longer than the budget are broken at preferred positions."""
-    words = text.split(" ")
+
+def _atom_visible_width(html):
+    """Visible width of an HTML atom (tag stripped, entities decoded)."""
+    text = re.sub(r'<[^>]+>', '', html)
+    return len(html_mod.unescape(text))
+
+
+def _split_tag_atom(html, budget):
+    """Split an `<a attrs>inner</a>` or `<code>inner</code>` atom into
+    multiple copies each fitting within `budget` visible chars.
+
+    Honours a common nested case: `<a ...><code>label</code></a>`
+    rewraps as `<a ...><code>piece1</code></a><a ...><code>piece2</code></a>`
+    so each split piece keeps both its link target and its code
+    styling. Plain `<a>` text and plain `<code>` text follow the
+    same pattern without the inner wrapper.
+    """
+    m_ac = re.match(r'(<a\s[^>]*>)<code>(.*)</code>(</a>)', html, re.DOTALL)
+    if m_ac:
+        open_a, inner, close_a = m_ac.group(1), m_ac.group(2), m_ac.group(3)
+        pieces = _split_word(inner, budget)
+        return [f"{open_a}<code>{p}</code>{close_a}" for p in pieces]
+
+    m_a = re.match(r'(<a\s[^>]*>)(.*)(</a>)', html, re.DOTALL)
+    if m_a:
+        open_a, inner, close_a = m_a.group(1), m_a.group(2), m_a.group(3)
+        pieces = _split_word(inner, budget)
+        return [f"{open_a}{p}{close_a}" for p in pieces]
+
+    m_c = re.match(r'(<code>)(.*)(</code>)', html, re.DOTALL)
+    if m_c:
+        open_c, inner, close_c = m_c.group(1), m_c.group(2), m_c.group(3)
+        pieces = _split_word(inner, budget)
+        return [f"{open_c}{p}{close_c}" for p in pieces]
+
+    return [html]
+
+
+def _split_word(word, budget):
+    """Split a plain word into chunks of at most `budget` chars each."""
+    pieces = []
+    while len(word) > budget:
+        pos = _find_break_position(word, budget)
+        pieces.append(word[:pos])
+        word = word[pos:]
+    if word:
+        pieces.append(word)
+    return pieces
+
+
+def _wrap_comment_html(html, first_line_budget, continuation_indent,
+                      max_width=CONTENT_MAX_WIDTH):
+    """Wrap already-rendered HTML comment content into column-fitted lines.
+
+    Measures on visible width (tag-stripped, entities decoded) so a
+    `<a>label</a>` span occupies `len(label)` columns rather than
+    the source-HTML width. Link and inline-code spans stay intact
+    where possible; when one exceeds the budget, it splits into
+    multiple copies of the span each carrying a slice of the inner
+    text (shared target and styling).
+    """
+    atoms = []
+    for m in _HTML_ATOM_RE.finditer(html):
+        if m.group("tag"):
+            tag = m.group("tag")
+            atoms.append(("tag", tag, _atom_visible_width(tag)))
+        elif m.group("ws"):
+            # Normalise any whitespace run to a single breakable space
+            atoms.append(("ws", " ", 1))
+        elif m.group("word"):
+            word = m.group("word")
+            atoms.append(("word", word, _atom_visible_width(word)))
+
     result_lines = []
     current = ""
+    current_w = 0
     continuation_budget = max(1, max_width - continuation_indent)
 
-    for word in words:
+    for kind, atom, w in atoms:
         budget = first_line_budget if not result_lines else continuation_budget
 
-        candidate = current + (" " if current else "") + word
-        if len(candidate) <= budget:
-            current = candidate
-        else:
-            if current:
-                result_lines.append(current)
+        if kind == "ws":
+            # Drop leading whitespace, coalesce into a single space
+            # between content atoms. If the space would overflow we
+            # emit the line break instead.
+            if current_w == 0:
+                continue
+            if current_w + 1 <= budget:
+                current += " "
+                current_w += 1
+            else:
+                result_lines.append(current.rstrip())
                 current = ""
-                budget = continuation_budget
+                current_w = 0
+            continue
 
-            # Break words that don't fit on a fresh line
-            while len(word) > budget:
-                pos = _find_break_position(word, budget)
-                result_lines.append(word[:pos])
-                word = word[pos:]
-                budget = continuation_budget
-            current = word
+        # Non-whitespace atom
+        if current_w + w <= budget:
+            current += atom
+            current_w += w
+            continue
 
-    if current:
-        result_lines.append(current)
+        # Doesn't fit on the current line: commit and retry on a fresh line
+        if current:
+            result_lines.append(current.rstrip())
+            current = ""
+            current_w = 0
+        budget = continuation_budget
+
+        if w <= budget:
+            current = atom
+            current_w = w
+            continue
+
+        # Atom itself exceeds the budget -- split it.
+        if kind == "tag":
+            pieces = _split_tag_atom(atom, budget)
+        else:
+            pieces = _split_word(atom, budget)
+        for piece in pieces[:-1]:
+            result_lines.append(piece)
+        current = pieces[-1]
+        current_w = _atom_visible_width(current)
+
+    if current.strip():
+        result_lines.append(current.rstrip())
 
     return result_lines or [""]
 
@@ -506,23 +614,26 @@ def _merge_inline_comment(line, align_width, valid_addrs, sorted_addrs,
     code_width = _trailing_line_width(line["html"])
     padding = " " * (align_width - code_width + 2)
     comment_col = align_width + 2 + 2  # padding + "; "
-    total_width = comment_col + len(comment)
+
+    # Render to HTML up-front so `[label](address:HEX)` link syntax
+    # survives the wrap step; then measure / wrap on visible width.
+    rendered = str(_linkify_comment_text(
+        comment, valid_addrs, sorted_addrs, label_tooltips, mm_links))
+    total_width = comment_col + _atom_visible_width(rendered)
 
     if total_width <= line_max:
         line["html"] = line["html"] + Markup(
             f'{padding}<span class="comment">'
-            f'; {_linkify_comment_text(comment, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</span>'
+            f'; {rendered}</span>'
         )
     else:
         first_budget = line_max - comment_col
-        wrapped = _wrap_text(comment, first_budget, comment_col,
-                             line_max)
+        wrapped = _wrap_comment_html(rendered, first_budget, comment_col,
+                                     line_max)
         indent_str = " " * comment_col
-        parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs, label_tooltips, mm_links))]
+        parts = [wrapped[0]]
         for cont in wrapped[1:]:
-            parts.append(
-                f"\n{indent_str}"
-                f"{_linkify_comment_text(cont, valid_addrs, sorted_addrs, label_tooltips, mm_links)}")
+            parts.append(f"\n{indent_str}{cont}")
         comment_html = "".join(parts)
         line["html"] = line["html"] + Markup(
             f'{padding}<span class="comment">'
@@ -537,7 +648,11 @@ def _merge_balanced_comment(line, align_width, comment, line_max,
     Produces a two-column layout where data fills the left and the
     comment fills the right, both starting on the first line."""
     comment_w = line_max - align_width - _COMMENT_GAP
-    wrapped = _wrap_text(comment, comment_w, 0, comment_w)
+    # Render the comment to HTML once, then wrap the HTML on visible
+    # width so Markdown link atoms stay intact across the wrap step.
+    rendered = str(_linkify_comment_text(
+        comment, valid_addrs, sorted_addrs, label_tooltips, mm_links))
+    wrapped = _wrap_comment_html(rendered, comment_w, 0, comment_w)
     data_lines = str(line["html"]).split("\n")
 
     result = []
@@ -550,11 +665,9 @@ def _merge_balanced_comment(line, align_width, comment, line_max,
             data_w = 0
         if i < len(wrapped):
             pad = " " * (align_width - data_w + 2)
-            ctext = _linkify_comment_text(wrapped[i], valid_addrs,
-                                          sorted_addrs, label_tooltips, mm_links)
             result.append(
                 f'{data_html}{pad}'
-                f'<span class="comment">; {ctext}</span>')
+                f'<span class="comment">; {wrapped[i]}</span>')
         else:
             result.append(data_html)
 
@@ -659,21 +772,24 @@ def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
             lines.append({"id": None, "addr": None, "html": html})
             continue
 
-        total_width = comment_prefix_width + len(line_text)
+        # Render to HTML once, then measure / wrap on visible width so
+        # `[label](address:HEX)` link syntax survives the wrap step.
+        rendered = str(_linkify_comment_text(
+            line_text, valid_addrs, sorted_addrs, label_tooltips, mm_links))
+        visible = _atom_visible_width(rendered)
+        total_width = comment_prefix_width + visible
         if total_width <= max_width:
             html = Markup(
-                '<span class="comment">; '
-                f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</span>'
+                f'<span class="comment">; {rendered}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
         else:
             budget = max_width - comment_prefix_width
-            wrapped = _wrap_text(line_text, budget, comment_prefix_width,
-                                 max_width)
-            parts = [str(_linkify_comment_text(wrapped[0], valid_addrs, sorted_addrs, label_tooltips, mm_links))]
+            wrapped = _wrap_comment_html(rendered, budget,
+                                         comment_prefix_width, max_width)
+            parts = [wrapped[0]]
             for cont in wrapped[1:]:
-                parts.append(
-                    f"\n; {_linkify_comment_text(cont, valid_addrs, sorted_addrs, label_tooltips, mm_links)}")
+                parts.append(f"\n; {cont}")
             comment_html = "".join(parts)
             html = Markup(
                 f'<span class="comment">; {comment_html}</span>'
