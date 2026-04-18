@@ -803,6 +803,10 @@ hr {
     text-align: left;
     border-left: 1px solid var(--rule);
     vertical-align: top;
+    /* Override `.listing td { white-space: pre }`, which otherwise
+       propagates into these inner Markdown tables and prevents any
+       cell from wrapping. */
+    white-space: normal;
     overflow-wrap: break-word;
     word-wrap: break-word;
 }
