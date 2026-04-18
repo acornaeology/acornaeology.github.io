@@ -484,7 +484,7 @@ _ADDRESS_URI_RE = re.compile(
 
 
 def apply_address_uri_links(html, version_anchors, default_version=None,
-                            source_label=""):
+                            source_label="", link_class=None, target=None):
     """Rewrite Markdown-authored `address:HEX[@version][?flag]` URIs.
 
     Authors write inline links in their Markdown sources such as
@@ -514,11 +514,22 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
       per-version docs; pass `None` inside project-level analyses.
     - `source_label` appears in warning messages so authors can find
       the offending source.
+    - `link_class` and `target` are injected as attributes on every
+      emitted `<a>`. Callers pass `link_class="listing-link"` +
+      `target="listing"` from the memory-map page so listing links
+      open in a named side-window that pairs with the memory-map
+      window for side-by-side reading.
 
     Unresolvable references (no default, unknown version, no anchor
     at-or-before the address, unknown flag) print a warning and leave
     the `<a>` tag unchanged rather than crashing the build.
     """
+
+    extra_attrs = ""
+    if link_class:
+        extra_attrs += f' class="{link_class}"'
+    if target:
+        extra_attrs += f' target="{target}"'
 
     def rewrite(match):
         hex_str, version, flag, label = match.groups()
@@ -550,12 +561,12 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
         url = f"{version}.html#addr-{anchor:04X}"
 
         if not flag:
-            return f'<a href="{url}">{label}</a>'
+            return f'<a{extra_attrs} href="{url}">{label}</a>'
 
         if flag.lower() == "hex":
             hex_display = f'<code>&amp;{hex_str.upper()}</code>'
-            return (f'<a href="{url}">{label}</a> '
-                    f'(<a href="{url}">{hex_display}</a>)')
+            return (f'<a{extra_attrs} href="{url}">{label}</a> '
+                    f'(<a{extra_attrs} href="{url}">{hex_display}</a>)')
 
         print(f"  Warning: address:{hex_str}@{version} — unknown flag "
               f"'?{flag}'{src}")
@@ -902,7 +913,9 @@ def _render_memory_map_page(env, source, version_id, version_title,
         html = apply_address_uri_links(
             html, version_anchors,
             default_version=version_id,
-            source_label=f"{source['slug']}/{output_filename}")
+            source_label=f"{source['slug']}/{output_filename}",
+            link_class="listing-link",
+            target="listing")
         return Markup(html)
 
     def access_display(v):

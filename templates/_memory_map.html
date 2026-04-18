@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }} Memory Map — acornaeology{% endblock %}
+{% block title %}Memory - {{ name }} - {{ version_id }}{% endblock %}
 {% block description %}Memory map for {{ title }}: RAM workspace, RAM buffers, and memory-mapped I/O registers with short descriptions and byte ranges.{% endblock %}
 {% block og_url %}https://acornaeology.uk/{{ slug }}/{{ output_filename }}{% endblock %}
 
 {% block content %}
+<script>
+// Claim the "memory-map" window name so `target="memory-map"` links
+// from the listing (and any other sibling pages) reuse this window
+// instead of spawning a new one. Paired with window.name = "listing"
+// on the disassembly page for the side-by-side reading pattern.
+window.name = "memory-map";
+</script>
 <h1>{{ title }} Memory Map</h1>
 <p class="doc-back"><a href="./">&larr; {{ name }}</a></p>
 
@@ -44,4 +51,22 @@ listing</a>.</p>
 </tbody>
 </table>
 {% endfor %}
+<script>
+// Cross-window link focus: the browser handles reuse of named
+// target windows natively, but some browsers leave the target
+// behind the current window. `window.open` + `.focus()` surfaces
+// the target without disrupting the navigation.
+(function () {
+    document.querySelectorAll("a.listing-link").forEach(function (a) {
+        a.addEventListener("click", function (e) {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+                return;
+            }
+            e.preventDefault();
+            var win = window.open(a.href, a.target || "listing");
+            if (win) win.focus();
+        });
+    });
+})();
+</script>
 {% endblock %}

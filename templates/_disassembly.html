@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
 
-{% block title %}{{ title }} — acornaeology{% endblock %}
+{% block title %}Assembly - {{ name }} - {{ version_id }}{% endblock %}
 {% block description %}Annotated disassembly of {{ title }}.{% endblock %}
 {% block og_url %}https://acornaeology.uk/{{ slug }}/{{ version_id }}.html{% endblock %}
 
@@ -42,6 +42,15 @@
 </nav>
 <script>if (matchMedia("(max-width:900px)").matches) document.querySelector(".subroutine-nav details").removeAttribute("open")</script>
 {% endif %}
+
+<script>
+// Claim the "listing" window name so `target="listing"` links from
+// the memory-map page (and any other sibling pages that target the
+// listing) reuse this window instead of spawning a new one. Safe to
+// overwrite -- the window's existing name is either empty (opened
+// directly from the index) or already "listing".
+window.name = "listing";
+</script>
 
 <div class="listing">
 {% for section in sections %}

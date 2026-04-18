@@ -671,26 +671,30 @@ hr {
     color: var(--text);
 }
 
-/* Memory-map cross-window link: same shape as a jump-label link
-   (dotted underline, solid on hover) but a distinct colour (cyan)
-   so readers can tell at a glance which labels live outside the
-   ROM and will open the memory-map window when clicked. Applied
-   to operand-side labels and to `[label](address:HEX)` references
-   in comments. */
+/* Cross-window links paint in cyan: the listing page uses them to
+   reach the memory-map window (`.mm-link`), and the memory-map
+   page uses them to reach the listing window (`.listing-link`).
+   Same shape as a jump-label link (dotted underline, solid on
+   hover), a distinct colour from jump-label references so readers
+   can tell at a glance which links will surface the partner window
+   when clicked. */
 .listing .operand a.mm-link,
-.listing .comment a.mm-link {
+.listing .comment a.mm-link,
+.memory-map a.listing-link {
     color: var(--cyan);
     text-decoration: none;
     border-bottom: 1px dotted var(--dim);
 }
 
 .listing .operand a.mm-link:visited,
-.listing .comment a.mm-link:visited {
+.listing .comment a.mm-link:visited,
+.memory-map a.listing-link:visited {
     color: var(--cyan);
 }
 
 .listing .operand a.mm-link:hover,
-.listing .comment a.mm-link:hover {
+.listing .comment a.mm-link:hover,
+.memory-map a.listing-link:hover {
     border-bottom-style: solid;
 }
 
