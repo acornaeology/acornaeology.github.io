@@ -392,6 +392,19 @@ def build_disassemblies(env, sources, pages):
                     "icon": "doc",
                 })
 
+            # Append memory-map link if this version has one. The page is
+            # rendered later (line ~430) but its presence is determined
+            # by whether the disassembly JSON carries memory_map entries.
+            # target="memory-map" pairs the page with the named window
+            # so the side-by-side memory-map / listing pattern works.
+            if data.get("memory_map"):
+                links.append({
+                    "label": "Memory map",
+                    "url": f"{version_id}-memory-map.html",
+                    "icon": "map",
+                    "target": "memory-map",
+                })
+
             links.append(report_link)
 
             sections = process_disassembly(data, version_id=version_id)
