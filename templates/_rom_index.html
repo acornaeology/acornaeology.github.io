@@ -19,7 +19,6 @@
 <thead>
 <tr>
     <th>Version</th>
-    <th>Disassembly</th>
     <th>Memory Map</th>
     <th>Changes</th>
 </tr>
@@ -27,8 +26,7 @@
 <tbody>
 {% for version in versions %}
 <tr>
-    <td>{{ version.title }}</td>
-    <td><a href="{{ version.disassembly_url }}">Listing</a></td>
+    <td><a href="{{ version.disassembly_url }}">{{ version.title }}</a></td>
     <td>{% if version.memory_map_url %}<a href="{{ version.memory_map_url }}">Memory map</a>{% endif %}</td>
     <td>{% if version.changes_url %}<a href="{{ version.changes_url }}">{{ version.changes_label }}</a>{% endif %}</td>
 </tr>
