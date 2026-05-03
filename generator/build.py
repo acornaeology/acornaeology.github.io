@@ -313,6 +313,7 @@ def build_disassemblies(env, sources, pages):
 
         # Build per-version disassembly pages
         version_anchors = {}  # version_id -> sorted list of anchor addresses
+        version_mm_links = {}  # version_id -> {addr: "{version}-memory-map.html#mm-NAME"}
         for version_id in source["versions"]:
             version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
             if version_dirpath is None:
@@ -340,6 +341,16 @@ def build_disassemblies(env, sources, pages):
                 if "binary_addr" in item:
                     anchors.add(item["binary_addr"])
             version_anchors[version_id] = sorted(anchors)
+
+            # Collect memory-map links for this version: addresses with
+            # memory_map metadata resolve to the per-version memory-map
+            # page, not the listing's ROM-anchor space. Used by the doc
+            # and analysis renderers so non-ROM addresses (HAZEL, ZP,
+            # MMIO, etc.) cited from prose hit the right page.
+            version_mm_links[version_id] = {
+                entry["addr"]: f"{version_id}-memory-map.html#mm-{entry['name']}"
+                for entry in data.get("memory_map", [])
+            }
 
             # Read version metadata
             rom_json_filepath = version_dirpath / "rom" / "rom.json"
@@ -441,7 +452,8 @@ def build_disassemblies(env, sources, pages):
             # Build doc pages for this version
             _render_doc_pages(env, source, version_id, version_dirpath,
                               rom_meta, output_dirpath, version_anchors,
-                              glossary_lookup, pages)
+                              glossary_lookup, pages,
+                              version_mm_links=version_mm_links)
 
             # Build the memory-map page for this version (if the driver
             # enriched any non-ROM labels with memory-map metadata).
@@ -456,7 +468,8 @@ def build_disassemblies(env, sources, pages):
         # Build project-level analysis pages (after all versions, so
         # analyses can link into any version's anchors)
         _render_analysis_pages(env, source, output_dirpath,
-                               version_anchors, glossary_lookup, pages)
+                               version_anchors, glossary_lookup, pages,
+                               version_mm_links=version_mm_links)
 
 
 def _doc_output_filename(version_id, doc_path):
@@ -503,7 +516,8 @@ _ADDRESS_URI_RE = re.compile(
 
 
 def apply_address_uri_links(html, version_anchors, default_version=None,
-                            source_label="", link_class=None, target=None):
+                            source_label="", link_class=None, target=None,
+                            version_mm_links=None):
     """Rewrite Markdown-authored `address:HEX[@version][?flag]` URIs.
 
     Authors write inline links in their Markdown sources such as
@@ -518,6 +532,20 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
     post-processor resolves each URI to the matching disassembly page
     and anchor and rewrites the output.
 
+    Resolution priority for each address:
+
+    1. If a memory-map entry exists for the address (provided via
+       `version_mm_links`), the link points to the per-version
+       memory-map page with `class="mm-link" target="memory-map"` so
+       it pairs with the named-window mechanism inline `address:`
+       links use in the listing.
+    2. Otherwise, if the address is a ROM-range anchor (provided via
+       `version_anchors`), the link points to the listing page at
+       `{version}.html#addr-XXXX` (or the nearest preceding anchor
+       inside the range).
+    3. Otherwise a warning is printed and the original `<a>` tag is
+       left in place.
+
     Flags (after `?`) supported:
 
     - `hex` — append ` (&<HEX>)` as a second hyperlink to the same
@@ -526,22 +554,21 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
       enclosing parentheses are deliberately outside the `<a>` tags so
       only the label and the hex itself are clickable.
 
+    Arguments:
+
     - `version_anchors` is the per-version sorted-anchor dict built
       during the disassembly-rendering pass.
+    - `version_mm_links` is `{version_id: {addr: href}}` for memory-
+      map entries, also built during the disassembly-rendering pass.
+      Optional; if omitted only ROM-anchor resolution is attempted.
     - `default_version` supplies the version for unqualified URIs
       (omit `@version`). Pass the doc's own `version_id` inside
       per-version docs; pass `None` inside project-level analyses.
     - `source_label` appears in warning messages so authors can find
       the offending source.
     - `link_class` and `target` are injected as attributes on every
-      emitted `<a>`. Callers pass `link_class="listing-link"` +
-      `target="listing"` from the memory-map page so listing links
-      open in a named side-window that pairs with the memory-map
-      window for side-by-side reading.
-
-    Unresolvable references (no default, unknown version, no anchor
-    at-or-before the address, unknown flag) print a warning and leave
-    the `<a>` tag unchanged rather than crashing the build.
+      emitted `<a>` for ROM-range links. Memory-map-link attributes
+      are fixed (`class="mm-link"`, `target="memory-map"`).
     """
 
     extra_attrs = ""
@@ -566,6 +593,23 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
             return match.group(0)
 
         addr = int(hex_str, 16)
+
+        # Priority 1: memory-map entry → memory-map page link.
+        mm_for_version = (version_mm_links or {}).get(version, {})
+        if addr in mm_for_version:
+            url = mm_for_version[addr]
+            mm_attrs = ' class="mm-link" target="memory-map"'
+            if not flag:
+                return f'<a{mm_attrs} href="{url}">{label}</a>'
+            if flag.lower() == "hex":
+                hex_display = f'<code>&amp;{hex_str.upper()}</code>'
+                return (f'<a{mm_attrs} href="{url}">{label}</a> '
+                        f'(<a{mm_attrs} href="{url}">{hex_display}</a>)')
+            print(f"  Warning: address:{hex_str}@{version} — unknown flag "
+                  f"'?{flag}'{src}")
+            return match.group(0)
+
+        # Priority 2: ROM-range anchor.
         anchors_sorted = version_anchors[version]
         pos = bisect.bisect_left(anchors_sorted, addr)
         if pos < len(anchors_sorted) and anchors_sorted[pos] == addr:
@@ -681,7 +725,8 @@ def _render_glossary_page(env, slug, name, glossary, output_dirpath, pages):
 
 def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
                       output_dirpath, version_anchors=None,
-                      glossary_lookup=None, pages=None):
+                      glossary_lookup=None, pages=None,
+                      version_mm_links=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
     name = source["name"]
@@ -716,7 +761,8 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         content_html = apply_address_uri_links(
             content_html, version_anchors,
             default_version=version_id,
-            source_label=f"{source['slug']}/{doc_filename}")
+            source_label=f"{source['slug']}/{doc_filename}",
+            version_mm_links=version_mm_links)
 
         disassembly_title = rom_meta.get("title", f"{name} {version_id}")
         html = doc_template.render(
@@ -770,7 +816,7 @@ def _rewrite_md_links_to_html(html, analyses):
 
 def _render_analysis_pages(env, source, output_dirpath,
                            version_anchors=None, glossary_lookup=None,
-                           pages=None):
+                           pages=None, version_mm_links=None):
     """Build project-level analysis pages from acornaeology.json.
 
     Each entry in `source["analyses"]` points to a Markdown file
@@ -823,7 +869,8 @@ def _render_analysis_pages(env, source, output_dirpath,
         content_html = apply_address_uri_links(
             content_html, version_anchors,
             default_version=None,
-            source_label=f"{slug}/{analysis_filename}")
+            source_label=f"{slug}/{analysis_filename}",
+            version_mm_links=version_mm_links)
         html = doc_template.render(
             root="../",
             slug=slug,
