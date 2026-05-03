@@ -397,12 +397,16 @@ def build_disassemblies(env, sources, pages):
             # by whether the disassembly JSON carries memory_map entries.
             # target="memory-map" pairs the page with the named window
             # so the side-by-side memory-map / listing pattern works.
+            # class="mm-link" hooks the link into the listing-page
+            # JavaScript that focuses an already-open memory-map tab,
+            # matching the behaviour of inline address: links.
             if data.get("memory_map"):
                 links.append({
                     "label": "Memory map",
                     "url": f"{version_id}-memory-map.html",
                     "icon": "map",
                     "target": "memory-map",
+                    "class": "mm-link",
                 })
 
             links.append(report_link)

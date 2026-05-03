@@ -21,7 +21,7 @@ through each sister's `uv.lock` / `pyproject.toml`.
 Comments you write with `comment(addr, text, inline=True|False)`
 are parsed as Markdown by both the asm output path and the HTML
 listing path. The asm path collapses to plain text; the HTML path
-renders through mistletoe.
+renders the Markdown.
 
 ### 1.1 Address references
 
@@ -79,12 +79,12 @@ Inside comments and descriptions you can use:
 
 Use the proper Unicode character rather than an ASCII construct:
 
-| Write | Not |
-|-------|-----|
-| ` → ` | ` -> ` |
-| ` ← ` | ` <- ` |
+| Write                                           | Not             |
+|-------------------------------------------------|-----------------|
+| ` → `                                           | ` -> `          |
+| ` ← `                                           | ` <- `          |
 | ` – ` (U+2013 en-dash, with surrounding spaces) | ` -- ` or ` — ` |
-| `…`   | `...` |
+| `…`                                             | `...`           |
 
 Use **en-dash** (` – `) for parenthetical breaks. Avoid the
 American-style close-up em-dash (`—`).
