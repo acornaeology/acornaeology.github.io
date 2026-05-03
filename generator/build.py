@@ -830,6 +830,7 @@ _GROUP_TITLES = {
     "zero_page": "Zero page",
     "ram_workspace": "RAM workspace",
     "ram_buffers": "RAM buffers",
+    "hazel": "Filing system workspace (HAZEL)",
     "io_a": "I/O — side A",
     "io_b": "I/O — side B",
     "io": "Memory-mapped I/O",
