@@ -188,13 +188,6 @@ def load_sources():
             "versions": manifest["versions"],
             "references": references,
             "analyses": analyses,
-            # Platform definitions: { platform_id -> {"memory_map_groups":
-            # {group_key -> display_title, ...}, ...} }. Each version's
-            # rom.json picks one of these via its "platform" field; the
-            # memory-map page uses the resolved mapping to render group
-            # section titles. Defined per-project so projects can use
-            # their own group vocabularies without a global registry.
-            "platforms": manifest.get("platforms", {}),
         })
 
     return result
@@ -437,12 +430,7 @@ def build_disassemblies(env, sources, pages):
             # enriched any non-ROM labels with memory-map metadata).
             mm_entries = data.get("memory_map", [])
             if mm_entries:
-                # Resolve this version's platform -> group title mapping.
-                # rom.json says "platform": "<id>"; acornaeology.json's
-                # "platforms" block maps that id to the group dict.
-                platform_id = rom_meta.get("platform")
-                platform_def = source["platforms"].get(platform_id, {})
-                group_titles = platform_def.get("memory_map_groups", {})
+                group_titles = rom_meta.get("memory_map_groups", {})
                 _render_memory_map_page(env, source, version_id, title,
                                         mm_entries, output_dirpath,
                                         version_anchors, pages,
@@ -860,9 +848,9 @@ def _render_memory_map_page(env, source, version_id, version_title,
     entries on the same memory-map page).
 
     `group_titles` maps memory-map group keys (e.g. `zero_page`,
-    `hazel`) to display titles for this version's platform; resolved
-    upstream from the project manifest's `platforms[platform_id]`
-    block. Unmapped groups fall back to the title-cased key.
+    `hazel`) to display titles. Sourced directly from this version's
+    `rom.json` `memory_map_groups` field. Unmapped groups fall back
+    to the title-cased key.
     """
     if group_titles is None:
         group_titles = {}
