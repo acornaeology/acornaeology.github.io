@@ -188,6 +188,13 @@ def load_sources():
             "versions": manifest["versions"],
             "references": references,
             "analyses": analyses,
+            # Platform definitions: { platform_id -> {"memory_map_groups":
+            # {group_key -> display_title, ...}, ...} }. Each version's
+            # rom.json picks one of these via its "platform" field; the
+            # memory-map page uses the resolved mapping to render group
+            # section titles. Defined per-project so projects can use
+            # their own group vocabularies without a global registry.
+            "platforms": manifest.get("platforms", {}),
         })
 
     return result
@@ -430,9 +437,16 @@ def build_disassemblies(env, sources, pages):
             # enriched any non-ROM labels with memory-map metadata).
             mm_entries = data.get("memory_map", [])
             if mm_entries:
+                # Resolve this version's platform -> group title mapping.
+                # rom.json says "platform": "<id>"; acornaeology.json's
+                # "platforms" block maps that id to the group dict.
+                platform_id = rom_meta.get("platform")
+                platform_def = source["platforms"].get(platform_id, {})
+                group_titles = platform_def.get("memory_map_groups", {})
                 _render_memory_map_page(env, source, version_id, title,
                                         mm_entries, output_dirpath,
-                                        version_anchors, pages)
+                                        version_anchors, pages,
+                                        group_titles=group_titles)
 
         # Build project-level analysis pages (after all versions, so
         # analyses can link into any version's anchors)
@@ -826,21 +840,11 @@ def _render_analysis_pages(env, source, output_dirpath,
             })
 
 
-_GROUP_TITLES = {
-    "zero_page": "Zero page",
-    "ram_workspace": "RAM workspace",
-    "ram_buffers": "RAM buffers",
-    "hazel": "Filing system workspace (HAZEL)",
-    "io_a": "I/O — side A",
-    "io_b": "I/O — side B",
-    "io": "Memory-mapped I/O",
-    "mmio": "Memory-mapped I/O",
-}
 
 
 def _render_memory_map_page(env, source, version_id, version_title,
                             memory_map, output_dirpath, version_anchors,
-                            pages=None):
+                            pages=None, group_titles=None):
     """Render {version_id}-memory-map.html for one version of a project.
 
     `memory_map` is the list of entries produced by py8dis's
@@ -854,7 +858,14 @@ def _render_memory_map_page(env, source, version_id, version_title,
     Markdown pipeline; `[label](address:HEX)` links resolve to either
     `{version_id}.html#addr-XXXX` (ROM code) or `#mm-NAME` (other
     entries on the same memory-map page).
+
+    `group_titles` maps memory-map group keys (e.g. `zero_page`,
+    `hazel`) to display titles for this version's platform; resolved
+    upstream from the project manifest's `platforms[platform_id]`
+    block. Unmapped groups fall back to the title-cased key.
     """
+    if group_titles is None:
+        group_titles = {}
     if not memory_map:
         return
 
@@ -949,7 +960,7 @@ def _render_memory_map_page(env, source, version_id, version_title,
             for e in group_entries[g]
         ]
         groups.append({
-            "name": _GROUP_TITLES.get(g, g.replace("_", " ").title()),
+            "name": group_titles.get(g, g.replace("_", " ").title()),
             "slug": g.replace("_", "-"),
             "entries": entries,
         })
