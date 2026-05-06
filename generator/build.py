@@ -1034,14 +1034,23 @@ def _render_memory_map_page(env, source, version_id, version_title,
 
 
 def _filter_subroutines(data):
-    """Return only subroutines within the ROM address range."""
+    """Return ROM-range subroutine and banner entries, in address order.
+
+    The version-page sidebar TOC lists everything that has its own
+    ``<div class="sub-header">`` block in the listing — so both real
+    subroutines (``data["subroutines"]``) and standalone banners
+    (``data["banners"]`` — dasmos's analogue of py8dis's
+    ``data_banner``). Both share the same shape (``addr``, ``name``,
+    ``title``, ``description``) and the same TOC styling, so they
+    merge cleanly here.
+    """
     meta = data.get("meta", {})
     load_addr = meta.get("load_addr", 0)
     end_addr = meta.get("end_addr", 0xFFFF)
-    return [
-        s for s in data.get("subroutines", [])
-        if load_addr <= s["addr"] < end_addr
-    ]
+    combined = list(data.get("subroutines", [])) + list(data.get("banners", []))
+    in_range = [s for s in combined if load_addr <= s["addr"] < end_addr]
+    in_range.sort(key=lambda s: s["addr"])
+    return in_range
 
 
 def copy_static():

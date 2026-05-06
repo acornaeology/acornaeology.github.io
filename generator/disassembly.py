@@ -96,7 +96,19 @@ def process_disassembly(data, version_id=None):
         html - pre-rendered content (Markup)
         banner - True if this is a full-width subroutine header (optional)
     """
+    # Subroutines (real entry points) and banners (data-region
+    # headers, py8dis's data_banner equivalent) are kept in separate
+    # arrays in the dasmos JSON schema so consumers can tell the two
+    # apart. For listing rendering we treat them uniformly: both
+    # produce the same structured `<div class="sub-header">` block
+    # above the labelled item. Subroutines win on collisions (a real
+    # subroutine and a banner shouldn't share an address, but if they
+    # do the entry-point semantics carry the fall-through info that a
+    # banner lacks).
     sub_lookup = {}
+    for entry in data.get("banners", []):
+        key = (entry["addr"], entry.get("binary_addr"))
+        sub_lookup[key] = entry
     for sub in data.get("subroutines", []):
         key = (sub["addr"], sub.get("binary_addr"))
         sub_lookup[key] = sub
@@ -138,6 +150,11 @@ def process_disassembly(data, version_id=None):
         if title:
             addr = sub["addr"]
             label_tooltips[addr] = f"&{addr:04X} \u2013 {title}"
+    for banner in data.get("banners", []):
+        title = banner.get("title")
+        if title:
+            addr = banner["addr"]
+            label_tooltips.setdefault(addr, f"&{addr:04X} \u2013 {title}")
 
     # Pre-scan to find which subroutine sections contain relocated code
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
