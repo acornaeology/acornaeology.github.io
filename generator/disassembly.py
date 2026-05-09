@@ -298,7 +298,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
     inline_comment = item.get("comment_inline")
     render_width = max_width
     if inline_comment and item["type"] in ("byte", "word"):
-        vw = 3 if item["type"] == "byte" else 5
+        vw = _hinted_value_width(item)
         render_width = _optimal_data_max_width(
             len(item.get("values", [])), inline_comment, vw, max_width)
     content_html = _render_content(item, valid_addrs, label_tooltips, mm_links,
@@ -1156,27 +1156,81 @@ def _immediate_tooltip(value):
     return "  ".join(parts)
 
 
+# dasmos 1.4 (acornaeology/dasmos#14) tags byte/word elements with a
+# `format_hint` so the listing can render values in the base the author
+# meant. The vocabulary mirrors beebasm's. The data-tip tooltip always
+# carries decimal / hex / binary / char so any alternate base is one
+# hover away regardless of the primary display.
+def _format_byte_value(value, hint):
+    if hint == "binary":
+        return f"%{value:08b}"
+    if hint == "decimal":
+        return str(value)
+    if hint == "char":
+        if 32 <= value <= 126 and value not in (39, 92):
+            return f"'{chr(value)}'"
+        return f"&{value:02X}"
+    if hint == "inkey":
+        return f"{value - 256}" if value >= 128 else str(value)
+    if hint == "octal":
+        return f"&O{value:o}"
+    return f"&{value:02X}"
+
+
+def _format_word_value(value, hint):
+    if hint == "binary":
+        return f"%{value:016b}"
+    if hint == "decimal":
+        return str(value)
+    if hint == "octal":
+        return f"&O{value:o}"
+    return f"&{value:04X}"
+
+
+def _hinted_value_width(item):
+    """Widest value width across an item's elements after format_hints.
+
+    Used by `_optimal_data_max_width` to balance multi-line data
+    layouts against the comment column. Returns the default hex width
+    (3 for byte, 5 for word) when no hint widens any element.
+    """
+    base_w = 3 if item["type"] == "byte" else 5
+    hints = item.get("format_hints")
+    if not hints:
+        return base_w
+    formatter = _format_byte_value if item["type"] == "byte" else _format_word_value
+    values = item.get("values", [])
+    widths = [base_w]
+    for i, v in enumerate(values):
+        h = hints[i] if i < len(hints) else None
+        if h is not None:
+            widths.append(len(formatter(v, h)))
+    return max(widths)
+
+
 def _render_bytes(item, max_width=CONTENT_MAX_WIDTH):
     values = item.get("values", [])
     expressions = item.get("expressions")
+    format_hints = item.get("format_hints")
     parts = []
-    widths = [] if expressions else None
+    widths = []
     for i, v in enumerate(values):
         expr = expressions[i] if expressions and i < len(expressions) else None
+        hint = format_hints[i] if format_hints and i < len(format_hints) else None
         tooltip = _immediate_tooltip(v)
         if expr:
             parts.append(
                 f'<span data-tip="{escape(tooltip)}">'
                 f'{escape(expr)}</span>'
             )
-            if widths is not None:
-                widths.append(len(expr))
+            widths.append(len(expr))
         else:
+            display = _format_byte_value(v, hint)
             parts.append(
-                f'<span data-tip="{escape(tooltip)}">&amp;{v:02X}</span>'
+                f'<span data-tip="{escape(tooltip)}">'
+                f'{escape(display)}</span>'
             )
-            if widths is not None:
-                widths.append(3)
+            widths.append(len(display))
     prefix_html = '    <span class="directive">EQUB</span> '
     prefix_width = 9  # visible "    EQUB "
     line_groups = _group_values(parts, prefix_width, 3, max_width,
@@ -1210,21 +1264,22 @@ def _render_fill(item):
 def _render_words(item, max_width=CONTENT_MAX_WIDTH):
     values = item.get("values", [])
     expressions = item.get("expressions")
+    format_hints = item.get("format_hints")
     parts = []
-    widths = [] if expressions else None
+    widths = []
     for i, v in enumerate(values):
         expr = expressions[i] if expressions and i < len(expressions) else None
+        hint = format_hints[i] if format_hints and i < len(format_hints) else None
         if expr:
             tooltip = f"&amp;{v:04X}"
             parts.append(
                 f'<span data-tip="{tooltip}">{escape(expr)}</span>'
             )
-            if widths is not None:
-                widths.append(len(expr))
+            widths.append(len(expr))
         else:
-            parts.append(str(escape(f"&{v:04X}")))
-            if widths is not None:
-                widths.append(5)
+            display = _format_word_value(v, hint)
+            parts.append(str(escape(display)))
+            widths.append(len(display))
     prefix_html = '    <span class="directive">EQUW</span> '
     prefix_width = 9  # visible "    EQUW "
     line_groups = _group_values(parts, prefix_width, 5, max_width,
