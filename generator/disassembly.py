@@ -217,11 +217,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
 
     sub = sub_lookup.get((addr, item.get("binary_addr")))
 
-    # Filter comments
-    comments = [
-        c for c in item.get("comments_before", [])
-        if not _is_reference_comment(c) and not _is_banner_line(c)
-    ]
+    comments = _filter_comments(item.get("comments_before", []), sub)
 
     if sub and sub.get("title"):
         # Render structured subroutine header instead of raw comments
@@ -235,9 +231,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         })
         id_used = True
 
-        # Render any comments that aren't part of the banner block
-        non_banner = [c for c in comments if not _is_banner_content(c, sub)]
-        for comment_text in non_banner:
+        for comment_text in comments:
             _append_comment_lines(lines, comment_text, max_width,
                                   valid_addrs, sorted_addrs, label_tooltips, mm_links)
     else:
@@ -296,8 +290,11 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         line_dict["_balanced"] = True
     lines.append(line_dict)
 
-    # Comments after (rare)
-    for comment_text in item.get("comments_after", []):
+    # Comments after (rare; banner-body and asterisk-separator entries
+    # are filtered the same way as comments_before so AFTER_LABEL
+    # banners don't render twice -- once as the sub-header card, once
+    # as a plain comment row).
+    for comment_text in _filter_comments(item.get("comments_after", []), sub):
         _append_comment_lines(lines, comment_text, max_width, valid_addrs,
                               sorted_addrs, label_tooltips, mm_links)
 
@@ -858,6 +855,25 @@ def _is_banner_content(text, sub):
     if title and text.startswith(title):
         return True
     return False
+
+
+def _filter_comments(raw, sub):
+    """Drop reference, banner-separator, and banner-body comments.
+
+    Applied to both comments_before and comments_after. The dasmos
+    `acorn_sideways_rom` env emits AFTER_LABEL banners by writing the
+    asm-style asterisk separator and the banner body into
+    comments_after; without filtering they'd render as plain comment
+    rows alongside the structured sub-header card.
+    """
+    out = []
+    for c in raw:
+        if _is_reference_comment(c) or _is_banner_line(c):
+            continue
+        if sub and sub.get("title") and _is_banner_content(c, sub):
+            continue
+        out.append(c)
+    return out
 
 
 def _render_subroutine_header(sub, valid_addrs, sorted_addrs, label_tooltips, mm_links):
