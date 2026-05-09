@@ -809,8 +809,62 @@ def _make_section(lines):
     return {"lines": lines, "has_binary_addr": has_binary_addr}
 
 
+_MD_TABLE_RE = re.compile(
+    r'(?m)'
+    r'^[ \t]*\|[^\n]*\|[ \t]*\n'      # header row
+    r'[ \t]*\|[ \t:\-|]+\|[ \t]*\n'   # separator row
+    r'(?:[ \t]*\|[^\n]*\|[ \t]*\n?)+'  # one or more body rows
+)
+
+
+def _split_comment_segments(text):
+    """Split comment text into ('prose', text) and ('table', md) segments.
+
+    Pipe-tables are detected as standalone segments so they can be
+    rendered as monospace box-drawn tables instead of line-by-line
+    prose. The surrounding text retains the per-line inline-Markdown
+    rendering, which is what authors expect for paragraphs.
+    """
+    segments = []
+    pos = 0
+    for m in _MD_TABLE_RE.finditer(text):
+        if m.start() > pos:
+            segments.append(("prose", text[pos:m.start()]))
+        segments.append(("table", m.group(0)))
+        pos = m.end()
+    if pos < len(text):
+        segments.append(("prose", text[pos:]))
+    if not segments:
+        segments.append(("prose", text))
+    return segments
+
+
 def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
                           sorted_addrs, label_tooltips, mm_links):
+    """Append rendered comment rows for a multi-line Markdown comment.
+
+    GFM pipe-tables route through `_render_md_table_text` so they
+    render as Unicode box-drawn tables sized to the column budget;
+    everything else keeps the existing per-line inline-Markdown path.
+    """
+    for kind, segment in _split_comment_segments(str(comment_text)):
+        if kind == "table":
+            for tline in _render_md_table_text(
+                    segment, max_width - 2, valid_addrs, sorted_addrs,
+                    label_tooltips, mm_links):
+                lines.append({
+                    "id": None, "addr": None,
+                    "html": Markup(
+                        f'<span class="comment">; {tline}</span>')
+                })
+        else:
+            _append_prose_lines(lines, segment, max_width, valid_addrs,
+                                sorted_addrs, label_tooltips, mm_links)
+
+
+def _append_prose_lines(lines, comment_text, max_width, valid_addrs,
+                        sorted_addrs, label_tooltips, mm_links):
+    """Per-line inline-Markdown rendering for a prose comment segment."""
     comment_prefix_width = 2  # "; "
     for line_text in str(comment_text).split("\n"):
         if not line_text.strip():
@@ -849,6 +903,123 @@ def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
                 f'<span class="comment">; {comment_html}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
+
+
+def _render_md_table_text(table_md, max_width, valid_addrs, sorted_addrs,
+                          label_tooltips, mm_links):
+    """Render a GFM pipe-table as monospace box-drawn lines.
+
+    Returns a list of one-line strings whose visible width fits within
+    `max_width` (the cell budget after the leading `; `). Cell content
+    runs through the inline-Markdown renderer first, then through
+    `_wrap_comment_html` so wrapped HTML atoms (links, `<code>`) keep
+    their target and styling across line breaks. Column widths are
+    natural where they fit, falling back to longest-atom minimums plus
+    a deficit-greedy expansion when the row would exceed the budget.
+    """
+    md_lines = [l for l in table_md.split("\n") if l.strip()]
+    if len(md_lines) < 2:
+        return []
+
+    placeholder = "\x00"
+
+    def split_row(line):
+        line = line.strip()
+        if line.startswith("|"):
+            line = line[1:]
+        if line.endswith("|"):
+            line = line[:-1]
+        line = line.replace(r"\|", placeholder)
+        return [c.strip().replace(placeholder, "|") for c in line.split("|")]
+
+    header_md = split_row(md_lines[0])
+    body_md = [split_row(l) for l in md_lines[2:]]
+    n_cols = len(header_md)
+    if n_cols == 0:
+        return []
+    body_md = [(r + [""] * n_cols)[:n_cols] for r in body_md]
+
+    def render_cell(text):
+        return str(_linkify_comment_text(
+            text, valid_addrs, sorted_addrs, label_tooltips, mm_links))
+
+    header_html = [render_cell(c) for c in header_md]
+    body_html = [[render_cell(c) for c in row] for row in body_md]
+
+    def longest_atom_width(html):
+        widths = [1]
+        for m in _HTML_ATOM_RE.finditer(html):
+            if m.group("tag"):
+                widths.append(_atom_visible_width(m.group("tag")))
+            elif m.group("word"):
+                widths.append(_atom_visible_width(m.group("word")))
+        return max(widths)
+
+    natural = []
+    minw = []
+    for col in range(n_cols):
+        cells = [header_html[col]] + [row[col] for row in body_html]
+        natural.append(max((_atom_visible_width(c) for c in cells), default=1))
+        minw.append(max((longest_atom_width(c) for c in cells), default=1))
+
+    # Border overhead per row: (n_cols + 1) vertical bars + 2 spaces
+    # of cell padding on each side of every column.
+    overhead = (n_cols + 1) + (2 * n_cols)
+    avail = max_width - overhead
+
+    if sum(natural) <= avail:
+        widths = list(natural)
+    else:
+        widths = list(minw)
+        remaining = avail - sum(widths)
+        while remaining > 0:
+            best, best_deficit = -1, 0
+            for i in range(n_cols):
+                if widths[i] < natural[i]:
+                    deficit = natural[i] - widths[i]
+                    if deficit > best_deficit:
+                        best_deficit = deficit
+                        best = i
+            if best == -1:
+                break
+            widths[best] += 1
+            remaining -= 1
+
+    def wrap_cell(html, w):
+        return _wrap_comment_html(html, w, 0, w) or [""]
+
+    header_wrapped = [wrap_cell(html, widths[i])
+                      for i, html in enumerate(header_html)]
+    body_wrapped = [
+        [wrap_cell(html, widths[i]) for i, html in enumerate(row)]
+        for row in body_html
+    ]
+
+    def pad(html, w):
+        return html + " " * max(0, w - _atom_visible_width(html))
+
+    def format_row(cells_lines):
+        max_h = max(len(c) for c in cells_lines)
+        out_rows = []
+        for i in range(max_h):
+            parts = []
+            for col, cls in enumerate(cells_lines):
+                cell_line = cls[i] if i < len(cls) else ""
+                parts.append(" " + pad(cell_line, widths[col]) + " ")
+            out_rows.append("│" + "│".join(parts) + "│")
+        return out_rows
+
+    def hline(left, mid, right):
+        return left + mid.join("─" * (w + 2) for w in widths) + right
+
+    out = [hline("┌", "┬", "┐")]
+    out.extend(format_row(header_wrapped))
+    out.append(hline("├", "┼", "┤"))
+    for row_w in body_wrapped:
+        out.extend(format_row(row_w))
+    out.append(hline("└", "┴", "┘"))
+
+    return out
 
 
 def _empty_line():
@@ -1158,9 +1329,9 @@ def _immediate_tooltip(value):
 
 # dasmos 1.4 (acornaeology/dasmos#14) tags byte/word elements with a
 # `format_hint` so the listing can render values in the base the author
-# meant. The vocabulary mirrors beebasm's. The data-tip tooltip always
-# carries decimal / hex / binary / char so any alternate base is one
-# hover away regardless of the primary display.
+# meant. The vocabulary is the same as beebasm's. The data-tip tooltip
+# always carries decimal / hex / binary / char, regardless of the hint,
+# so any alternate base is one hover away.
 def _format_byte_value(value, hint):
     if hint == "binary":
         return f"%{value:08b}"
