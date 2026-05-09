@@ -217,13 +217,44 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
 
     sub = sub_lookup.get((addr, item.get("binary_addr")))
 
-    comments = _filter_comments(item.get("comments_before", []), sub)
+    # Drop auto-generated cross-reference comments and asterisk
+    # banner-separator lines (both authored by the disassembler, not the
+    # human). When this item also carries a structured banner sub, drop
+    # comment text whose first paragraph repeats the banner title -- it
+    # would otherwise render twice (once as the sub-header card, once as
+    # a plain comment row). Same filter applies to comments_before and
+    # comments_after, since dasmos's `acorn_sideways_rom` env emits the
+    # banner body in comments_after for AFTER_LABEL banners.
+    comments_before = _filter_comments(item.get("comments_before", []), sub)
+    comments_after = _filter_comments(item.get("comments_after", []), sub)
+
+    # Split out ATX heading comments (`# title`, `## title`, ...). They
+    # render as banner-style heading rows that span the listing width
+    # rather than as comment-cell text -- the inline comment renderer
+    # would emit a raw <hN> tag that the visible-width wrapper silently
+    # mangles (it strips the angle brackets and leaves "h1>" / "/h1>"
+    # tag-name fragments visible).
+    headings_before, comments_before = _split_atx_headings(comments_before)
+    headings_after, comments_after = _split_atx_headings(comments_after)
+
+    # Heading rows above the labelled item; first emitted row claims
+    # the addr_id so cross-references scroll to the heading.
+    for level, text in headings_before:
+        lines.append(_empty_line())
+        lines.append({
+            "id": addr_id if not id_used else None,
+            "addr": None,
+            "html": _render_heading_card(level, text, valid_addrs,
+                                         sorted_addrs, label_tooltips, mm_links),
+            "banner": True,
+        })
+        id_used = True
 
     if sub and sub.get("title"):
         # Render structured subroutine header instead of raw comments
         lines.append(_empty_line())
         lines.append({
-            "id": addr_id,
+            "id": addr_id if not id_used else None,
             "addr": None,
             "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
                                               label_tooltips, mm_links),
@@ -231,14 +262,14 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         })
         id_used = True
 
-        for comment_text in comments:
+        for comment_text in comments_before:
             _append_comment_lines(lines, comment_text, max_width,
                                   valid_addrs, sorted_addrs, label_tooltips, mm_links)
     else:
         # Normal comment rendering
-        if comments:
+        if comments_before:
             lines.append(_empty_line())
-        for comment_text in comments:
+        for comment_text in comments_before:
             _append_comment_lines(lines, comment_text, max_width,
                                   valid_addrs, sorted_addrs, label_tooltips, mm_links)
 
@@ -290,11 +321,20 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         line_dict["_balanced"] = True
     lines.append(line_dict)
 
+    # Heading rows below the labelled item (level 1 banners that the
+    # acorn_sideways_rom env emits as AFTER_LABEL).
+    for level, text in headings_after:
+        lines.append({
+            "id": None,
+            "addr": None,
+            "html": _render_heading_card(level, text, valid_addrs,
+                                         sorted_addrs, label_tooltips, mm_links),
+            "banner": True,
+        })
+
     # Comments after (rare; banner-body and asterisk-separator entries
-    # are filtered the same way as comments_before so AFTER_LABEL
-    # banners don't render twice -- once as the sub-header card, once
-    # as a plain comment row).
-    for comment_text in _filter_comments(item.get("comments_after", []), sub):
+    # have already been filtered out above).
+    for comment_text in comments_after:
         _append_comment_lines(lines, comment_text, max_width, valid_addrs,
                               sorted_addrs, label_tooltips, mm_links)
 
@@ -858,14 +898,7 @@ def _is_banner_content(text, sub):
 
 
 def _filter_comments(raw, sub):
-    """Drop reference, banner-separator, and banner-body comments.
-
-    Applied to both comments_before and comments_after. The dasmos
-    `acorn_sideways_rom` env emits AFTER_LABEL banners by writing the
-    asm-style asterisk separator and the banner body into
-    comments_after; without filtering they'd render as plain comment
-    rows alongside the structured sub-header card.
-    """
+    """Drop reference, banner-separator, and banner-body comments."""
     out = []
     for c in raw:
         if _is_reference_comment(c) or _is_banner_line(c):
@@ -874,6 +907,50 @@ def _filter_comments(raw, sub):
             continue
         out.append(c)
     return out
+
+
+_ATX_HEADING_RE = re.compile(r'^\s*(#{1,6})\s+(.+?)(?:\s+#+\s*)?$')
+
+
+def _atx_heading_match(text):
+    """Return (level, content) if text is a single-line ATX heading.
+
+    Single-line means the text body is one line -- a heading buried in
+    the middle of a multi-paragraph comment is left alone, since
+    splitting it out would reorder content the author wrote together.
+    """
+    if "\n" in text.strip():
+        return None
+    m = _ATX_HEADING_RE.match(text)
+    if not m:
+        return None
+    return len(m.group(1)), m.group(2).rstrip()
+
+
+def _split_atx_headings(comments):
+    """Partition comments into ((level, text) headings, regular comments)."""
+    headings, regular = [], []
+    for c in comments:
+        m = _atx_heading_match(c)
+        if m:
+            headings.append(m)
+        else:
+            regular.append(c)
+    return headings, regular
+
+
+def _render_heading_card(level, text, valid_addrs, sorted_addrs,
+                         label_tooltips, mm_links):
+    """Render an ATX heading from a comment as a sub-header card row.
+
+    The page's listing already carries an <h1>, so comment-level
+    headings start at <h2>. Reuses the .sub-header wrapper so the
+    visual treatment matches structured banner cards.
+    """
+    inner = _linkify_comment_text(
+        text, valid_addrs, sorted_addrs, label_tooltips, mm_links)
+    tag = f"h{min(level + 1, 6)}"
+    return Markup(f'<div class="sub-header"><{tag}>{inner}</{tag}></div>')
 
 
 def _render_subroutine_header(sub, valid_addrs, sorted_addrs, label_tooltips, mm_links):

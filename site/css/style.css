@@ -798,12 +798,21 @@ hr {
     margin: 1rem 0 0.5rem 0;
 }
 
-.sub-header h3 {
+.sub-header h2,
+.sub-header h3,
+.sub-header h4,
+.sub-header h5,
+.sub-header h6 {
     font-family: 'Bedstead', monospace;
-    font-size: 1.2rem;
     margin: 0 0 0.5rem 0;
     color: var(--cyan);
 }
+
+.sub-header h2 { font-size: 1.4rem; }
+.sub-header h3 { font-size: 1.2rem; }
+.sub-header h4 { font-size: 1.05rem; }
+.sub-header h5 { font-size: 0.95rem; }
+.sub-header h6 { font-size: 0.9rem; }
 
 .sub-desc {
     font-size: 0.8rem;
