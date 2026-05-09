@@ -318,7 +318,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         if has_banner and banner_align == "after_label":
             _append_banner_as_block_comment(
                 lines, sub, max_width, valid_addrs,
-                sorted_addrs, label_tooltips, mm_links)
+                sorted_addrs, label_tooltips, mm_links, indent=4)
 
         for level, text in h_after_label:
             lines.append({
@@ -330,7 +330,8 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
             })
         for comment_text in cmt_after_label:
             _append_comment_lines(lines, comment_text, max_width, valid_addrs,
-                                  sorted_addrs, label_tooltips, mm_links)
+                                  sorted_addrs, label_tooltips, mm_links,
+                                  indent=4)
 
         for level, text in h_before_line:
             lines.append({
@@ -342,12 +343,13 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
             })
         for comment_text in cmt_before_line:
             _append_comment_lines(lines, comment_text, max_width, valid_addrs,
-                                  sorted_addrs, label_tooltips, mm_links)
+                                  sorted_addrs, label_tooltips, mm_links,
+                                  indent=4)
 
         if has_banner and banner_align == "before_line":
             _append_banner_as_block_comment(
                 lines, sub, max_width, valid_addrs,
-                sorted_addrs, label_tooltips, mm_links)
+                sorted_addrs, label_tooltips, mm_links, indent=4)
 
     # --- DATA row ---
     # For byte/word items with an inline comment, compute a narrower
@@ -393,7 +395,8 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         })
     for comment_text in cmt_after_line:
         _append_comment_lines(lines, comment_text, max_width, valid_addrs,
-                              sorted_addrs, label_tooltips, mm_links)
+                              sorted_addrs, label_tooltips, mm_links,
+                              indent=4)
     if has_banner and banner_align == "after_line":
         lines.append({
             "id": None,
@@ -909,32 +912,44 @@ def _split_comment_segments(text):
 
 
 def _append_comment_lines(lines, comment_text, max_width, valid_addrs,
-                          sorted_addrs, label_tooltips, mm_links):
+                          sorted_addrs, label_tooltips, mm_links,
+                          indent=0):
     """Append rendered comment rows for a multi-line Markdown comment.
 
     GFM pipe-tables route through `_render_md_table_text` so they
     render as Unicode box-drawn tables sized to the column budget;
     everything else keeps the existing per-line inline-Markdown path.
+
+    `indent` is the number of leading spaces before the `; ` prefix,
+    used to nest comments under a label visually so they read as
+    inside the labelled block. Set to 4 (matching the mnemonic-
+    operand column) for AFTER_LABEL / BEFORE_LINE / AFTER_LINE
+    positions; left at 0 for BEFORE_LABEL where the comment sits
+    above (outside) the block.
     """
+    indent_str = " " * indent
+    table_max = max_width - indent - 2  # `; ` plus the leading indent
     for kind, segment in _split_comment_segments(str(comment_text)):
         if kind == "table":
             for tline in _render_md_table_text(
-                    segment, max_width - 2, valid_addrs, sorted_addrs,
+                    segment, table_max, valid_addrs, sorted_addrs,
                     label_tooltips, mm_links):
                 lines.append({
                     "id": None, "addr": None,
                     "html": Markup(
-                        f'<span class="comment">; {tline}</span>')
+                        f'<span class="comment">{indent_str}; {tline}</span>')
                 })
         else:
             _append_prose_lines(lines, segment, max_width, valid_addrs,
-                                sorted_addrs, label_tooltips, mm_links)
+                                sorted_addrs, label_tooltips, mm_links,
+                                indent=indent)
 
 
 def _append_prose_lines(lines, comment_text, max_width, valid_addrs,
-                        sorted_addrs, label_tooltips, mm_links):
+                        sorted_addrs, label_tooltips, mm_links, indent=0):
     """Per-line inline-Markdown rendering for a prose comment segment."""
-    comment_prefix_width = 2  # "; "
+    indent_str = " " * indent
+    comment_prefix_width = indent + 2  # leading indent plus "; "
     prev_blank = False
     for line_text in str(comment_text).split("\n"):
         if not line_text.strip():
@@ -952,7 +967,7 @@ def _append_prose_lines(lines, comment_text, max_width, valid_addrs,
         # Skip wrapping for indented lines (preformatted content)
         if line_text.startswith("  "):
             html = Markup(
-                '<span class="comment">; '
+                f'<span class="comment">{indent_str}; '
                 f'{_linkify_comment_text(line_text, valid_addrs, sorted_addrs, label_tooltips, mm_links)}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
@@ -966,7 +981,7 @@ def _append_prose_lines(lines, comment_text, max_width, valid_addrs,
         total_width = comment_prefix_width + visible
         if total_width <= max_width:
             html = Markup(
-                f'<span class="comment">; {rendered}</span>'
+                f'<span class="comment">{indent_str}; {rendered}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
         else:
@@ -975,10 +990,10 @@ def _append_prose_lines(lines, comment_text, max_width, valid_addrs,
                                          comment_prefix_width, max_width)
             parts = [wrapped[0]]
             for cont in wrapped[1:]:
-                parts.append(f"\n; {cont}")
+                parts.append(f"\n{indent_str}; {cont}")
             comment_html = "".join(parts)
             html = Markup(
-                f'<span class="comment">; {comment_html}</span>'
+                f'<span class="comment">{indent_str}; {comment_html}</span>'
             )
             lines.append({"id": None, "addr": None, "html": html})
 
@@ -1203,7 +1218,8 @@ def _render_heading_card(level, text, valid_addrs, sorted_addrs,
 
 
 def _append_banner_as_block_comment(lines, sub, max_width, valid_addrs,
-                                    sorted_addrs, label_tooltips, mm_links):
+                                    sorted_addrs, label_tooltips, mm_links,
+                                    indent=0):
     """Render a banner's title + description as code-style block comment.
 
     Used for non-BEFORE_LABEL banners so the visual treatment matches
@@ -1211,7 +1227,9 @@ def _append_banner_as_block_comment(lines, sub, max_width, valid_addrs,
     the listing keeps its monospace flow uninterrupted, and any
     Markdown table in the description still gets the box-drawn
     treatment via `_append_comment_lines`. Title takes `**bold**`
-    emphasis so it stands out among the description text.
+    emphasis so it stands out among the description text. `indent`
+    threads through to nest the rendered rows inside the labelled
+    block (4 spaces, matching the mnemonic-operand column).
     """
     title = sub.get("title", "")
     description = sub.get("description", "")
@@ -1224,7 +1242,8 @@ def _append_banner_as_block_comment(lines, sub, max_width, valid_addrs,
         return
     _append_comment_lines(
         lines, "\n\n".join(parts), max_width,
-        valid_addrs, sorted_addrs, label_tooltips, mm_links)
+        valid_addrs, sorted_addrs, label_tooltips, mm_links,
+        indent=indent)
 
 
 def _render_subroutine_header(sub, valid_addrs, sorted_addrs, label_tooltips, mm_links):

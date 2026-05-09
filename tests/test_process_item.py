@@ -414,6 +414,131 @@ class TestFormatHintsInDataRow:
         assert "%10000010" in str(data_lines[0]["html"])
 
 
+class TestPostLabelIndent:
+    """Comments and banners-as-comments that sit AFTER a label render
+    with a 4-space leading indent so they nest visually inside the
+    labelled block, lining up with the mnemonic-operand column.
+    BEFORE_LABEL comments stay at column 0 (outside the block).
+    """
+
+    def test_before_label_comment_no_indent(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_before_label": ["above the label"],
+        }
+        comment = next(
+            l for l in _process(item) if _classify(l) == "comment")
+        # The comment span starts with "; " — no leading whitespace.
+        assert 'class="comment">; ' in str(comment["html"])
+
+    def test_after_label_comment_indented(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_after_label": ["inside the block"],
+        }
+        comment = next(
+            l for l in _process(item) if _classify(l) == "comment")
+        assert 'class="comment">    ; ' in str(comment["html"])
+
+    def test_before_line_comment_indented(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_before_line": ["before line"],
+        }
+        comment = next(
+            l for l in _process(item) if _classify(l) == "comment")
+        assert 'class="comment">    ; ' in str(comment["html"])
+
+    def test_after_line_comment_indented(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_after_line": ["after data"],
+        }
+        comment = next(
+            l for l in _process(item) if _classify(l) == "comment")
+        assert 'class="comment">    ; ' in str(comment["html"])
+
+    def test_after_label_banner_indented(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+        }
+        sub = {"addr": 0x8000, "title": "X", "align": "after_label"}
+        comment = next(
+            l for l in _process(item, sub=sub) if _classify(l) == "comment")
+        # Title row starts with `    ; <strong>X</strong>` — indented.
+        assert 'class="comment">    ; ' in str(comment["html"])
+
+    def test_indent_applies_to_wrapped_continuation_lines(self):
+        # A long comment that wraps -- every continuation line must
+        # carry the same leading indent so the column stays aligned.
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_after_label": [
+                "A reasonably long comment that will wrap across "
+                "several lines because it exceeds the column budget "
+                "and we want the wrapped continuation rows to keep "
+                "the same leading indent as the first line."
+            ],
+        }
+        comment = next(
+            l for l in _process(item) if _classify(l) == "comment")
+        html = str(comment["html"])
+        # The wrapped form has \n\\s+; on each continuation. Each must
+        # match the 4-space indent.
+        for line in html.split("\n"):
+            line = line.rstrip()
+            # Skip the opening / closing span fragments
+            if line.startswith('<span'):
+                # Check the body after `<span class="comment">`
+                body = line.split('<span class="comment">', 1)[1]
+                assert body.startswith("    ; ")
+            elif line and not line.startswith("</span>"):
+                # Continuation lines start with the indent + "; "
+                assert line.startswith("    ; "), \
+                    f"continuation line missing indent: {line!r}"
+
+    def test_indent_applies_to_table_rows(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_after_label": [
+                "Intro:\n\n| A | B |\n|---|---|\n| 1 | 2 |"
+            ],
+        }
+        lines = _process(item)
+        comment_lines = [l for l in lines if _classify(l) == "comment"]
+        # Every comment-row HTML for this item starts with the indent.
+        for cl in comment_lines:
+            assert 'class="comment">    ; ' in str(cl["html"])
+
+    def test_table_fits_in_reduced_budget(self):
+        # With 4 spaces of indent + "; " prefix = 6 visible chars of
+        # overhead. The table renderer must size columns to fit
+        # max_width - 6, not just max_width - 2.
+        import re
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_after_label": [
+                "| A | B |\n|---|---|\n| 1 | very long cell content here |"
+            ],
+        }
+        lines = _process(item, max_width=40)
+        for l in lines:
+            html = str(l.get("html", ""))
+            if "│" in html or "┌" in html or "└" in html:
+                # Strip tags, compute visible width.
+                visible = re.sub(r"<[^>]+>", "", html)
+                assert len(visible) <= 40, \
+                    f"indented table row exceeds budget: {visible!r}"
+
+
 class TestProseBlankLineCollapsing:
     """Consecutive blank lines within a single comment collapse to a
     single blank row. Prevents "\\n\\n" paragraph breaks from stacking
