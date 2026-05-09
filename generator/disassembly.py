@@ -217,63 +217,76 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
 
     sub = sub_lookup.get((addr, item.get("binary_addr")))
 
-    # Drop auto-generated cross-reference comments and asterisk
-    # banner-separator lines (both authored by the disassembler, not the
-    # human). When this item also carries a structured banner sub, drop
-    # comment text whose first paragraph repeats the banner title -- it
-    # would otherwise render twice (once as the sub-header card, once as
-    # a plain comment row). Same filter applies to comments_before and
-    # comments_after, since dasmos's `acorn_sideways_rom` env emits the
-    # banner body in comments_after for AFTER_LABEL banners.
-    comments_before = _filter_comments(item.get("comments_before", []), sub)
-    comments_after = _filter_comments(item.get("comments_after", []), sub)
+    # dasmos 1.5 (acornaeology/dasmos#16) splits the old comments_before /
+    # comments_after fields into four per-align fields so the renderer
+    # can place each comment at its authored position. Older sources
+    # still emit the conflated fields; for those we route the legacy
+    # data to BEFORE_LABEL / AFTER_LINE buckets respectively, matching
+    # the historical default placement.
+    cmt_before_label = _filter_comments(
+        item.get("comments_before_label",
+                 item.get("comments_before", [])), sub)
+    cmt_after_label = _filter_comments(
+        item.get("comments_after_label", []), sub)
+    cmt_before_line = _filter_comments(
+        item.get("comments_before_line", []), sub)
+    cmt_after_line = _filter_comments(
+        item.get("comments_after_line",
+                 item.get("comments_after", [])), sub)
 
-    # Split out ATX heading comments (`# title`, `## title`, ...). They
-    # render as banner-style heading rows that span the listing width
-    # rather than as comment-cell text -- the inline comment renderer
-    # would emit a raw <hN> tag that the visible-width wrapper silently
-    # mangles (it strips the angle brackets and leaves "h1>" / "/h1>"
-    # tag-name fragments visible).
-    headings_before, comments_before = _split_atx_headings(comments_before)
-    headings_after, comments_after = _split_atx_headings(comments_after)
+    # Split out ATX heading comments (`# title`, `## title`, ...) from
+    # each bucket. They render as banner-style heading rows that span
+    # the listing width; without this they'd pass through the inline
+    # comment renderer which silently mangles the resulting <hN>.
+    h_before_label, cmt_before_label = _split_atx_headings(cmt_before_label)
+    h_after_label, cmt_after_label = _split_atx_headings(cmt_after_label)
+    h_before_line, cmt_before_line = _split_atx_headings(cmt_before_line)
+    h_after_line, cmt_after_line = _split_atx_headings(cmt_after_line)
 
-    # Heading rows above the labelled item; first emitted row claims
-    # the addr_id so cross-references scroll to the heading.
-    for level, text in headings_before:
+    # Banner alignment from dasmos 1.5; older sources omit the field
+    # and default to BEFORE_LABEL (matches the pre-1.5 hard-coded path).
+    has_banner = bool(sub and sub.get("title"))
+    banner_align = (sub or {}).get("align", "before_label") if has_banner else None
+
+    decorated_before_label = bool(
+        h_before_label or cmt_before_label
+        or (has_banner and banner_align == "before_label"))
+    decorated_after_label = bool(
+        (has_banner and banner_align in ("after_label", "before_line"))
+        or h_after_label or cmt_after_label
+        or h_before_line or cmt_before_line)
+
+    if decorated_before_label:
         lines.append(_empty_line())
+
+    # --- BEFORE_LABEL: ATX headings, then banner card, then prose ---
+    for level, text in h_before_label:
         lines.append({
             "id": addr_id if not id_used else None,
             "addr": None,
             "html": _render_heading_card(level, text, valid_addrs,
                                          sorted_addrs, label_tooltips, mm_links),
             "banner": True,
+            "section_break": True,
         })
         id_used = True
 
-    if sub and sub.get("title"):
-        # Render structured subroutine header instead of raw comments
-        lines.append(_empty_line())
+    if has_banner and banner_align == "before_label":
         lines.append({
             "id": addr_id if not id_used else None,
             "addr": None,
             "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
                                               label_tooltips, mm_links),
             "banner": True,
+            "section_break": True,
         })
         id_used = True
 
-        for comment_text in comments_before:
-            _append_comment_lines(lines, comment_text, max_width,
-                                  valid_addrs, sorted_addrs, label_tooltips, mm_links)
-    else:
-        # Normal comment rendering
-        if comments_before:
-            lines.append(_empty_line())
-        for comment_text in comments_before:
-            _append_comment_lines(lines, comment_text, max_width,
-                                  valid_addrs, sorted_addrs, label_tooltips, mm_links)
+    for comment_text in cmt_before_label:
+        _append_comment_lines(lines, comment_text, max_width, valid_addrs,
+                              sorted_addrs, label_tooltips, mm_links)
 
-    # Label lines
+    # --- LABELS ---
     references = item.get("references", [])
     for label_name in item.get("labels", []):
         ref_html = _render_ref_popup(references, item_by_addr) if references else ""
@@ -291,10 +304,60 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         id_used = True
         addr_shown = True
 
-    # Main content line — store inline comment separately for alignment.
-    # For byte/word items with an inline comment, compute a narrower data
-    # width so both data rows and comment rows wrap over a balanced number
-    # of lines rather than squeezing the comment into a tiny column.
+    # --- AFTER_LABEL / BEFORE_LINE: between labels and the data row ---
+    # AFTER_LABEL and BEFORE_LINE are equivalent positions in the
+    # current renderer (we don't emit sub-label assignment rows yet,
+    # so there's nothing between them to differentiate). Banner cards
+    # in this position get banner=True but NOT section_break=True --
+    # otherwise the labels above would land in the previous section.
+    if decorated_after_label:
+        if has_banner and banner_align == "after_label":
+            lines.append({
+                "id": None,
+                "addr": None,
+                "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
+                                                  label_tooltips, mm_links),
+                "banner": True,
+            })
+
+        for level, text in h_after_label:
+            lines.append({
+                "id": None,
+                "addr": None,
+                "html": _render_heading_card(level, text, valid_addrs,
+                                             sorted_addrs, label_tooltips, mm_links),
+                "banner": True,
+            })
+        for comment_text in cmt_after_label:
+            _append_comment_lines(lines, comment_text, max_width, valid_addrs,
+                                  sorted_addrs, label_tooltips, mm_links)
+
+        for level, text in h_before_line:
+            lines.append({
+                "id": None,
+                "addr": None,
+                "html": _render_heading_card(level, text, valid_addrs,
+                                             sorted_addrs, label_tooltips, mm_links),
+                "banner": True,
+            })
+        for comment_text in cmt_before_line:
+            _append_comment_lines(lines, comment_text, max_width, valid_addrs,
+                                  sorted_addrs, label_tooltips, mm_links)
+
+        if has_banner and banner_align == "before_line":
+            lines.append({
+                "id": None,
+                "addr": None,
+                "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
+                                                  label_tooltips, mm_links),
+                "banner": True,
+            })
+
+    # --- DATA row ---
+    # For byte/word items with an inline comment, compute a narrower
+    # data width so both data rows and comment rows wrap over a
+    # balanced number of lines rather than squeezing the comment into
+    # a tiny column.
     inline_comment = item.get("comment_inline")
     render_width = max_width
     if inline_comment and item["type"] in ("byte", "word"):
@@ -320,10 +383,11 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
     if render_width < max_width:
         line_dict["_balanced"] = True
     lines.append(line_dict)
+    id_used = True
+    addr_shown = True
 
-    # Heading rows below the labelled item (level 1 banners that the
-    # acorn_sideways_rom env emits as AFTER_LABEL).
-    for level, text in headings_after:
+    # --- AFTER_LINE: below the data row ---
+    for level, text in h_after_line:
         lines.append({
             "id": None,
             "addr": None,
@@ -331,12 +395,17 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                                          sorted_addrs, label_tooltips, mm_links),
             "banner": True,
         })
-
-    # Comments after (rare; banner-body and asterisk-separator entries
-    # have already been filtered out above).
-    for comment_text in comments_after:
+    for comment_text in cmt_after_line:
         _append_comment_lines(lines, comment_text, max_width, valid_addrs,
                               sorted_addrs, label_tooltips, mm_links)
+    if has_banner and banner_align == "after_line":
+        lines.append({
+            "id": None,
+            "addr": None,
+            "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
+                                              label_tooltips, mm_links),
+            "banner": True,
+        })
 
     return lines
 
@@ -757,7 +826,7 @@ def _split_into_blocks(lines):
 
 
 def _split_into_sections(lines):
-    """Split lines into sections at subroutine banners.
+    """Split lines into sections at section-break banner rows.
 
     Each section is a dict with:
         lines           - the line dicts in this section
@@ -765,12 +834,16 @@ def _split_into_sections(lines):
 
     This allows each section to be rendered as a separate table, so the
     extra ROM address column only appears in relocated code sections.
+    Only banners that mark a section boundary (BEFORE_LABEL banners and
+    ATX-heading rows above an item's labels) carry `section_break=True`;
+    AFTER_LABEL / AFTER_LINE banners stay in the same section as their
+    item's label and data rows.
     """
     sections = []
     current_lines = []
 
     for line in lines:
-        if line.get("banner") and current_lines:
+        if line.get("section_break") and current_lines:
             sections.append(_make_section(current_lines))
             current_lines = []
         current_lines.append(line)
