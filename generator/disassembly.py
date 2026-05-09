@@ -307,18 +307,18 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
     # --- AFTER_LABEL / BEFORE_LINE: between labels and the data row ---
     # AFTER_LABEL and BEFORE_LINE are equivalent positions in the
     # current renderer (we don't emit sub-label assignment rows yet,
-    # so there's nothing between them to differentiate). Banner cards
-    # in this position get banner=True but NOT section_break=True --
-    # otherwise the labels above would land in the previous section.
+    # so there's nothing between them to differentiate). Banner
+    # records in these positions render as code-style block comments
+    # rather than sub-header cards: a styled card mid-item visually
+    # disrupts the monospace listing flow, while a code-style block
+    # comment reads naturally alongside the surrounding rows. The
+    # box-drawn-table treatment in `_append_comment_lines` keeps any
+    # Markdown table in the description aligned in the listing grid.
     if decorated_after_label:
         if has_banner and banner_align == "after_label":
-            lines.append({
-                "id": None,
-                "addr": None,
-                "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
-                                                  label_tooltips, mm_links),
-                "banner": True,
-            })
+            _append_banner_as_block_comment(
+                lines, sub, max_width, valid_addrs,
+                sorted_addrs, label_tooltips, mm_links)
 
         for level, text in h_after_label:
             lines.append({
@@ -345,13 +345,9 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                                   sorted_addrs, label_tooltips, mm_links)
 
         if has_banner and banner_align == "before_line":
-            lines.append({
-                "id": None,
-                "addr": None,
-                "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
-                                                  label_tooltips, mm_links),
-                "banner": True,
-            })
+            _append_banner_as_block_comment(
+                lines, sub, max_width, valid_addrs,
+                sorted_addrs, label_tooltips, mm_links)
 
     # --- DATA row ---
     # For byte/word items with an inline comment, compute a narrower
@@ -939,10 +935,19 @@ def _append_prose_lines(lines, comment_text, max_width, valid_addrs,
                         sorted_addrs, label_tooltips, mm_links):
     """Per-line inline-Markdown rendering for a prose comment segment."""
     comment_prefix_width = 2  # "; "
+    prev_blank = False
     for line_text in str(comment_text).split("\n"):
         if not line_text.strip():
+            # Collapse consecutive blank lines so a paragraph break
+            # ("\n\n") emits one empty row, not two -- and so a comment
+            # ending in a blank line before a following table segment
+            # doesn't stack a second blank above the table top border.
+            if prev_blank:
+                continue
             lines.append({"id": None, "addr": None, "html": Markup("")})
+            prev_blank = True
             continue
+        prev_blank = False
 
         # Skip wrapping for indented lines (preformatted content)
         if line_text.startswith("  "):
@@ -1195,6 +1200,31 @@ def _render_heading_card(level, text, valid_addrs, sorted_addrs,
         text, valid_addrs, sorted_addrs, label_tooltips, mm_links)
     tag = f"h{min(level + 1, 6)}"
     return Markup(f'<div class="sub-header"><{tag}>{inner}</{tag}></div>')
+
+
+def _append_banner_as_block_comment(lines, sub, max_width, valid_addrs,
+                                    sorted_addrs, label_tooltips, mm_links):
+    """Render a banner's title + description as code-style block comment.
+
+    Used for non-BEFORE_LABEL banners so the visual treatment matches
+    a multi-line authored comment rather than a section-heading card:
+    the listing keeps its monospace flow uninterrupted, and any
+    Markdown table in the description still gets the box-drawn
+    treatment via `_append_comment_lines`. Title takes `**bold**`
+    emphasis so it stands out among the description text.
+    """
+    title = sub.get("title", "")
+    description = sub.get("description", "")
+    parts = []
+    if title:
+        parts.append(f"**{title}**")
+    if description:
+        parts.append(description)
+    if not parts:
+        return
+    _append_comment_lines(
+        lines, "\n\n".join(parts), max_width,
+        valid_addrs, sorted_addrs, label_tooltips, mm_links)
 
 
 def _render_subroutine_header(sub, valid_addrs, sorted_addrs, label_tooltips, mm_links):

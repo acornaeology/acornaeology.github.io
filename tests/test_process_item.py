@@ -206,6 +206,11 @@ class TestBannerAlignment:
         assert roles == ["empty", "banner", "label", "data"]
 
     def test_after_label_banner_between_label_and_data(self):
+        # AFTER_LABEL banners render as code-style block comments
+        # (monospace `; ` rows) rather than as styled sub-header cards.
+        # Mid-item card treatment visually disrupts the listing flow;
+        # the inline-comment treatment reads naturally with the
+        # surrounding code rows. Title gets `**bold**` emphasis.
         item = {
             "addr": 0x8000, "type": "byte", "values": [0x42],
             "labels": ["foo"],
@@ -213,7 +218,12 @@ class TestBannerAlignment:
         sub = {"addr": 0x8000, "title": "Heading", "align": "after_label"}
         lines = _process(item, sub=sub)
         roles = [_classify(l) for l in lines]
-        assert roles == ["label", "banner", "data"]
+        assert roles == ["label", "comment", "data"]
+        # Title rendered with bold emphasis through Markdown.
+        comment_html = next(
+            str(l["html"]) for l in lines if _classify(l) == "comment")
+        assert "<strong>" in comment_html
+        assert "Heading" in comment_html
 
     def test_after_line_banner_below_data(self):
         item = {
@@ -254,15 +264,19 @@ class TestSectionBreakFlag:
         banner_lines = [l for l in lines if l.get("banner")]
         assert all(l.get("section_break") for l in banner_lines)
 
-    def test_after_label_banner_no_section_break(self):
+    def test_after_label_banner_emits_no_banner_rows(self):
+        # AFTER_LABEL banners render through the comment pipeline, so
+        # there are no `banner: True` rows for them at all -- and
+        # therefore no row that could carry section_break=True.
+        # Sections cannot split between this item's labels and data.
         item = {
             "addr": 0x8000, "type": "byte", "values": [0x42],
             "labels": ["foo"],
         }
         sub = {"addr": 0x8000, "title": "X", "align": "after_label"}
         lines = _process(item, sub=sub)
-        banner_lines = [l for l in lines if l.get("banner")]
-        assert all(not l.get("section_break") for l in banner_lines)
+        assert not any(l.get("banner") for l in lines)
+        assert not any(l.get("section_break") for l in lines)
 
     def test_atx_heading_in_before_label_carries_section_break(self):
         item = {
@@ -400,13 +414,73 @@ class TestFormatHintsInDataRow:
         assert "%10000010" in str(data_lines[0]["html"])
 
 
+class TestProseBlankLineCollapsing:
+    """Consecutive blank lines within a single comment collapse to a
+    single blank row. Prevents "\\n\\n" paragraph breaks from stacking
+    multiple empty rows in the listing.
+    """
+
+    def test_paragraph_break_emits_one_blank_row(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_before_label": ["First para\n\nSecond para"],
+        }
+        roles = [_classify(l) for l in _process(item)]
+        # empty (preamble), comment, empty (paragraph break), comment,
+        # label, data
+        assert roles == [
+            "empty", "comment", "empty", "comment", "label", "data",
+        ]
+
+    def test_trailing_blank_lines_collapse_to_one(self):
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+            "comments_before_label": ["text\n\n\n\n"],
+        }
+        roles = [_classify(l) for l in _process(item)]
+        assert roles.count("empty") <= 2  # at most preamble + one trailing
+
+    def test_banner_with_table_has_one_blank_above_table(self):
+        # The combined "**title**\n\n| ... |" payload produced by
+        # _append_banner_as_block_comment lays out as:
+        #   ; **title**
+        #   ;
+        #   ; ┌─...─┐ (table top border)
+        # not with two blank rows between title and table.
+        item = {
+            "addr": 0x8000, "type": "byte", "values": [0x42],
+            "labels": ["foo"],
+        }
+        sub = {
+            "addr": 0x8000, "title": "Title here", "align": "after_label",
+            "description": "| A |\n|---|\n| 1 |",
+        }
+        lines = _process(item, sub=sub)
+        # Locate the title row and the row containing the table top.
+        title_idx = next(
+            i for i, l in enumerate(lines)
+            if "<strong>Title here</strong>" in str(l.get("html", "")))
+        top_idx = next(
+            i for i, l in enumerate(lines)
+            if "┌" in str(l.get("html", "")))
+        # Exactly one empty row between title and table top border.
+        assert top_idx - title_idx == 2
+        assert str(lines[title_idx + 1].get("html", "")) == ""
+
+
 class TestCombinedDecorations:
     """Realistic combinations from the NFS / ANFS source data."""
 
     def test_atx_heading_then_after_label_banner(self):
         # The &8000 case in ANFS: ATX heading (BEFORE_LABEL) above the
         # `.rom_header`/`.language_entry` labels, then an AFTER_LABEL
-        # banner card between labels and the data row.
+        # banner BETWEEN labels and the data row. The ATX heading
+        # renders as a section-break card (chapter-style); the
+        # AFTER_LABEL banner renders as code-style block comment rows
+        # (title + blank + description) so it reads as part of the
+        # surrounding listing flow.
         item = {
             "addr": 0x8000, "type": "byte", "values": [0x00],
             "labels": ["language_entry", "rom_header"],
@@ -420,11 +494,14 @@ class TestCombinedDecorations:
         }
         lines = _process(item, sub=sub)
         roles = [_classify(l) for l in lines]
-        # empty, ATX heading (banner), label, label, banner card, data
+        # empty, ATX heading (banner), label, label,
+        # title (comment), blank (empty), description (comment), data
         assert roles == [
-            "empty", "banner", "label", "label", "banner", "data",
+            "empty", "banner", "label", "label",
+            "comment", "empty", "comment", "data",
         ]
-        # ATX heading is section-break; banner card is NOT.
-        banners = [l for l in lines if l.get("banner")]
-        assert banners[0].get("section_break") is True
-        assert not banners[1].get("section_break")
+        # Only the ATX heading row carries banner=True / section_break;
+        # the AFTER_LABEL banner is regular comment rows.
+        banner_rows = [l for l in lines if l.get("banner")]
+        assert len(banner_rows) == 1
+        assert banner_rows[0].get("section_break") is True
