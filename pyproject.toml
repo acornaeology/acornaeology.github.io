@@ -25,3 +25,11 @@ index-url = "https://pypi.org/simple"
 
 [project.scripts]
 acornaeology-build = "generator.build:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+test = [
+    "pytest>=8",
+]
