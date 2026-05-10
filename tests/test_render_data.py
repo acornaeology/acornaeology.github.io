@@ -14,6 +14,7 @@ from generator.disassembly import (
     _render_words,
     _render_string,
     _render_fill,
+    _split_string_parts,
 )
 
 
@@ -125,18 +126,105 @@ class TestRenderWords:
         assert "start_addr" in out
 
 
+class TestSplitStringParts:
+
+    def test_all_printable(self):
+        bytes_ = list(b"hello")
+        assert _split_string_parts(bytes_) == [("string", "hello")]
+
+    def test_trailing_nul(self):
+        bytes_ = list(b"Line Jammed") + [0]
+        assert _split_string_parts(bytes_) == [
+            ("string", "Line Jammed"),
+            ("byte", 0),
+        ]
+
+    def test_leading_nul(self):
+        bytes_ = [0] + list(b"hello")
+        assert _split_string_parts(bytes_) == [
+            ("byte", 0),
+            ("string", "hello"),
+        ]
+
+    def test_embedded_nul(self):
+        bytes_ = list(b"abc") + [0] + list(b"def")
+        assert _split_string_parts(bytes_) == [
+            ("string", "abc"),
+            ("byte", 0),
+            ("string", "def"),
+        ]
+
+    def test_quote_byte_split_out(self):
+        # `"` (0x22) inside a quoted run would break beebasm syntax;
+        # emit it as &22 between two quoted runs instead.
+        bytes_ = list(b'a"b')
+        assert _split_string_parts(bytes_) == [
+            ("string", "a"),
+            ("byte", 0x22),
+            ("string", "b"),
+        ]
+
+    def test_all_non_printable(self):
+        bytes_ = [0, 13, 0xFF]
+        result = _split_string_parts(bytes_)
+        assert result == [("byte", 0), ("byte", 13), ("byte", 0xFF)]
+
+    def test_high_bit_byte(self):
+        # 0x80..0xFF are non-printable in 7-bit ASCII.
+        bytes_ = list(b"err") + [0xA0]
+        assert _split_string_parts(bytes_) == [
+            ("string", "err"),
+            ("byte", 0xA0),
+        ]
+
+    def test_empty(self):
+        assert _split_string_parts([]) == []
+
+
 class TestRenderString:
 
-    def test_basic_string(self):
+    def test_basic_string_no_bytes_falls_back(self):
+        # Defensive path when bytes[] is absent.
         item = {"string": "(C)ROFF"}
         out = str(_render_string(item))
         assert "EQUS" in out
         assert "(C)ROFF" in out
 
-    def test_quotes_escaped(self):
-        item = {"string": 'a"b'}
+    def test_basic_string_with_bytes(self):
+        item = {"string": "hello", "bytes": list(b"hello")}
         out = str(_render_string(item))
-        assert "&quot;" in out
+        assert "EQUS" in out
+        assert ">&quot;hello&quot;<" in out
+        # No trailing byte marker for an all-printable string.
+        assert "&amp;" not in out or out.count("&amp;") == 0
+
+    def test_trailing_nul_renders_as_byte(self):
+        # The reproducer from issue #13: NUL terminator should appear
+        # outside the quoted run as `, &00`, not collapsed into `.`.
+        item = {
+            "string": "Line Jammed.",  # disassembler-substituted text
+            "bytes": list(b"Line Jammed") + [0],
+        }
+        out = str(_render_string(item))
+        assert ">&quot;Line Jammed&quot;<" in out
+        assert "&amp;00" in out
+        # The misleading "." inside the quotes from the JSON `string`
+        # field must NOT appear in the rendered output.
+        assert "Line Jammed.</span>" not in out
+
+    def test_embedded_quote_split_out(self):
+        item = {"string": 'a.b', "bytes": list(b'a"b')}
+        out = str(_render_string(item))
+        assert ">&quot;a&quot;<" in out
+        assert "&amp;22" in out
+        assert ">&quot;b&quot;<" in out
+
+    def test_byte_carries_tooltip(self):
+        item = {"string": "x.", "bytes": [ord("x"), 0]}
+        out = str(_render_string(item))
+        # data-tip on the &00 byte includes decimal/hex/binary forms.
+        assert "data-tip=" in out
+        assert "%00000000" in out
 
 
 class TestRenderFill:

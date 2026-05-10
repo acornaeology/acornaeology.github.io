@@ -1583,9 +1583,53 @@ def _render_words(item, max_width=CONTENT_MAX_WIDTH):
     return Markup(prefix_html + all_html)
 
 
+def _split_string_parts(bytes_):
+    """Split a string item's bytes into printable runs and byte values.
+
+    Returns a list of `("string", text)` and `("byte", value)` tuples.
+    ASCII 32..126 (excluding `"` = 0x22) joins into a printable run;
+    everything else emits as its own byte so the rendered form reads
+    `EQUS "text", &XX, "more"` rather than collapsing the non-
+    printable into a placeholder glyph inside the quoted run (which
+    misreads as if the message itself ended in that character).
+    """
+    parts = []
+    current = []
+    for b in bytes_:
+        if 32 <= b <= 126 and b != 0x22:
+            current.append(chr(b))
+        else:
+            if current:
+                parts.append(("string", "".join(current)))
+                current = []
+            parts.append(("byte", b))
+    if current:
+        parts.append(("string", "".join(current)))
+    return parts
+
+
 def _render_string(item):
-    string = item.get("string", "")
+    bytes_ = item.get("bytes")
+    if not bytes_:
+        # Fallback: no bytes array (shouldn't happen in dasmos output
+        # but keep the renderer defensive against malformed input).
+        string = item.get("string", "")
+        return Markup(
+            f'    <span class="directive">EQUS</span>'
+            f' <span class="string">&quot;{escape(string)}&quot;</span>'
+        )
+    rendered = []
+    for kind, val in _split_string_parts(bytes_):
+        if kind == "string":
+            rendered.append(
+                f'<span class="string">&quot;{escape(val)}&quot;</span>'
+            )
+        else:
+            tooltip = _immediate_tooltip(val)
+            rendered.append(
+                f'<span data-tip="{escape(tooltip)}">&amp;{val:02X}</span>'
+            )
     return Markup(
-        f'    <span class="directive">EQUS</span>'
-        f' <span class="string">&quot;{escape(string)}&quot;</span>'
+        f'    <span class="directive">EQUS</span> '
+        f'{", ".join(rendered)}'
     )
