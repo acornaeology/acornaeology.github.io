@@ -14,5 +14,9 @@
     {
         "repo": "https://github.com/acornaeology/acorn-econet-bridge",
         "path": "../../acorn-econet-bridge"
+    },
+    {
+        "repo": "https://github.com/acornaeology/bbc-basic",
+        "path": "../../bbc-basic"
     }
 ]
