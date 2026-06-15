@@ -34,8 +34,10 @@ flag in writeup-doc rendering.
 
 import re
 from html import escape as html_escape
+from types import SimpleNamespace
 
 import mistletoe
+from mistletoe import span_token, token as mistletoe_token
 from markupsafe import Markup
 from mistletoe.html_renderer import HTMLRenderer
 
@@ -159,9 +161,11 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
     links. Addresses without an entry fall back to the bare
     `&XXXX` tooltip.
 
-    `inline=True` strips the outer `<p>` wrapper, which is what
-    callers want for single-line contexts (titles, inline comments,
-    register cells).
+    `inline=True` renders span (inline) Markdown only -- emphasis,
+    code, and `[label](address:HEX)` links -- so single-line contexts
+    (titles, inline comments, register cells) never pick up block
+    constructs. A leading ">", "#", "-", etc. stays literal text
+    rather than becoming a blockquote / heading / list.
     """
 
     if not text:
@@ -172,26 +176,27 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
         renderer.valid_addrs = valid_addrs
         renderer.sorted_addrs = sorted_addrs
         renderer.label_tooltips = label_tooltips or {}
+        if inline:
+            # Inline contexts (inline comments, titles, register cells)
+            # are single-line and must not be parsed as block-level
+            # Markdown: a leading ">", "#", "-", "1.", etc. is literal
+            # text in an assembly comment (e.g. "> 10?"), not a
+            # blockquote / heading / list. Tokenise span (inline)
+            # constructs only -- emphasis, code, and
+            # [label](address:HEX) links still render; every block
+            # construct falls through as escaped, verbatim text.
+            #
+            # tokenize_inner needs a root node for reference-link /
+            # footnote lookups; mistletoe.Document normally sets it and
+            # clears it again. Supply an empty one so a comment like
+            # "[a][b]" finds no footnote and renders literally.
+            mistletoe_token._root_node = SimpleNamespace(footnotes={})
+            try:
+                tokens = span_token.tokenize_inner(text)
+                return Markup("".join(renderer.render(t) for t in tokens))
+            finally:
+                mistletoe_token._root_node = None
         doc = mistletoe.Document(text)
         html = renderer.render(doc)
 
-    if inline:
-        html = _strip_outer_paragraph(html)
-
     return Markup(html)
-
-
-def _strip_outer_paragraph(html):
-    """If `html` is a single top-level <p>...</p>, unwrap it.
-
-    mistletoe wraps inline text in a paragraph; for titles and
-    register cells the <p> is visual noise inside an <h3> or <td>.
-    """
-    stripped = html.strip()
-    if stripped.startswith("<p>") and stripped.endswith("</p>"):
-        inner = stripped[3:-4]
-        # Only unwrap if there's exactly one paragraph -- multiple
-        # paragraphs stay intact so caller's markup is still valid.
-        if "</p>" not in inner:
-            return inner
-    return html
