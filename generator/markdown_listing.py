@@ -86,6 +86,22 @@ class ListingHTMLRenderer(HTMLRenderer):
         cls = f' class="language-{html_escape(language)}"' if language else ""
         return f'<pre><code{cls}>{inner}</code></pre>'
 
+    def render_html_span(self, token):
+        # Author Markdown (titles, descriptions, comments) is prose, not
+        # a place to inject markup. CommonMark passes raw inline HTML
+        # through verbatim, so syntax notation like "<Title>" or
+        # "<List Spec>" common in command-reference comments would reach
+        # the browser as live tags -- and an unclosed "<Title>" puts the
+        # parser into RAWTEXT mode, swallowing the rest of the page. Escape
+        # the content so such tokens render as the literal text intended.
+        return html_escape(token.content)
+
+    def render_html_block(self, token):
+        # Block-level counterpart to `render_html_span`: a line that
+        # happens to start with "<tag" is escaped rather than emitted as
+        # raw HTML, for the same reason.
+        return html_escape(token.content)
+
     def render_link(self, token):
         target = getattr(token, "target", "") or ""
         m = _ADDRESS_URI_TARGET_RE.match(target)
