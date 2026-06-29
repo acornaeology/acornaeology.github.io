@@ -460,10 +460,13 @@ def build_disassemblies(env, sources, pages):
             mm_entries = data.get("memory_map", [])
             if mm_entries:
                 group_titles = rom_meta.get("memory_map_groups", {})
+                meta = data.get("meta", {})
                 _render_memory_map_page(env, source, version_id, title,
                                         mm_entries, output_dirpath,
                                         version_anchors, pages,
-                                        group_titles=group_titles)
+                                        group_titles=group_titles,
+                                        rom_load_addr=meta.get("load_addr"),
+                                        rom_end_addr=meta.get("end_addr"))
 
         # Build project-level analysis pages (after all versions, so
         # analyses can link into any version's anchors)
@@ -896,7 +899,8 @@ def _render_analysis_pages(env, source, output_dirpath,
 
 def _render_memory_map_page(env, source, version_id, version_title,
                             memory_map, output_dirpath, version_anchors,
-                            pages=None, group_titles=None):
+                            pages=None, group_titles=None,
+                            rom_load_addr=None, rom_end_addr=None):
     """Render {version_id}-memory-map.html for one version of a project.
 
     `memory_map` is the list of entries produced by py8dis's
@@ -1017,6 +1021,16 @@ def _render_memory_map_page(env, source, version_id, version_title,
             "entries": entries,
         })
 
+    # ROM code range for the intro pointer to the listing. Sourced from
+    # the disassembly's own `meta` (load_addr / end_addr, the latter
+    # exclusive) so it's correct for any ROM placement — no hard-coded
+    # address. Falls back to None if an older JSON lacks the metadata.
+    rom_start_hex = f"{rom_load_addr:04X}" if rom_load_addr is not None else None
+    rom_end_hex = (
+        f"{rom_end_addr - 1:04X}"
+        if rom_end_addr is not None else None
+    )
+
     template = env.get_template("_memory_map.html")
     html = template.render(
         root="../",
@@ -1026,6 +1040,8 @@ def _render_memory_map_page(env, source, version_id, version_title,
         title=version_title,
         output_filename=output_filename,
         groups=groups,
+        rom_start_hex=rom_start_hex,
+        rom_end_hex=rom_end_hex,
     )
     (output_dirpath / output_filename).write_text(html)
     print(f"  {source['slug']}/{output_filename}")
