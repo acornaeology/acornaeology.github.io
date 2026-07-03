@@ -3,9 +3,8 @@
 These exercise the row-emission pipeline end-to-end against
 hand-crafted item / sub dicts. They cover:
 
-- Per-align comment routing (dasmos 1.5 fields)
-- Backward-compat with old `comments_before` / `comments_after`
-- Banner card placement based on the new `align` field
+- Per-align comment routing (the four per-position comment fields)
+- Banner card placement based on the `align` field
 - ATX heading promotion in each per-align bucket
 - Section-break flag (BEFORE_LABEL banners only)
 - format_hints integration in the data row
@@ -40,6 +39,7 @@ def _process(item, sub=None, max_width=64):
         sorted_addrs=sorted_addrs,
         label_tooltips={},
         mm_links={},
+        region_anchors={},
         max_width=max_width,
     )
 
@@ -61,8 +61,8 @@ def _classify(line):
 
 
 class TestPerAlignCommentRouting:
-    """dasmos 1.5 splits comments_before / comments_after into four
-    per-align fields. Each routes to a distinct row-group position.
+    """Comments arrive in four per-align fields. Each routes to a
+    distinct row-group position.
     """
 
     def test_before_label_above_label(self):
@@ -146,48 +146,6 @@ class TestPerAlignCommentRouting:
         assert "AL" in comment_html[1]
         assert "BLN" in comment_html[2]
         assert "ALN" in comment_html[3]
-
-
-class TestBackwardCompatOldFieldNames:
-    """Sources still on dasmos < 1.5 emit the conflated `comments_before`
-    / `comments_after` fields. Those route to BEFORE_LABEL and AFTER_LINE
-    buckets respectively, matching the historical default placement.
-    """
-
-    def test_old_comments_before_routes_to_before_label(self):
-        item = {
-            "addr": 0x8000, "type": "byte", "values": [0x42],
-            "labels": ["foo"],
-            "comments_before": ["old-shape comment"],
-        }
-        roles = [_classify(l) for l in _process(item)]
-        assert roles == ["empty", "comment", "label", "data"]
-
-    def test_old_comments_after_routes_to_after_line(self):
-        item = {
-            "addr": 0x8000, "type": "byte", "values": [0x42],
-            "labels": ["foo"],
-            "comments_after": ["old-shape after"],
-        }
-        roles = [_classify(l) for l in _process(item)]
-        assert roles == ["label", "data", "comment"]
-
-    def test_new_field_takes_precedence_over_old(self):
-        # If both `comments_before_label` and the legacy `comments_before`
-        # are present, the new field wins (dasmos 1.5 dropped the old
-        # field, so this should rarely happen, but the precedence is
-        # well-defined.)
-        item = {
-            "addr": 0x8000, "type": "byte", "values": [0x42],
-            "labels": ["foo"],
-            "comments_before_label": ["NEW"],
-            "comments_before": ["OLD"],
-        }
-        lines = _process(item)
-        comment_lines = [l for l in lines if _classify(l) == "comment"]
-        assert len(comment_lines) == 1
-        assert "NEW" in str(comment_lines[0]["html"])
-        assert "OLD" not in str(comment_lines[0]["html"])
 
 
 class TestBannerAlignment:

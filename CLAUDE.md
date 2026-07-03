@@ -10,7 +10,15 @@ uv run python -m generator.build
 
 This cleans `output/`, copies static assets from `site/`, renders Jinja2 templates, and generates disassembly pages from JSON data. Output goes to `output/` (gitignored). Deployed to GitHub Pages via `.github/workflows/deploy.yml` on push to `master`.
 
-No test suite exists.
+## Tests
+
+```bash
+uv run pytest
+```
+
+Tests live in `tests/` and cover the renderer helpers in `generator/`. The
+deploy workflow runs `pytest` before building, so a test failure blocks the
+GitHub Pages deploy — run the suite before pushing.
 
 ## Architecture
 
