@@ -645,6 +645,24 @@ hr {
     display: block;
 }
 
+/* Reference-kind group headings inside the come-from popup. Shown only
+   when a label is reached both directly and as an indexing base (dasmos
+   1.14.0), so the reader can tell `lda base,X` uses from direct
+   read/writes. Absent for the common single-kind case. */
+.listing .ref-popup .ref-group-label {
+    display: block;
+    padding: 0.3em 0.75em 0.1em;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+}
+
+.listing .ref-popup .ref-group-label:first-child {
+    padding-top: 0;
+}
+
 .listing .opcode {
     color: var(--blue);
 }
@@ -1230,5 +1248,20 @@ hr {
 
 .memory-map td.desc > :last-child {
     margin-bottom: 0;
+}
+
+/* Region-anchor annotation in the name cell: the address span a
+   region's `anchor±k` window groups. */
+.memory-map .region-span {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.75em;
+    color: var(--dim);
+}
+
+/* Index-bases section: documented indexing bases that are deliberately
+   off the fixed-location memory map. */
+.index-bases-intro {
+    max-width: 46rem;
+    color: var(--dim);
 }
 

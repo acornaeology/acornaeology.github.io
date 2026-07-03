@@ -156,6 +156,31 @@ def process_disassembly(data, version_id=None):
             addr = banner["addr"]
             label_tooltips.setdefault(addr, f"&{addr:04X} \u2013 {title}")
 
+    # Index bases: addresses used only as an indexing
+    # operand base (`lda base,X`), documented but deliberately kept off
+    # `memory_map` because the literal byte is never touched. They render
+    # in their own section on the memory-map page (id `ib-NAME`); wire
+    # their operands to that section and give them the same brief tooltip
+    # treatment as owned locations. Never override a genuine memory-map
+    # entry that happens to share the address.
+    for entry in data.get("index_bases", []):
+        addr = entry["addr"]
+        description = entry.get("description")
+        if description and addr not in label_tooltips:
+            label_tooltips[addr] = f"&{addr:04X} \u2013 {_first_sentence(description)}"
+        if version_id is not None and addr not in mm_links:
+            mm_links[addr] = f"{version_id}-memory-map.html#ib-{entry['name']}"
+
+    # Regions (Layer B): an anchor label plus an offset
+    # window, whose in-window neighbours render as `anchor\u00b1k` operands
+    # (e.g. `lda fsm_sector_0-3,x`). These carry a `target` but no
+    # `target_label`, so `_linkify_operand` needs the anchor name\u2192address
+    # map to link the anchor substring back to its label.
+    region_anchors = {
+        region["name"]: region["anchor"]
+        for region in data.get("regions", [])
+    }
+
     # Pre-scan to find which subroutine sections contain relocated code
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
 
@@ -181,7 +206,7 @@ def process_disassembly(data, version_id=None):
         max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
                                    sorted_addrs, label_tooltips, mm_links,
-                                   max_width))
+                                   region_anchors, max_width))
 
     if current_sub and current_sub.get("fall_through"):
         lines.append({
@@ -198,7 +223,8 @@ def process_disassembly(data, version_id=None):
 
 
 def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
-                  label_tooltips, mm_links, max_width=CONTENT_MAX_WIDTH):
+                  label_tooltips, mm_links, region_anchors,
+                  max_width=CONTENT_MAX_WIDTH):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
@@ -217,22 +243,16 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
 
     sub = sub_lookup.get((addr, item.get("binary_addr")))
 
-    # dasmos 1.5 (acornaeology/dasmos#16) splits the old comments_before /
-    # comments_after fields into four per-align fields so the renderer
-    # can place each comment at its authored position. Older sources
-    # still emit the conflated fields; for those we route the legacy
-    # data to BEFORE_LABEL / AFTER_LINE buckets respectively, matching
-    # the historical default placement.
+    # dasmos (acornaeology/dasmos#16) carries comments in four per-align
+    # fields so the renderer can place each at its authored position.
     cmt_before_label = _filter_comments(
-        item.get("comments_before_label",
-                 item.get("comments_before", [])), sub)
+        item.get("comments_before_label", []), sub)
     cmt_after_label = _filter_comments(
         item.get("comments_after_label", []), sub)
     cmt_before_line = _filter_comments(
         item.get("comments_before_line", []), sub)
     cmt_after_line = _filter_comments(
-        item.get("comments_after_line",
-                 item.get("comments_after", [])), sub)
+        item.get("comments_after_line", []), sub)
 
     # Split out ATX heading comments (`# title`, `## title`, ...) from
     # each bucket. They render as banner-style heading rows that span
@@ -243,10 +263,9 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
     h_before_line, cmt_before_line = _split_atx_headings(cmt_before_line)
     h_after_line, cmt_after_line = _split_atx_headings(cmt_after_line)
 
-    # Banner alignment from dasmos 1.5; older sources omit the field
-    # and default to BEFORE_LABEL (matches the pre-1.5 hard-coded path).
+    # Banner alignment: which of the four positions the banner card sits in.
     has_banner = bool(sub and sub.get("title"))
-    banner_align = (sub or {}).get("align", "before_label") if has_banner else None
+    banner_align = sub.get("align", "before_label") if has_banner else None
 
     decorated_before_label = bool(
         h_before_label or cmt_before_label
@@ -363,7 +382,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         render_width = _optimal_data_max_width(
             len(item.get("values", [])), inline_comment, vw, max_width)
     content_html = _render_content(item, valid_addrs, label_tooltips, mm_links,
-                                    render_width)
+                                    region_anchors, render_width)
 
     line_dict = {
         "id": addr_id if not id_used else None,
@@ -1119,31 +1138,98 @@ def _empty_line():
     return {"id": None, "addr": None, "html": Markup("")}
 
 
+def _first_sentence(text):
+    """Return the first sentence of a description, for tooltip briefs.
+
+    Index-base entries carry only a full `description`; the come-from
+    tooltip wants the concise opening sentence, matching the pre-trimmed
+    `brief` the memory-map entries supply.
+    """
+    text = text.strip()
+    m = re.match(r'.*?[.!?](?:\s|$)', text, re.DOTALL)
+    return m.group(0).strip() if m else text
+
+
+# ReferenceKind values whose named address is only an
+# indexing base \u2014 the operand names a base and the byte touched is
+# base+register, so the literal address is never read or written. The
+# other kinds (`direct`, `pointer`) touch the named address.
+_INDEX_BASE_KINDS = {"indexed", "indexed_pointer"}
+
+
+def _classify_references(references):
+    """Split caller addresses by reference kind.
+
+    dasmos (acornaeology/dasmos#36) emits each reference as
+    `{addr, kind, move_id?}`, where `kind` is the `ReferenceKind` \u2014 so
+    the direct/index-base distinction is read straight off the data.
+    Returns `(direct_addrs, index_only_addrs)` as sorted lists of
+    distinct runtime addresses. An address touched directly anywhere is
+    direct even if also used as a base elsewhere (a mixed target), so the
+    index-only list excludes it \u2014 matching dasmos's own summary wording.
+    """
+    direct = set()
+    index = set()
+    for ref in references or []:
+        addr = ref["addr"]
+        target = index if ref.get("kind") in _INDEX_BASE_KINDS else direct
+        target.add(addr)
+    return sorted(direct), sorted(index - direct)
+
+
+def _ref_entry_html(ref_addr, item_by_addr):
+    """Render one caller line in the come-from popup."""
+    ref_item = item_by_addr.get(ref_addr)
+    if ref_item and ref_item.get("type") == "code":
+        mnemonic = ref_item["mnemonic"].upper()
+    else:
+        mnemonic = "ref"
+    return (
+        f'<a href="#addr-{ref_addr:04X}">'
+        f'\u2190 {ref_addr:04X} {escape(mnemonic)}</a>'
+    )
+
+
 def _render_ref_popup(references, item_by_addr):
-    """Render a come-from popup showing all callers of this label."""
-    refs_sorted = sorted(references)
-    count = len(refs_sorted)
+    """Render a come-from popup showing all callers of this label.
+
+    When a label is reached both directly and as an indexing base
+    (reference kinds), the popup groups the callers under
+    labelled headings so a reader can tell a location reached only as an
+    indexing base (`lda base,X`) from one that is read or written
+    directly. With no index-base callers the popup renders as a flat
+    list.
+    """
+    direct_refs, index_refs = _classify_references(references)
+    count = len(direct_refs) + len(index_refs)
     parts = [
         f'<span class="ref-badge">\u2190{count}</span>',
         '<span class="ref-popup">',
     ]
-    for ref_addr in refs_sorted:
-        ref_item = item_by_addr.get(ref_addr)
-        if ref_item and ref_item.get("type") == "code":
-            mnemonic = ref_item["mnemonic"].upper()
-        else:
-            mnemonic = "ref"
-        parts.append(
-            f'<a href="#addr-{ref_addr:04X}">'
-            f'\u2190 {ref_addr:04X} {escape(mnemonic)}</a>'
-        )
+
+    if index_refs:
+        if direct_refs:
+            parts.append('<span class="ref-group-label">Referenced by</span>')
+            parts.extend(_ref_entry_html(r, item_by_addr) for r in direct_refs)
+        parts.append('<span class="ref-group-label">Used as index base by</span>')
+        parts.extend(_ref_entry_html(r, item_by_addr) for r in index_refs)
+    else:
+        parts.extend(_ref_entry_html(r, item_by_addr) for r in direct_refs)
+
     parts.append('</span>')
     return Markup("".join(parts))
 
 
 def _is_reference_comment(text):
-    """Auto-generated cross-reference comments are redundant."""
-    return text.startswith("&") and "referenced" in text
+    """Auto-generated cross-reference comments are redundant.
+
+    Covers both the `referenced N times` wording and the `used as index
+    base N times` wording, so neither leaks into the listing if a source
+    ever emits them as item comments rather than in the structured
+    `xref_summaries` / `references` fields.
+    """
+    return text.startswith("&") and (
+        "referenced" in text or "used as index base" in text)
 
 
 def _is_banner_line(text):
@@ -1315,10 +1401,11 @@ def _render_register_rows(heading, regs, valid_addrs, sorted_addrs, label_toolti
 
 
 def _render_content(item, valid_addrs, label_tooltips, mm_links,
-                    max_width=CONTENT_MAX_WIDTH):
+                    region_anchors, max_width=CONTENT_MAX_WIDTH):
     t = item["type"]
     if t == "code":
-        return _render_code(item, valid_addrs, label_tooltips, mm_links)
+        return _render_code(item, valid_addrs, label_tooltips, mm_links,
+                            region_anchors)
     if t == "byte":
         return _render_bytes(item, max_width)
     if t == "word":
@@ -1330,14 +1417,15 @@ def _render_content(item, valid_addrs, label_tooltips, mm_links,
     return Markup("")
 
 
-def _render_code(item, valid_addrs, label_tooltips, mm_links):
+def _render_code(item, valid_addrs, label_tooltips, mm_links, region_anchors):
     mnemonic = escape(item["mnemonic"].upper())
     operand = item.get("operand", "")
 
     html = Markup(f'    <span class="opcode">{mnemonic}</span>')
     if operand:
         operand_html = _linkify_operand(operand, item, valid_addrs,
-                                        label_tooltips, mm_links)
+                                        label_tooltips, mm_links,
+                                        region_anchors)
         if _is_immediate(operand, item):
             tooltip = _immediate_tooltip(item["bytes"][1])
             operand_html = Markup(
@@ -1348,47 +1436,77 @@ def _render_code(item, valid_addrs, label_tooltips, mm_links):
     return html
 
 
-def _linkify_operand(operand, item, valid_addrs, label_tooltips, mm_links):
-    """Wrap label references in the operand text with anchor links.
+def _operand_label_ref(addr, label, valid_addrs, label_tooltips, mm_links):
+    """Build the `<a>`/`<span>` markup that links a label substring.
 
     Three cases, in priority order:
 
-    - `target` is in `mm_links`: emit an `<a class="mm-link"
+    - `addr` is in `mm_links`: emit an `<a class="mm-link"
       target="memory-map">` so clicking jumps to the memory-map
       entry on the per-version memory-map page.
-    - `target` is a ROM item: emit a same-page `<a href="#addr-">`.
+    - `addr` is a ROM item: emit a same-page `<a href="#addr-">`.
     - Otherwise: emit a plain `<span class="ext-label">` (no link).
 
-    `label_tooltips` supplies the `data-tip` brief for any non-ROM label
-    that has a memory-map description; it replaces the bare `&XXXX`
+    `label` is the already-escaped substring to wrap; `label_tooltips`
+    supplies the `data-tip` brief, falling back to the bare `&XXXX`.
+    """
+    tip = label_tooltips.get(addr, f"&{addr:04X}")
+    if addr in mm_links:
+        return (
+            f'<a class="mm-link" href="{mm_links[addr]}"'
+            f' target="memory-map"'
+            f' data-tip="{escape(tip)}">{label}</a>'
+        )
+    if addr in valid_addrs:
+        return (f'<a href="#addr-{addr:04X}"'
+                f' data-tip="{escape(tip)}">{label}</a>')
+    return (f'<span class="ext-label"'
+            f' data-tip="{escape(tip)}">{label}</span>')
+
+
+def _linkify_operand(operand, item, valid_addrs, label_tooltips, mm_links,
+                     region_anchors):
+    """Wrap label references in the operand text with anchor links.
+
+    Two kinds of operand carry a linkable name:
+
+    - a plain label operand names an exact address via `target_label` /
+      `target` (`sta wksp_err_sector,x`); the whole label is linked.
+    - a region-relative operand (Layer B) reads as
+      `anchor±k` and carries a `target` but no `target_label`
+      (`lda fsm_sector_0-3,x`); the leading anchor identifier is linked
+      to the anchor address supplied by `region_anchors` (name→addr).
+
+    `label_tooltips` supplies the `data-tip` brief for any label that has
+    a memory-map / index-base description; it replaces the bare `&XXXX`
     fallback.
     """
-    if "target_label" not in item or "target" not in item:
+    if "target" not in item:
         return escape(operand)
 
-    target_label = item["target_label"]
+    target_label = item.get("target_label")
     target = item["target"]
-    target_addr = f"&{target:04X}"
-    tip = label_tooltips.get(target, target_addr)
-
     escaped_operand = str(escape(operand))
-    escaped_label = str(escape(target_label))
 
-    if escaped_label in escaped_operand:
-        if target in mm_links:
-            replacement = (
-                f'<a class="mm-link" href="{mm_links[target]}"'
-                f' target="memory-map"'
-                f' data-tip="{escape(tip)}">{escaped_label}</a>'
-            )
-        elif target in valid_addrs:
-            target_id = f"addr-{target:04X}"
-            replacement = (f'<a href="#{target_id}"'
-                           f' data-tip="{escape(tip)}">{escaped_label}</a>')
-        else:
-            replacement = (f'<span class="ext-label"'
-                           f' data-tip="{escape(tip)}">{escaped_label}</span>')
-        return Markup(escaped_operand.replace(escaped_label, replacement, 1))
+    if target_label:
+        escaped_label = str(escape(target_label))
+        if escaped_label in escaped_operand:
+            replacement = _operand_label_ref(
+                target, escaped_label, valid_addrs, label_tooltips, mm_links)
+            return Markup(escaped_operand.replace(escaped_label, replacement, 1))
+        return escape(operand)
+
+    # Region-relative operand: link the leading anchor identifier to its
+    # anchor label. The anchor name is the operand's leading identifier
+    # (before the `±k,X` arithmetic).
+    m = re.match(r'[A-Za-z_][A-Za-z0-9_]*', operand)
+    if m and m.group(0) in region_anchors:
+        anchor_name = m.group(0)
+        anchor_addr = region_anchors[anchor_name]
+        escaped_name = str(escape(anchor_name))
+        replacement = _operand_label_ref(
+            anchor_addr, escaped_name, valid_addrs, label_tooltips, mm_links)
+        return Markup(escaped_operand.replace(escaped_name, replacement, 1))
 
     return escape(operand)
 
