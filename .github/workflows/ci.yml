@@ -34,12 +34,13 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
-  # Build and deploy only on a push to master; both depend on test, so a
-  # red suite blocks the deploy. On branches and PRs these jobs are
-  # skipped and only `test` runs.
+  # Build and deploy on a push to master, or on a manual dispatch (used to
+  # republish when an upstream feeder repo changes, without a new commit
+  # here). Both depend on test, so a red suite blocks the deploy. On
+  # branches and PRs these jobs are skipped and only `test` runs.
   build:
     needs: test
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
