@@ -28,6 +28,182 @@ DATA_DIRPATH = REPO_ROOT / "data"
 OUTPUT_DIRPATH = REPO_ROOT / "output"
 CACHE_DIRPATH = REPO_ROOT / ".cache"
 
+# The disassembly-page link list is grouped so a reader can tell our own
+# artefacts from the ROM's provenance, the upstream work we actually
+# consulted, and community discussion — making research-source
+# attribution explicit rather than a flat, icon-only list. Groups render
+# in this order under these headings; empty groups are omitted.
+LINK_CATEGORIES = [
+    ("ours", "This disassembly"),
+    ("rom-image", "ROM image"),
+    ("source", "Sources consulted"),
+    ("related", "Further reading"),
+    ("discussion", "Discussion"),
+    ("feedback", "Feedback"),
+]
+_LINK_CATEGORY_KEYS = {key for key, _ in LINK_CATEGORIES}
+
+# A link may declare its `category` explicitly in rom.json. When it
+# doesn't, fall back to inferring one from its icon so un-migrated
+# rom.json files still group correctly (staggered rollout, as with the
+# dasmos schema version). `ref`/`doc` default to "source" — the honest
+# assumption is that a referenced disassembly or document informed the
+# annotations; an author moves it to "related" to mark it as further
+# reading not directly consulted.
+_ICON_LINK_CATEGORY = {
+    "github": "ours",
+    "map": "ours",
+    "chip": "rom-image",
+    "ref": "source",
+    "doc": "source",
+    "chat": "discussion",
+    "bug": "feedback",
+}
+DEFAULT_LINK_CATEGORY = "related"
+
+# Toolchain attribution, credited site-wide in the footer.
+DASMOS_URL = "https://github.com/acornaeology/dasmos"
+
+
+def _link_category(link):
+    """Resolve a link's category: explicit `category`, else icon-inferred.
+
+    An explicit category that isn't one of the known keys is coerced to
+    the default so a typo surfaces as a visible group rather than a
+    dropped link.
+    """
+    category = link.get("category")
+    if category in _LINK_CATEGORY_KEYS:
+        return category
+    if category:
+        return DEFAULT_LINK_CATEGORY
+    return _ICON_LINK_CATEGORY.get(link.get("icon"), DEFAULT_LINK_CATEGORY)
+
+
+def _build_source_link(rom_meta, repo_url):
+    """Build the single "This disassembly" source link.
+
+    A version's `rom.json` may list its assembler flavours under
+    `sources` (each `{"assembler", "url"}`); they render as one line —
+    "Disassembly source on GitHub (beebasm, 64tass)" — with each flavour
+    linked. Falls back to `rom.json`'s legacy single github link, or an
+    injected link to the repo root when neither is present.
+    """
+    sources = rom_meta.get("sources")
+    if sources:
+        return {
+            "label": "Disassembly source on GitHub",
+            "icon": "github",
+            "category": "ours",
+            "variants": [
+                {"label": s.get("assembler") or s.get("label") or "source",
+                 "url": s["url"]}
+                for s in sources
+            ],
+        }
+    legacy = next((l for l in rom_meta.get("links", [])
+                   if l.get("icon") == "github"), None)
+    if legacy:
+        return {**legacy, "category": legacy.get("category", "ours")}
+    return {
+        "label": "Disassembly source on GitHub",
+        "url": repo_url,
+        "icon": "github",
+        "category": "ours",
+    }
+
+
+def _merge_references(shared, version_refs):
+    """Merge repo-level (shared) references with a version's own.
+
+    Shared references are the default for every version. A version-level
+    reference (from its `rom.json`) either *specialises* a shared one —
+    when its `id` matches, it replaces that entry in place (e.g. swapping
+    a Model-B MOS disassembly for the Master one) — or *enriches* the
+    list, when it has a new/absent `id`, by appending. A version entry
+    with a matching `id` and `suppress: true` removes the shared one
+    without a replacement. Shared references keep their position.
+    """
+    result = list(shared)
+    index_by_id = {r["id"]: i for i, r in enumerate(result) if r.get("id")}
+    for vref in version_refs:
+        rid = vref.get("id")
+        if rid is not None and rid in index_by_id:
+            i = index_by_id[rid]
+            result[i] = None if vref.get("suppress") else vref
+        else:
+            result.append(vref)
+    return [r for r in result if r is not None]
+
+
+def _dedup_links(links):
+    """Drop later links whose URL already appeared (first occurrence wins).
+
+    Lets version-specific `rom.json` links and repo-level manifest
+    `references` be concatenated without the shared entries (a ROM-image
+    link, a discussion thread) showing twice.
+    """
+    seen = set()
+    out = []
+    for link in links:
+        url = link.get("url")
+        if url and url in seen:
+            continue
+        if url:
+            seen.add(url)
+        out.append(link)
+    return out
+
+
+def _group_links(links):
+    """Bucket a flat link list into ordered `LINK_CATEGORIES` groups.
+
+    Returns a list of `{category, heading, links}` for each non-empty
+    group, preserving each link's original order within its group.
+    """
+    buckets = {key: [] for key, _ in LINK_CATEGORIES}
+    for link in links:
+        buckets[_link_category(link)].append(link)
+    return [
+        {"category": key, "heading": heading, "links": buckets[key]}
+        for key, heading in LINK_CATEGORIES
+        if buckets[key]
+    ]
+
+
+def _index_references(source):
+    """Aggregate the references shown on a ROM's index page.
+
+    The index is a repo-level bibliography, so it unions the shared
+    references with each version's own `rom.json` references and
+    discussion links — family-specific threads (a NFS thread vs an ANFS
+    thread) live per-version, not in the manifest, but should still all
+    appear on the shared index. Deduped by URL. Per-version identity
+    links (ROM image, source) stay off the index; they belong on the
+    version pages and in the version list.
+    """
+    version_discussion = []
+    version_refs = []
+    repo_dirpath = source["repo_dirpath"]
+    for version_id in source.get("versions", []):
+        version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
+        if version_dirpath is None:
+            continue
+        rom_json_filepath = version_dirpath / "rom" / "rom.json"
+        if not rom_json_filepath.exists():
+            continue
+        rom_meta = json.loads(rom_json_filepath.read_text())
+        version_refs.extend(rom_meta.get("references", []))
+        version_discussion.extend(
+            link for link in rom_meta.get("links", [])
+            if _link_category(link) == "discussion")
+    # Order so that each category reads naturally once grouped: the
+    # per-disassembly "Discuss this…" threads lead Discussion (version
+    # discussion first), while the shared primary sources lead Sources
+    # consulted (shared references before version-specific ones).
+    return _dedup_links(
+        version_discussion + list(source.get("references", [])) + version_refs)
+
 
 def git_last_modified_iso(repo_dirpath, target_dirpath):
     """Get the ISO 8601 author date of the latest commit touching target_dirpath."""
@@ -157,6 +333,12 @@ def load_sources():
                 "url": ref["url"],
                 "icon": ref.get("icon", "ref"),
                 "note": ref.get("note", ""),
+                "category": ref.get("category"),
+                # Optional stable key. A version-level reference in
+                # rom.json with the same `id` specialises (overrides) this
+                # shared one — e.g. swapping the Model-B MOS disassembly
+                # for the Master one on a Master-only version.
+                "id": ref.get("id"),
             }
             for ref in manifest.get("references", [])
         ]
@@ -282,7 +464,7 @@ def build_disassemblies(env, sources, pages):
             })
 
         # Build per-ROM index page
-        references = source.get("references", [])
+        reference_groups = _group_links(_index_references(source))
         analyses_for_index = [
             {
                 "label": a["label"],
@@ -300,7 +482,7 @@ def build_disassemblies(env, sources, pages):
             versions=versions,
             has_glossary=glossary is not None,
             analyses=analyses_for_index,
-            references=references,
+            reference_groups=reference_groups,
         )
         index_filepath = output_dirpath / "index.html"
         index_filepath.write_text(html)
@@ -360,16 +542,20 @@ def build_disassemblies(env, sources, pages):
                 title = rom_meta.get("title", f"{name} {version_id}")
                 links = list(rom_meta.get("links", []))
             else:
+                rom_meta = {}
                 title = f"{name} {version_id}"
                 links = []
 
-            # Prepend a GitHub link unless rom.json already supplies one
-            if not any(l.get("icon") == "github" for l in links):
-                links.insert(0, {
-                    "label": "Disassembly source on GitHub",
-                    "url": repo_url,
-                    "icon": "github",
-                })
+            # Prepend the disassembly-source link. A version may ship the
+            # same disassembly in more than one assembler flavour (e.g.
+            # beebasm + 64tass); `rom.json` lists them under `sources` and
+            # they render as one line with each flavour linked.
+            source_link = _build_source_link(rom_meta, repo_url)
+            if source_link:
+                # Drop any legacy single github link so the source isn't
+                # listed twice.
+                links = [l for l in links if l.get("icon") != "github"]
+                links.insert(0, source_link)
 
             # Add report-issue link with prefilled title and body
             issue_title = f"[{title}] "
@@ -394,24 +580,18 @@ def build_disassemblies(env, sources, pages):
                 "label": "Found a mistake or a comment that could be clearer? Report an issue.",
                 "url": issue_url,
                 "icon": "bug",
+                "category": "feedback",
             }
 
-            # Append doc links
-            for doc in rom_meta.get("docs", []):
-                links.append({
-                    "label": doc["label"],
-                    "url": _doc_output_filename(version_id, doc["path"]),
-                    "icon": "doc",
-                })
-
-            # Append memory-map link if this version has one. The page is
-            # rendered later (line ~430) but its presence is determined
-            # by whether the disassembly JSON carries memory_map entries.
-            # target="memory-map" pairs the page with the named window
-            # so the side-by-side memory-map / listing pattern works.
-            # class="mm-link" hooks the link into the listing-page
-            # JavaScript that focuses an already-open memory-map tab,
-            # matching the behaviour of inline address: links.
+            # Append the memory-map link (our artefact) before the doc
+            # pages so the "This disassembly" group reads source →
+            # memory map → companion pages. The page is rendered later but
+            # its presence is determined by whether the disassembly JSON
+            # carries memory_map entries. target="memory-map" pairs the
+            # page with the named window so the side-by-side memory-map /
+            # listing pattern works; class="mm-link" hooks the link into
+            # the listing-page JavaScript that focuses an already-open
+            # memory-map tab, matching inline address: links.
             if data.get("memory_map") or data.get("index_bases"):
                 links.append({
                     "label": "Memory map",
@@ -419,9 +599,35 @@ def build_disassemblies(env, sources, pages):
                     "icon": "map",
                     "target": "memory-map",
                     "class": "mm-link",
+                    "category": "ours",
                 })
 
+            # Append our generated companion doc pages (also "This
+            # disassembly"). An author can override the inferred category
+            # per doc in rom.json.
+            for doc in rom_meta.get("docs", []):
+                links.append({
+                    "label": doc["label"],
+                    "url": _doc_output_filename(version_id, doc["path"]),
+                    "icon": "doc",
+                    "category": doc.get("category", "ours"),
+                })
+
+            # Merge the research references into the page's links so the
+            # reader sees the full attribution — sources consulted,
+            # further reading, discussion — on the disassembly page
+            # itself, not only the project index. The shared repo-level
+            # references are the default; a version's own rom.json
+            # `references` specialise or enrich them (see
+            # `_merge_references`). Version-specific rom.json links come
+            # first so a shared entry (ROM image, discussion thread) keeps
+            # its version-specific form when deduped.
+            version_references = _merge_references(
+                source.get("references", []), rom_meta.get("references", []))
+            links = _dedup_links(links + version_references)
             links.append(report_link)
+
+            link_groups = _group_links(links)
 
             sections = process_disassembly(data, version_id=version_id)
             macros = build_macros(data)
@@ -433,7 +639,7 @@ def build_disassemblies(env, sources, pages):
                 version_id=version_id,
                 title=title,
                 description=description,
-                links=links,
+                link_groups=link_groups,
                 sections=sections,
                 macros=macros,
                 subroutines=_filter_subroutines(data),

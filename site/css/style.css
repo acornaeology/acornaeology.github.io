@@ -295,18 +295,93 @@ a:hover {
 .rom-links {
     font-size: 0.85rem;
     color: var(--dim);
-    list-style: none;
-    padding: 0;
-    margin: 0.5rem 0;
+    margin: 0.5rem 0 1rem;
+    /* Two-column masonry-ish flow on wide viewports so the grouped
+       link sections don't stack into one tall column. */
+    columns: 2 18rem;
+    column-gap: 2rem;
 }
 
-.rom-links li {
+.rom-link-group {
+    break-inside: avoid;
+    margin: 0 0 0.9rem;
+}
+
+.rom-link-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.25rem 0 0;
+}
+
+.rom-link-group li {
     margin: 0.3rem 0;
+    /* Hanging indent: the icon sits in a left gutter (see the negative
+       margin below) so wrapped link text aligns under the first line
+       rather than tucking under the icon. */
+    padding-left: 1.8em;
+}
+
+.rom-link-heading {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    margin: 0;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px solid var(--rule);
+}
+
+/* Feedback is a call to action, not a reference — demote it below the
+   attribution groups and drop the heading rule so it reads as a footer
+   line rather than a peer of the sources. */
+.rom-link-group--feedback {
+    margin-top: 0.4rem;
+}
+
+.rom-link-group--feedback .rom-link-heading {
+    border-bottom: none;
 }
 
 .analysis-note {
     margin: 0.2rem 0 0.8rem 1.8rem;
     color: var(--dim);
+}
+
+/* Grouped references on the per-ROM index page (Sources consulted /
+   Further reading / Discussion), each with its note. */
+.reference-heading {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    margin: 1.2rem 0 0.3rem;
+}
+
+.reference-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.reference-list li {
+    margin: 0.5rem 0;
+    padding-left: 1.8em;  /* hanging indent — see .rom-link-group li */
+}
+
+.reference-note {
+    margin: 0.1rem 0 0;  /* aligns under the link text via the li padding */
+    color: var(--dim);
+    font-size: 0.85rem;
+}
+
+/* Pull the icon back into the list-item's left padding so it occupies
+   the gutter and the link text (including wrapped lines) starts at a
+   consistent indent. 1.8em = icon width (1.5em) + its right margin. */
+.rom-link-group li .link-icon,
+.reference-list li .link-icon {
+    margin-left: -1.8em;
 }
 
 .link-icon {
@@ -391,6 +466,17 @@ hr {
     padding: 1rem 1.5rem;
     font-size: 0.8rem;
     color: var(--dim);
+}
+
+.site-footer .container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    justify-content: space-between;
+}
+
+.footer-credit a {
+    color: inherit;
 }
 
 /* --- Disassembly listings --- */

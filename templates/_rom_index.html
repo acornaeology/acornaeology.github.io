@@ -43,12 +43,15 @@
 </ul>
 {% endif %}
 
-{% if references %}
+{% if reference_groups %}
 <h2>References</h2>
-<ul class="rom-links">
-{% for ref in references %}
-<li><a href="{{ ref.url }}">{{ icon(ref.icon) }}{{ ref.label }}</a></li>
+{% for group in reference_groups %}
+<h3 class="reference-heading">{{ group.heading }}</h3>
+<ul class="reference-list">
+{% for ref in group.links %}
+<li><a href="{{ ref.url }}">{{ icon(ref.icon) }}{{ ref.label }}</a>{% if ref.note %}<div class="reference-note">{{ ref.note }}</div>{% endif %}</li>
 {% endfor %}
 </ul>
+{% endfor %}
 {% endif %}
 {% endblock %}

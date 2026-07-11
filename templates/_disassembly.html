@@ -15,12 +15,19 @@
 <h1>{{ title }}</h1>
 {% if updated_display %}<p class="updated-date">Updated {{ updated_display }}</p>{% endif %}
 <p class="version-back"><a href="./">&larr; All {{ name }} versions</a></p>
-{% if links %}
-<ul class="rom-links">
-{% for link in links %}
-<li>{% if link.prefix %}{{ link.prefix }} {% endif %}<a href="{{ link.url }}"{% if link.class %} class="{{ link.class }}"{% endif %}{% if link.target %} target="{{ link.target }}"{% endif %}>{{ icon(link.icon) }}{{ link.label }}</a></li>
+{% if link_groups %}
+<div class="rom-links">
+{% for group in link_groups %}
+<section class="rom-link-group rom-link-group--{{ group.category }}">
+<h2 class="rom-link-heading">{{ group.heading }}</h2>
+<ul>
+{% for link in group.links %}
+{% if link.variants %}<li>{{ icon(link.icon) }}{{ link.label }} (<span class="link-variants">{% for v in link.variants %}<a href="{{ v.url }}">{{ v.label }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>)</li>{% else %}<li>{% if link.prefix %}{{ link.prefix }} {% endif %}<a href="{{ link.url }}"{% if link.class %} class="{{ link.class }}"{% endif %}{% if link.target %} target="{{ link.target }}"{% endif %}>{{ icon(link.icon) }}{{ link.label }}</a></li>{% endif %}
 {% endfor %}
 </ul>
+</section>
+{% endfor %}
+</div>
 {% endif %}
 
 <div class="disassembly-layout">

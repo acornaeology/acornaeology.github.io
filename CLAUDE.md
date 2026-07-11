@@ -50,6 +50,54 @@ dasmos on independent schedules. The gate lives in
   `text` — never a crash or a dict repr. `_expr_parts` defensively unwraps a
   dict even under the v2 gate, so a mislabelled document still can't leak a repr.
 
+### Disassembly-page link categories
+
+The links at the top of a disassembly page are grouped by provenance so
+research-source attribution is explicit — our own artefacts vs the ROM's
+identity vs the upstream work we consulted vs discussion. `LINK_CATEGORIES` in
+`build.py` defines the ordered categories and their headings; `_group_links`
+buckets the flat list and omits empty groups:
+
+- `ours` — **This disassembly**: GitHub source, memory map, generated companion
+  doc pages.
+- `rom-image` — **ROM image**: the ROM's entry in tobylobster's ROM Library
+  (which exact binary, by md5).
+- `source` — **Sources consulted**: prior disassemblies / reconstructions / docs
+  that informed the annotations.
+- `related` — **Further reading**: relevant but not directly consulted.
+- `discussion` — **Discussion**: forum threads.
+- `feedback` — **Feedback**: the report-an-issue link (visually demoted).
+
+A version may ship its disassembly in more than one assembler flavour. List
+them under `sources` in `rom.json` (each `{"assembler", "url"}`) and they render
+as a single "This disassembly" line — `Disassembly source on GitHub (beebasm,
+64tass)` — with each flavour linked (`_build_source_link`). A repo with a single
+flavour can keep its legacy single github link in `links`; both forms are
+supported.
+
+Each link may declare `category` explicitly; when absent it is inferred from its
+`icon` (`_ICON_LINK_CATEGORY`), so un-migrated repos still group correctly. The
+consulted-vs-further-reading split is an authorship judgement — inference
+defaults a referenced disassembly/doc to `source` (consulted); set
+`category: "related"` to mark it as further reading. The toolchain is credited
+site-wide in the footer (`base.html`).
+
+**Where references live.** Research sources are curated once per repo in the
+`references` array of `acornaeology.json` (repo-level, each with a `note`, a
+`category`, and an optional stable `id`). They render grouped on the project
+index page *and* are merged into every disassembly page's link groups.
+
+A version's `rom.json` may carry its own `references` array to **specialise** or
+**enrich** the shared list (`_merge_references`): an entry whose `id` matches a
+shared reference replaces it in place (e.g. ANFS 4.21, Master-only, swaps the
+shared Model-B MOS disassembly for the Master one via `id: "mos"`); `suppress:
+true` removes a shared entry; an entry with a new/absent `id` is appended.
+`_dedup_links` then drops any entry a version-specific `rom.json` link already
+supplied (e.g. a shared discussion thread). So `rom.json` `links` should carry
+only version-specific *links* (the `sources`, the ROM-image `chip`, a
+version-specific thread); shared research references belong in the manifest, and
+`rom.json` `references` only the per-version overrides/additions.
+
 ### Glossary
 
 `generator/glossary.py` parses `GLOSSARY.md` from source repos. Each entry uses the Pandoc multi-paragraph definition list convention to encode brief and extended descriptions:
