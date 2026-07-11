@@ -84,6 +84,18 @@ window.name = "listing";
 {% endfor %}
 </div>
 </div>
+{% if macros %}
+<section class="macros" aria-labelledby="macros-heading">
+<h2 id="macros-heading">Macros</h2>
+<p class="macros-intro">Expression macros expanded by the assembler. Invocations in the listing link here.</p>
+<dl class="macro-list">
+{% for macro in macros %}
+<dt id="{{ macro.id }}"><code class="macro-sig">{{ macro.name }}{% if macro.params %}({{ macro.params | join(', ') }}){% endif %}</code>{% if macro.emit %} <span class="macro-emit">emit {{ macro.emit }}</span>{% endif %}</dt>
+<dd><code class="macro-body">{{ macro.body }}</code></dd>
+{% endfor %}
+</dl>
+</section>
+{% endif %}
 <script>
 (function () {
     var linkIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M6.75 9.25a3.25 3.25 0 0 0 4.596.443l1.904-1.904a3.25 3.25 0 0 0-4.596-4.596L7.5 4.347"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M9.25 6.75a3.25 3.25 0 0 0-4.596-.443L2.75 8.211a3.25 3.25 0 0 0 4.596 4.596L8.5 11.653"/></svg>';

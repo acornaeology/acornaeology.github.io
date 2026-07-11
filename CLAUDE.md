@@ -32,6 +32,24 @@ Static site generator for annotated 6502 disassemblies of Acorn ROMs. Transforms
 4. `generator/disassembly.py` converts JSON items into template-ready line dicts with pre-rendered HTML (`Markup` objects)
 5. `templates/_disassembly.html` renders the two-column layout (subroutine nav + listing table)
 
+### Schema versions
+
+Each disassembly JSON carries `meta.schema_version` (integer). The generator
+supports v2 and v3 concurrently, gating on this value (default 2 when absent) —
+**not** on the presence of any particular key — because sibling repos upgrade
+dasmos on independent schedules. The gate lives in
+`process_disassembly` (`disassembly.py`), which reads the version and threads an
+`ExprContext` down to the byte/word renderers.
+
+- **v2:** `expressions[i]` is a bare display string.
+- **v3:** `expressions[i]` (and a code item's `expr`) is a `{"text", "tree"}`
+  object. Display uses `text` (precedence-safe beebasm); `tree` linkifies label
+  refs (`ref`/`name` → on-page anchor) and macro invocations (`macro_call` →
+  the `#macro-NAME` definition in the macros section). The v3 top-level `macros`
+  section renders via `build_macros`. Unknown `tree` node kinds degrade to
+  `text` — never a crash or a dict repr. `_expr_parts` defensively unwraps a
+  dict even under the v2 gate, so a mislabelled document still can't leak a repr.
+
 ### Glossary
 
 `generator/glossary.py` parses `GLOSSARY.md` from source repos. Each entry uses the Pandoc multi-paragraph definition list convention to encode brief and extended descriptions:

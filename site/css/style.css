@@ -689,6 +689,75 @@ hr {
     color: var(--text);
 }
 
+/* Expression operands (v3): a computed EQUB/EQUW value shown as its
+   beebasm-flavoured text. Links inside link a label to its anchor or a
+   macro invocation to the macros section; a macro link is coloured like
+   a same-page code jump, a label link like any operand label. */
+.listing .expr a {
+    text-decoration: none;
+    border-bottom: 1px dotted var(--dim);
+    color: var(--operand-link);
+}
+
+.listing .expr a:visited {
+    color: var(--operand-link);
+}
+
+.listing .expr a:hover {
+    border-bottom-style: solid;
+}
+
+.listing .expr a.mm-link,
+.listing .expr a.mm-link:visited {
+    color: var(--cyan);
+}
+
+.listing .expr .ext-label {
+    color: var(--text);
+}
+
+/* Macros section: the v3 expression-macro definitions listed below the
+   listing. Invocations in the listing (`.macro-link`) jump to a `<dt>`
+   here by id. */
+.macros {
+    margin: 2rem 0;
+}
+
+.macros-intro {
+    color: var(--dim);
+    margin-bottom: 1rem;
+}
+
+.macro-list dt {
+    margin-top: 1rem;
+    scroll-margin-top: 1rem;
+}
+
+.macro-list dt:target {
+    background: var(--sidebar-bg);
+}
+
+.macro-sig {
+    color: var(--blue);
+    font-weight: bold;
+}
+
+.macro-emit {
+    color: var(--dim);
+    font-size: 0.85em;
+    margin-left: 0.5em;
+}
+
+.macro-list dd {
+    margin: 0.25rem 0 0 1.5rem;
+    color: var(--text);
+}
+
+.macro-body {
+    color: var(--green);
+    word-break: break-word;
+}
+
 /* Reference colour convention, consistent across both the listing
    page and the memory-map page:
    - Cyan (`.mm-link`) means "memory location". Used on the listing

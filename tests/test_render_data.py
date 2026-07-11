@@ -10,11 +10,13 @@ from __future__ import annotations
 import re
 
 from generator.disassembly import (
+    ExprContext,
     _render_bytes,
     _render_words,
     _render_string,
     _render_fill,
     _split_string_parts,
+    build_macros,
 )
 
 
@@ -101,6 +103,152 @@ class TestRenderBytes:
         out = str(_render_bytes(item, max_width=64))
         # Multi-line output uses "\n" inside the rendered Markup
         assert "\n" in str(out)
+
+
+def _v3_ctx(valid_addrs=(), label_tooltips=None, mm_links=None,
+            macro_names=()):
+    """An ExprContext for schema v3 with the given linking lookups."""
+    return ExprContext(
+        schema_version=3,
+        valid_addrs=set(valid_addrs),
+        label_tooltips=dict(label_tooltips or {}),
+        mm_links=dict(mm_links or {}),
+        macro_names=set(macro_names),
+    )
+
+
+class TestRenderV3Expressions:
+    """Schema v3: `expressions[i]` is a `{"text", "tree"}` object, not a
+    bare string. The renderer must use `text` for display (never leak a
+    dict repr) and linkify names its `tree` resolves."""
+
+    def test_object_expression_renders_text_not_repr(self):
+        item = {
+            "type": "byte", "values": [0x19],
+            "expressions": [
+                {"text": "copyright - language_entry",
+                 "tree": {"op": "sub",
+                          "left": {"sym": "copyright"},
+                          "right": {"sym": "language_entry"}}}],
+        }
+        out = str(_render_bytes(item, expr_ctx=_v3_ctx()))
+        assert "copyright - language_entry" in out
+        assert "{'text'" not in out and "'tree'" not in out
+
+    def test_word_object_expression_renders_text(self):
+        item = {
+            "type": "word", "values": [0x8000],
+            "expressions": [{"text": "start_addr", "tree": {"sym": "start_addr"}}],
+        }
+        out = str(_render_words(item, expr_ctx=_v3_ctx()))
+        assert "start_addr" in out
+        assert "{'text'" not in out
+
+    def test_ref_node_links_to_anchor(self):
+        item = {
+            "type": "byte", "values": [0x78],
+            "expressions": [
+                {"text": "<(fn_openin)",
+                 "tree": {"op": "lowbyte",
+                          "operand": {"group": {
+                              "ref": 0xBF78, "name": "fn_openin"}}}}],
+        }
+        ctx = _v3_ctx(valid_addrs={0xBF78})
+        out = str(_render_bytes(item, expr_ctx=ctx))
+        assert '<a href="#addr-BF78"' in out
+        assert ">fn_openin</a>" in out
+
+    def test_macro_call_links_to_definition(self):
+        item = {
+            "type": "byte", "values": [0x4B],
+            "expressions": [
+                {"text": 'pack_lo("BRK")',
+                 "tree": {"macro_call": "pack_lo", "args": [{"str": "BRK"}]}}],
+        }
+        ctx = _v3_ctx(macro_names={"pack_lo"})
+        out = str(_render_bytes(item, expr_ctx=ctx))
+        assert 'class="macro-link" href="#macro-pack_lo"' in out
+        assert ">pack_lo</a>" in out
+        # The beebasm-flavoured text (parens, arg) is preserved verbatim.
+        assert "(&#34;BRK&#34;)" in out or '("BRK")' in _visible(out)
+
+    def test_unknown_macro_not_linked(self):
+        # A macro_call with no matching definition degrades to plain text.
+        item = {
+            "type": "byte", "values": [0x00],
+            "expressions": [
+                {"text": "mystery(1)",
+                 "tree": {"macro_call": "mystery", "args": [{"int": 1}]}}],
+        }
+        out = str(_render_bytes(item, expr_ctx=_v3_ctx()))
+        assert "macro-link" not in out
+        assert "mystery(1)" in _visible(out)
+
+    def test_unknown_node_kind_degrades_to_text(self):
+        # A node kind the renderer doesn't recognise must not crash or
+        # leak — fall back to the sibling `text`.
+        item = {
+            "type": "byte", "values": [0x00],
+            "expressions": [
+                {"text": "future_thing", "tree": {"brand_new_kind": 42}}],
+        }
+        out = str(_render_bytes(item, expr_ctx=_v3_ctx()))
+        assert "future_thing" in out
+        assert "brand_new_kind" not in out
+
+    def test_width_uses_text_length(self):
+        # Grouping/wrapping must measure the display text, not the object.
+        item = {
+            "type": "byte",
+            "values": [1, 2],
+            "expressions": [
+                {"text": "aaaaaaaa", "tree": {"sym": "aaaaaaaa"}},
+                {"text": "bbbbbbbb", "tree": {"sym": "bbbbbbbb"}}],
+        }
+        out = str(_render_bytes(item, max_width=64, expr_ctx=_v3_ctx()))
+        assert "aaaaaaaa" in out and "bbbbbbbb" in out
+
+    def test_v2_string_expression_unaffected(self):
+        # Without an expr_ctx (or with a v2 one), a bare-string
+        # expression renders exactly as before.
+        item = {
+            "type": "byte", "values": [0x19],
+            "expressions": ["copyright - rom_header"],
+        }
+        out = str(_render_bytes(item))
+        assert "copyright - rom_header" in out
+        assert "{'text'" not in out
+
+
+class TestBuildMacros:
+
+    def _v3_doc(self):
+        return {
+            "meta": {"schema_version": 3},
+            "macros": [
+                {"name": "pack_lo", "params": ["mnem"], "emit": "byte",
+                 "body": {"text": "(mnem[0] AND &1f) AND &ff", "tree": {}}}],
+        }
+
+    def test_v2_has_no_macros_block(self):
+        assert build_macros({"meta": {"schema_version": 2}, "macros": []}) == []
+
+    def test_absent_schema_version_treated_as_v2(self):
+        assert build_macros({"meta": {}}) == []
+
+    def test_v3_builds_macro_view(self):
+        macros = build_macros(self._v3_doc())
+        assert len(macros) == 1
+        m = macros[0]
+        assert m["name"] == "pack_lo"
+        assert m["id"] == "macro-pack_lo"
+        assert m["params"] == ["mnem"]
+        assert m["emit"] == "byte"
+        # Body text is escaped (`&` → `&amp;`) for safe HTML embedding.
+        assert "&amp;1f" in str(m["body"])
+
+    def test_v3_with_no_macros_is_empty(self):
+        assert build_macros({"meta": {"schema_version": 3}, "macros": []}) == []
 
 
 class TestRenderWords:

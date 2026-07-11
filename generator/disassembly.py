@@ -3,6 +3,7 @@
 import bisect
 import html as html_mod
 import re
+from collections import namedtuple
 
 from markupsafe import Markup, escape
 
@@ -10,6 +11,20 @@ from .markdown_listing import render_markdown
 
 CONTENT_MAX_WIDTH = 64
 RELOCATED_MAX_WIDTH = 58
+
+# Default schema when `meta.schema_version` is absent — the original
+# format, in which `expressions[i]` is a bare display string.
+DEFAULT_SCHEMA_VERSION = 2
+
+# Context needed to render a v3 expression object into linkified HTML.
+# Threaded from `process_disassembly` down to `_render_bytes` /
+# `_render_words` so an expression's `tree` can resolve label anchors
+# and macro-definition links. `schema_version` is the version gate:
+# v2 elements are strings, v3 elements are `{"text", "tree"}` objects.
+ExprContext = namedtuple(
+    "ExprContext",
+    "schema_version valid_addrs label_tooltips mm_links macro_names",
+)
 
 _PREFIX_WIDTH = 9   # visible width of "    EQUB " / "    EQUW "
 _SEP_WIDTH = 2      # ", "
@@ -181,6 +196,23 @@ def process_disassembly(data, version_id=None):
         for region in data.get("regions", [])
     }
 
+    # Schema gate: `meta.schema_version` selects how each `expressions[i]`
+    # (and code-item `expr`) is shaped — a bare string under v2, a
+    # `{"text", "tree"}` object under v3. Read it once here and carry it,
+    # together with the linking lookups and the set of macro names (for
+    # `macro_call` links), in an ExprContext down to the byte/word
+    # renderers. `macros` is always present in v3 (possibly empty).
+    schema_version = data.get("meta", {}).get(
+        "schema_version", DEFAULT_SCHEMA_VERSION)
+    macro_names = {m["name"] for m in data.get("macros") or []}
+    expr_ctx = ExprContext(
+        schema_version=schema_version,
+        valid_addrs=valid_addrs,
+        label_tooltips=label_tooltips,
+        mm_links=mm_links,
+        macro_names=macro_names,
+    )
+
     # Pre-scan to find which subroutine sections contain relocated code
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
 
@@ -206,7 +238,7 @@ def process_disassembly(data, version_id=None):
         max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
         lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
                                    sorted_addrs, label_tooltips, mm_links,
-                                   region_anchors, max_width))
+                                   region_anchors, max_width, expr_ctx))
 
     if current_sub and current_sub.get("fall_through"):
         lines.append({
@@ -222,9 +254,37 @@ def process_disassembly(data, version_id=None):
     return _split_into_sections(lines)
 
 
+def build_macros(data):
+    """Build template-ready view dicts for the v3 `macros` section.
+
+    Returns an empty list for v2 documents (which have no `macros`
+    section) and for v3 documents that define no macros, so the template
+    only renders the macros panel when there is something to show. Each
+    dict carries the definition's `name`, `params`, `emit`, escaped body
+    `text`, and the `id` (`macro-NAME`) that in-expression `macro_call`
+    links target.
+    """
+    schema_version = data.get("meta", {}).get(
+        "schema_version", DEFAULT_SCHEMA_VERSION)
+    if schema_version < 3:
+        return []
+    macros = []
+    for m in data.get("macros") or []:
+        body = m.get("body") or {}
+        body_text = body.get("text", "") if isinstance(body, dict) else str(body)
+        macros.append({
+            "id": f"macro-{m['name']}",
+            "name": m["name"],
+            "params": m.get("params", []),
+            "emit": m.get("emit"),
+            "body": Markup(str(escape(body_text))),
+        })
+    return macros
+
+
 def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                   label_tooltips, mm_links, region_anchors,
-                  max_width=CONTENT_MAX_WIDTH):
+                  max_width=CONTENT_MAX_WIDTH, expr_ctx=None):
     lines = []
     addr = item["addr"]
     addr_id = f"addr-{addr:04X}"
@@ -382,7 +442,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
         render_width = _optimal_data_max_width(
             len(item.get("values", [])), inline_comment, vw, max_width)
     content_html = _render_content(item, valid_addrs, label_tooltips, mm_links,
-                                    region_anchors, render_width)
+                                    region_anchors, render_width, expr_ctx)
 
     line_dict = {
         "id": addr_id if not id_used else None,
@@ -1401,15 +1461,16 @@ def _render_register_rows(heading, regs, valid_addrs, sorted_addrs, label_toolti
 
 
 def _render_content(item, valid_addrs, label_tooltips, mm_links,
-                    region_anchors, max_width=CONTENT_MAX_WIDTH):
+                    region_anchors, max_width=CONTENT_MAX_WIDTH,
+                    expr_ctx=None):
     t = item["type"]
     if t == "code":
         return _render_code(item, valid_addrs, label_tooltips, mm_links,
                             region_anchors)
     if t == "byte":
-        return _render_bytes(item, max_width)
+        return _render_bytes(item, max_width, expr_ctx)
     if t == "word":
-        return _render_words(item, max_width)
+        return _render_words(item, max_width, expr_ctx)
     if t == "string":
         return _render_string(item)
     if t == "fill":
@@ -1619,22 +1680,109 @@ def _hinted_value_width(item):
     return max(widths)
 
 
-def _render_bytes(item, max_width=CONTENT_MAX_WIDTH):
+def _expr_parts(expr):
+    """Normalise one `expressions[i]` / code `expr` element.
+
+    Returns `(text, tree)` for a present element, or `None` for a null
+    slot. Under schema v2 the element is a bare display string (no
+    tree); under v3 it is a `{"text", "tree"}` object. A dict is
+    unwrapped whatever the gate says, so a mislabelled document can
+    never leak a raw Python dict repr into the listing — this is
+    robustness, not the version test (the test is `schema_version`).
+    """
+    if expr is None or expr == "":
+        return None
+    if isinstance(expr, dict):
+        return expr.get("text", ""), expr.get("tree")
+    return str(expr), None
+
+
+def _collect_expr_links(tree, macro_names):
+    """Walk an expression `tree` and collect the names it can link.
+
+    Returns `(label_refs, macro_refs)` where `label_refs` maps a label
+    name to its resolved address (from `ref`/`name` nodes) and
+    `macro_refs` is the set of `macro_call` names that have a definition
+    in the macros section. Recursion is generic over dict values / list
+    items, so unrecognised node kinds are simply traversed rather than
+    special-cased — a tree dasmos extends later still yields whatever
+    linkable leaves it contains and never crashes.
+    """
+    label_refs = {}
+    macro_refs = set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "ref" in node and node.get("name"):
+                label_refs.setdefault(node["name"], node["ref"])
+            if "macro_call" in node and node["macro_call"] in macro_names:
+                macro_refs.add(node["macro_call"])
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(tree)
+    return label_refs, macro_refs
+
+
+def _linkify_expr(text, tree, expr_ctx):
+    """Render an expression's precedence-safe `text` as linkified HTML.
+
+    `ref`/`name` leaves link to the label's on-page anchor (reusing the
+    operand link builder), and `macro_call` names link to their
+    definition in the macros section (`#macro-NAME`). Links are inserted
+    by a single-pass, whole-word substring replacement on the escaped
+    text, so the beebasm-flavoured `text` is preserved verbatim and no
+    inserted markup is rescanned. Without a tree (v2, or a v3 leaf with
+    nothing linkable) the text is escaped and returned unchanged.
+    """
+    escaped = str(escape(text))
+    if not tree or expr_ctx is None:
+        return escaped
+
+    label_refs, macro_refs = _collect_expr_links(tree, expr_ctx.macro_names)
+    replacements = {}
+    for name, addr in label_refs.items():
+        replacements[name] = _operand_label_ref(
+            addr, str(escape(name)), expr_ctx.valid_addrs,
+            expr_ctx.label_tooltips, expr_ctx.mm_links)
+    for name in macro_refs:
+        replacements.setdefault(
+            name,
+            f'<a class="macro-link" href="#macro-{escape(name)}"'
+            f' data-tip="macro {escape(name)}">{escape(name)}</a>')
+
+    if not replacements:
+        return escaped
+
+    # Longest names first so a name that is a prefix of another does not
+    # pre-empt the longer match; the alternation replaces in one pass.
+    names_sorted = sorted(replacements, key=len, reverse=True)
+    pattern = re.compile(
+        r"\b(" + "|".join(re.escape(n) for n in names_sorted) + r")\b")
+    return pattern.sub(lambda m: replacements[m.group(1)], escaped)
+
+
+def _render_bytes(item, max_width=CONTENT_MAX_WIDTH, expr_ctx=None):
     values = item.get("values", [])
     expressions = item.get("expressions")
     format_hints = item.get("format_hints")
     parts = []
     widths = []
     for i, v in enumerate(values):
-        expr = expressions[i] if expressions and i < len(expressions) else None
+        raw_expr = expressions[i] if expressions and i < len(expressions) else None
+        expr = _expr_parts(raw_expr)
         hint = format_hints[i] if format_hints and i < len(format_hints) else None
         tooltip = _immediate_tooltip(v)
         if expr:
+            expr_text, expr_tree = expr
             parts.append(
-                f'<span data-tip="{escape(tooltip)}">'
-                f'{escape(expr)}</span>'
+                f'<span class="expr" data-tip="{escape(tooltip)}">'
+                f'{_linkify_expr(expr_text, expr_tree, expr_ctx)}</span>'
             )
-            widths.append(len(expr))
+            widths.append(len(expr_text))
         else:
             display = _format_byte_value(v, hint)
             parts.append(
@@ -1672,21 +1820,24 @@ def _render_fill(item):
     )
 
 
-def _render_words(item, max_width=CONTENT_MAX_WIDTH):
+def _render_words(item, max_width=CONTENT_MAX_WIDTH, expr_ctx=None):
     values = item.get("values", [])
     expressions = item.get("expressions")
     format_hints = item.get("format_hints")
     parts = []
     widths = []
     for i, v in enumerate(values):
-        expr = expressions[i] if expressions and i < len(expressions) else None
+        raw_expr = expressions[i] if expressions and i < len(expressions) else None
+        expr = _expr_parts(raw_expr)
         hint = format_hints[i] if format_hints and i < len(format_hints) else None
         if expr:
+            expr_text, expr_tree = expr
             tooltip = f"&amp;{v:04X}"
             parts.append(
-                f'<span data-tip="{tooltip}">{escape(expr)}</span>'
+                f'<span class="expr" data-tip="{tooltip}">'
+                f'{_linkify_expr(expr_text, expr_tree, expr_ctx)}</span>'
             )
-            widths.append(len(expr))
+            widths.append(len(expr_text))
         else:
             display = _format_word_value(v, hint)
             parts.append(str(escape(display)))

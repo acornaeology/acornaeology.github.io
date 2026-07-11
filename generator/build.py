@@ -15,7 +15,7 @@ from markupsafe import Markup
 
 from datetime import datetime
 
-from .disassembly import process_disassembly
+from .disassembly import build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossary
 
@@ -424,6 +424,7 @@ def build_disassemblies(env, sources, pages):
             links.append(report_link)
 
             sections = process_disassembly(data, version_id=version_id)
+            macros = build_macros(data)
 
             html = disassembly_template.render(
                 root="../",
@@ -434,6 +435,7 @@ def build_disassemblies(env, sources, pages):
                 description=description,
                 links=links,
                 sections=sections,
+                macros=macros,
                 subroutines=_filter_subroutines(data),
                 updated_iso=updated_iso,
                 updated_display=updated_display,
