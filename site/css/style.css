@@ -1413,10 +1413,11 @@ hr {
     color: var(--dim);
 }
 
-/* Index-bases section: documented indexing bases that are deliberately
-   off the fixed-location memory map. */
-.index-bases-intro {
+/* Access-flag key above the memory map: explains the R / W / B column
+   values (B = indexing base, folded in place since schema v4). */
+.access-key {
     max-width: 46rem;
     color: var(--dim);
+    font-size: 0.9rem;
 }
 

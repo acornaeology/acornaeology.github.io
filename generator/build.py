@@ -532,7 +532,7 @@ def build_disassemblies(env, sources, pages):
             # MMIO, etc.) cited from prose hit the right page.
             version_mm_links[version_id] = {
                 entry["addr"]: f"{version_id}-memory-map.html#mm-{entry['name']}"
-                for entry in data.get("memory_map", [])
+                for entry in _normalized_memory_map(data)
             }
 
             # Read version metadata
@@ -665,12 +665,11 @@ def build_disassemblies(env, sources, pages):
                               version_mm_links=version_mm_links)
 
             # Build the memory-map page for this version (if the driver
-            # enriched any non-ROM labels with memory-map metadata, or
-            # declared any index bases — addresses used
-            # only as an indexing base, documented but off the map).
-            mm_entries = data.get("memory_map", [])
-            index_bases = data.get("index_bases", [])
-            if mm_entries or index_bases:
+            # enriched any non-ROM labels with memory-map metadata —
+            # including indexing bases, which since schema v4 are ordinary
+            # `b`-flagged rows folded into the map).
+            mm_entries = _normalized_memory_map(data)
+            if mm_entries:
                 group_titles = rom_meta.get("memory_map_groups", {})
                 meta = data.get("meta", {})
                 _render_memory_map_page(env, source, version_id, title,
@@ -679,7 +678,6 @@ def build_disassemblies(env, sources, pages):
                                         group_titles=group_titles,
                                         rom_load_addr=meta.get("load_addr"),
                                         rom_end_addr=meta.get("end_addr"),
-                                        index_bases=index_bases,
                                         regions=data.get("regions", []))
 
         # Build project-level analysis pages (after all versions, so
@@ -1111,18 +1109,70 @@ def _render_analysis_pages(env, source, output_dirpath,
 
 
 
+# Pre-v4 documents carried `access` as a mutually-exclusive scalar
+# string; map each to its v4 orthogonal-flag list.
+_V3_SCALAR_ACCESS = {"r": ["r"], "w": ["w"], "rw": ["r", "w"]}
+
+
+def _normalized_memory_map(data):
+    """Return this document's memory-map entries in the v4 shape.
+
+    v4 (`meta.schema_version >= 4`) models memory access as an
+    orthogonal ``["r", "w", "b"]`` subset per row and folds indexing
+    bases into `memory_map` as `b`-flagged rows — that list is returned
+    as-is.
+
+    v2/v3 carried `access` as a mutually-exclusive scalar (`r`/`w`/`rw`)
+    and split indexing bases into a separate top-level `index_bases`
+    array (no `access` field — a base is base-only). Such documents are
+    normalised to the v4 shape: the scalar becomes a list and each index
+    base is appended as an `["b"]` row. So a single inline rendering path
+    serves every schema version — sibling repos upgrade dasmos on
+    independent schedules, so v2/v3 and v4 documents coexist.
+    """
+    schema_version = data.get("meta", {}).get("schema_version", 2)
+    memory_map = data.get("memory_map", [])
+    if schema_version >= 4:
+        return list(memory_map)
+    normalized = []
+    for entry in memory_map:
+        entry = dict(entry)
+        access = entry.get("access")
+        if isinstance(access, str):
+            entry["access"] = _V3_SCALAR_ACCESS.get(
+                access.lower(), [access.lower()])
+        normalized.append(entry)
+    for base in data.get("index_bases", []):
+        base = dict(base)
+        base["access"] = ["b"]
+        normalized.append(base)
+    return normalized
+
+
+# Single-letter access-flag labels for the memory-map Access column.
+_ACCESS_LABELS = {"r": "R", "w": "W", "b": "B"}
+
+
 def _render_memory_map_page(env, source, version_id, version_title,
                             memory_map, output_dirpath, version_anchors,
                             pages=None, group_titles=None,
                             rom_load_addr=None, rom_end_addr=None,
-                            index_bases=None, regions=None):
+                            regions=None):
     """Render {version_id}-memory-map.html for one version of a project.
 
-    `memory_map` is the list of entries produced by py8dis's
-    `structured.emit_structured()["memory_map"]` for this specific
-    version. Each entry is:
+    `memory_map` is this version's entries already normalised to the v4
+    shape by `_normalized_memory_map` (so v2/v3 and v4 documents render
+    identically). Each entry is:
 
         {addr, name, [length, group, access, description]}
+
+    `access` is an orthogonal flag list — a subset of `["r", "w", "b"]`
+    (read / write / indexing base). A `["b"]`-only row is an indexing
+    base: named as `base,X`/`,Y` but with the literal byte never touched,
+    so it sits *in place* within its group (not off in a separate
+    section), the `B` flag alone marking that the ROM doesn't own it. An
+    address that is read/written *and* indexed-through comes out e.g.
+    `["r", "w", "b"]`.
 
     The memory map is version-scoped because workspace layout can shift
     between ROM releases. Descriptions pass through the standard
@@ -1135,22 +1185,14 @@ def _render_memory_map_page(env, source, version_id, version_title,
     `rom.json` `memory_map_groups` field. Unmapped groups fall back
     to the title-cased key.
 
-    `index_bases` are addresses used *only* as an
-    indexing base (`lda base,X`) — documented with name/group/description
-    but deliberately kept off the fixed-location memory map, since the
-    literal byte is never touched. They render in a separate "Index
-    bases" section (row ids `ib-NAME`) so their prose survives without
-    implying the ROM owns the location.
-
     `regions` (Layer B) declare an anchor label plus an
     offset window; the anchor's memory-map row is annotated with its
     span so the reader sees which `anchor±k` slots it groups.
     """
     if group_titles is None:
         group_titles = {}
-    index_bases = index_bases or []
     regions = regions or []
-    if not memory_map and not index_bases:
+    if not memory_map:
         return
 
     # Preserve the first-seen order of groups, rather than alphabetising,
@@ -1220,10 +1262,10 @@ def _render_memory_map_page(env, source, version_id, version_title,
             target="listing")
         return Markup(html)
 
-    def access_display(v):
-        if not v:
+    def access_display(flags):
+        if not flags:
             return ""
-        return {"r": "R", "w": "W", "rw": "R/W"}.get(v.lower(), v.upper())
+        return "/".join(_ACCESS_LABELS.get(f, f.upper()) for f in flags)
 
     def addr_display(entry):
         start = entry["addr"]
@@ -1254,37 +1296,13 @@ def _render_memory_map_page(env, source, version_id, version_title,
                 "description_html": render_description(e.get("description")),
                 "region_span": region_span_display(e["addr"]),
             }
-            for e in group_entries[g]
+            # Sort within a group by address so a base folds into its
+            # place in the layout (v4 already emits address-sorted; a
+            # normalised v2/v3 document appends its former index bases
+            # after the owned rows, so sort to reunite them).
+            for e in sorted(group_entries[g], key=lambda e: e["addr"])
         ]
         groups.append({
-            "name": group_titles.get(g, g.replace("_", " ").title()),
-            "slug": g.replace("_", "-"),
-            "entries": entries,
-        })
-
-    # Index bases: same group ordering and description pipeline as the
-    # memory map, but rendered in their own section without an access
-    # column (they name a base, not a location that is read or written).
-    ib_group_order = []
-    ib_group_entries = {}
-    for entry in index_bases:
-        g = entry.get("group") or "other"
-        if g not in ib_group_entries:
-            ib_group_order.append(g)
-            ib_group_entries[g] = []
-        ib_group_entries[g].append(entry)
-
-    index_base_groups = []
-    for g in ib_group_order:
-        entries = [
-            {
-                "addr_display": f"&{e['addr']:04X}",
-                "name": e["name"],
-                "description_html": render_description(e.get("description")),
-            }
-            for e in ib_group_entries[g]
-        ]
-        index_base_groups.append({
             "name": group_titles.get(g, g.replace("_", " ").title()),
             "slug": g.replace("_", "-"),
             "entries": entries,
@@ -1309,7 +1327,6 @@ def _render_memory_map_page(env, source, version_id, version_title,
         title=version_title,
         output_filename=output_filename,
         groups=groups,
-        index_base_groups=index_base_groups,
         rom_start_hex=rom_start_hex,
         rom_end_hex=rom_end_hex,
     )

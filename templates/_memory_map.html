@@ -20,14 +20,18 @@ workspace, RAM buffers, and memory-mapped I/O. For the ROM code
 itself{% if rom_start_hex %} (<code>&amp;{{ rom_start_hex }}</code>{% if rom_end_hex %}&ndash;<code>&amp;{{ rom_end_hex }}</code>{% endif %}){% endif %}, see the
 <a href="{{ version_id }}.html">disassembly listing</a>.</p>
 
+<p class="access-key"><b>Access:</b>
+<b>R</b>&nbsp;read, <b>W</b>&nbsp;write,
+<b>B</b>&nbsp;indexing base — the address is named as
+<code>base,X</code>/<code>,Y</code>, so the byte actually touched is
+<code>base&nbsp;+&nbsp;index</code> and the literal byte at this address is
+never itself accessed.</p>
+
 <nav class="memory-map-toc">
 <ul>
 {% for group in groups %}
 <li><a href="#group-{{ group.slug }}">{{ group.name }}</a></li>
 {% endfor %}
-{% if index_base_groups %}
-<li><a href="#index-bases">Index bases</a></li>
-{% endif %}
 </ul>
 </nav>
 
@@ -55,37 +59,6 @@ itself{% if rom_start_hex %} (<code>&amp;{{ rom_start_hex }}</code>{% if rom_end
 </tbody>
 </table>
 {% endfor %}
-
-{% if index_base_groups %}
-<h2 id="index-bases">Index bases</h2>
-<p class="index-bases-intro">Addresses used <em>only</em> as an indexing base
-&mdash; the operand names a base and the byte actually touched is
-<code>base + X</code> (or <code>+ Y</code>), where the index register is a
-caller-supplied offset, never zero. The literal byte at the base address is
-never read or written, so these are documented here rather than on the memory
-map: they are bases, not locations the ROM owns.</p>
-{% for group in index_base_groups %}
-<h3 id="index-base-group-{{ group.slug }}">{{ group.name }}</h3>
-<table class="memory-map index-bases">
-<thead>
-<tr>
-    <th class="addr">Base</th>
-    <th class="name">Name</th>
-    <th class="desc">Description</th>
-</tr>
-</thead>
-<tbody>
-{% for entry in group.entries %}
-<tr id="ib-{{ entry.name }}">
-    <td class="addr"><code>{{ entry.addr_display }}</code></td>
-    <td class="name"><code>{{ entry.name }}</code></td>
-    <td class="desc">{{ entry.description_html }}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-{% endfor %}
-{% endif %}
 <script>
 // Cross-window link focus: the browser handles reuse of named
 // target windows natively, but some browsers leave the target

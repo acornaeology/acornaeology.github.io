@@ -35,9 +35,9 @@ Static site generator for annotated 6502 disassemblies of Acorn ROMs. Transforms
 ### Schema versions
 
 Each disassembly JSON carries `meta.schema_version` (integer). The generator
-supports v2 and v3 concurrently, gating on this value (default 2 when absent) —
-**not** on the presence of any particular key — because sibling repos upgrade
-dasmos on independent schedules. The gate lives in
+supports v2, v3, and v4 concurrently, gating on this value (default 2 when
+absent) — **not** on the presence of any particular key — because sibling repos
+upgrade dasmos on independent schedules. The expression gate lives in
 `process_disassembly` (`disassembly.py`), which reads the version and threads an
 `ExprContext` down to the byte/word renderers.
 
@@ -49,6 +49,16 @@ dasmos on independent schedules. The gate lives in
   section renders via `build_macros`. Unknown `tree` node kinds degrade to
   `text` — never a crash or a dict repr. `_expr_parts` defensively unwraps a
   dict even under the v2 gate, so a mislabelled document still can't leak a repr.
+- **v4:** changes the **memory map** only (expressions/macros unchanged from
+  v3). `memory_map[].access` is an orthogonal flag **list** — a subset of
+  `["r", "w", "b"]` (read / write / indexing base) — replacing the v2/v3
+  mutually-exclusive scalar (`r`/`w`/`rw`). Indexing bases, which v2/v3 emitted
+  in a separate top-level `index_bases` array, are folded into `memory_map` as
+  `["b"]` rows so they sit in place within their group. `_normalized_memory_map`
+  (`build.py`) reconciles both shapes: v4 passes through; v2/v3 has its scalar
+  `access` widened to a list and its `index_bases` appended as `["b"]` rows. So
+  the memory-map renderer and the listing's operand-link wiring have a single
+  code path. See dasmos `docs/design/json-schema-v4.md` and issue #42.
 
 ### Disassembly-page link categories
 

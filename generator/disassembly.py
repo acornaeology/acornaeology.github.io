@@ -158,6 +158,13 @@ def process_disassembly(data, version_id=None):
         brief = entry.get("brief")
         if brief:
             label_tooltips[addr] = f"&{addr:04X} \u2013 {brief}"
+        elif entry.get("access") == ["b"] and entry.get("description"):
+            # Schema v4 folds indexing bases into `memory_map` as
+            # `["b"]`-only rows. A base carries no `brief`, so \u2014 as the
+            # v2/v3 `index_bases` did \u2014 fall back to the first sentence
+            # of its description for the operand tooltip.
+            label_tooltips[addr] = (
+                f"&{addr:04X} \u2013 {_first_sentence(entry['description'])}")
         if version_id is not None:
             mm_links[addr] = f"{version_id}-memory-map.html#mm-{entry['name']}"
     for sub in data.get("subroutines", []):
@@ -171,20 +178,21 @@ def process_disassembly(data, version_id=None):
             addr = banner["addr"]
             label_tooltips.setdefault(addr, f"&{addr:04X} \u2013 {title}")
 
-    # Index bases: addresses used only as an indexing
-    # operand base (`lda base,X`), documented but deliberately kept off
-    # `memory_map` because the literal byte is never touched. They render
-    # in their own section on the memory-map page (id `ib-NAME`); wire
-    # their operands to that section and give them the same brief tooltip
-    # treatment as owned locations. Never override a genuine memory-map
-    # entry that happens to share the address.
+    # Index bases (schema v2/v3 only): addresses used only as an indexing
+    # operand base (`lda base,X`), documented but kept off `memory_map`
+    # in a separate `index_bases` array because the literal byte is never
+    # touched. Schema v4 retired this array \u2014 bases are now `["b"]` rows
+    # in `memory_map` (handled above) \u2014 but v2/v3 sibling documents still
+    # carry it. Both wire their operands to the same memory-map page row
+    # (id `mm-NAME`, since the page folds bases inline). Never override a
+    # genuine memory-map entry that happens to share the address.
     for entry in data.get("index_bases", []):
         addr = entry["addr"]
         description = entry.get("description")
         if description and addr not in label_tooltips:
             label_tooltips[addr] = f"&{addr:04X} \u2013 {_first_sentence(description)}"
         if version_id is not None and addr not in mm_links:
-            mm_links[addr] = f"{version_id}-memory-map.html#ib-{entry['name']}"
+            mm_links[addr] = f"{version_id}-memory-map.html#mm-{entry['name']}"
 
     # Regions (Layer B): an anchor label plus an offset
     # window, whose in-window neighbours render as `anchor\u00b1k` operands
