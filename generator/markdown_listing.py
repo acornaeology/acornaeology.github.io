@@ -33,6 +33,7 @@ flag in writeup-doc rendering.
 """
 
 import re
+from contextlib import contextmanager
 from html import escape as html_escape
 from types import SimpleNamespace
 
@@ -50,6 +51,47 @@ _ADDRESS_URI_TARGET_RE = re.compile(
     r'$',
     re.IGNORECASE,
 )
+
+# `label:NAME[@version][?flag]` -- a symbolic label reference. The name is
+# resolved to its current address (per version) so the link stays correct
+# when code shifts between versions. `@version` is ignored in the listing
+# context (a comment always refers to its own version).
+_LABEL_URI_TARGET_RE = re.compile(
+    r'^label:'
+    r'(?P<name>[^@?]+)'
+    r'(?:@[^?]+)?'
+    r'(?:\?(?P<flag>[^&]*))?'
+    r'$',
+)
+
+# `glossary:SLUG` -- an explicit glossary reference. SLUG is the URL-safe
+# glossary anchor slug (e.g. `cmos`, `master-128`); matched case-
+# insensitively. A Markdown link destination can't contain spaces, so
+# multi-word terms are always referenced by their hyphenated slug.
+_GLOSSARY_URI_TARGET_RE = re.compile(r'^glossary:(?P<slug>\S+)$')
+
+
+# Per-listing context for label:/glossary: resolution. `label:` and
+# `glossary:` need the version's label->address map and the glossary
+# lookup, which are constant across a whole listing render. Rather than
+# thread them through every helper signature alongside label_tooltips /
+# mm_links, the listing renderer sets them once via `listing_context`;
+# `render_markdown` falls back to this when the maps aren't passed
+# explicitly (they are in unit tests).
+_LISTING_CONTEXT = {"label_addrs": {}, "glossary_lookup": {}}
+
+
+@contextmanager
+def listing_context(label_addrs=None, glossary_lookup=None):
+    """Scope the label->address map and glossary lookup used to resolve
+    `label:` / `glossary:` links for the duration of a listing render."""
+    prev = dict(_LISTING_CONTEXT)
+    _LISTING_CONTEXT["label_addrs"] = label_addrs or {}
+    _LISTING_CONTEXT["glossary_lookup"] = glossary_lookup or {}
+    try:
+        yield
+    finally:
+        _LISTING_CONTEXT.update(prev)
 
 
 class ListingHTMLRenderer(HTMLRenderer):
@@ -79,6 +121,8 @@ class ListingHTMLRenderer(HTMLRenderer):
         self.valid_addrs = set()
         self.sorted_addrs = []
         self.label_tooltips = {}
+        self.label_addrs = {}       # {label_name: addr} for label: links
+        self.glossary_lookup = {}   # {term: {"slug", "tooltip", ...}}
 
     def render_code_fence(self, token):
         language = getattr(token, "language", "") or ""
@@ -104,6 +148,16 @@ class ListingHTMLRenderer(HTMLRenderer):
 
     def render_link(self, token):
         target = getattr(token, "target", "") or ""
+
+        gm = _GLOSSARY_URI_TARGET_RE.match(target)
+        if gm:
+            return self._render_glossary_link(gm.group("slug"), token)
+
+        lm = _LABEL_URI_TARGET_RE.match(target)
+        if lm:
+            return self._render_label_link(
+                lm.group("name"), lm.group("flag"), token)
+
         m = _ADDRESS_URI_TARGET_RE.match(target)
         if not m:
             return super().render_link(token)
@@ -113,6 +167,11 @@ class ListingHTMLRenderer(HTMLRenderer):
         addr = int(hex_str, 16)
         inner = self.render_inner(token)
 
+        return self._address_anchor(addr, hex_str, flag, inner)
+
+    def _address_anchor(self, addr, hex_str, flag, inner):
+        """Emit the resolved `<a>` for an address (shared by address: and
+        label: links)."""
         href, extra_attrs = self._resolve_address_href(addr, hex_str)
 
         # Enrich the tooltip from the label_tooltips lookup so hovering
@@ -126,6 +185,29 @@ class ListingHTMLRenderer(HTMLRenderer):
             return (f'<a{extra_attrs} href="{href}"{tip_attr}>{inner}</a> '
                     f'(<a{extra_attrs} href="{href}"{tip_attr}><code>&amp;{hex_str}</code></a>)')
         return f'<a{extra_attrs} href="{href}"{tip_attr}>{inner}</a>'
+
+    def _render_label_link(self, name, flag, token):
+        """Resolve `label:NAME` to its address for this version, then emit
+        the same anchor an equivalent `address:HEX` would."""
+        inner = self.render_inner(token)
+        addr = self.label_addrs.get(name)
+        if addr is None:
+            print(f"  Warning: label:{name} -- unknown label in this version")
+            return f'<a href="label:{html_escape(name)}">{inner}</a>'
+        return self._address_anchor(addr, f"{addr:04X}",
+                                    (flag or "").lower(), inner)
+
+    def _render_glossary_link(self, slug, token):
+        """Emit the glossary-ref anchor for `glossary:SLUG` (the lookup is
+        keyed by slug; matched case-insensitively)."""
+        inner = self.render_inner(token)
+        entry = self.glossary_lookup.get(slug.lower())
+        if entry is None:
+            print(f"  Warning: glossary:{slug} -- unknown glossary slug")
+            return f'<a href="glossary:{html_escape(slug)}">{inner}</a>'
+        tip_attr = f' data-tip="{html_escape(entry["tooltip"])}"'
+        return (f'<a href="glossary.html#term-{entry["slug"]}"'
+                f' class="glossary-ref"{tip_attr}>{inner}</a>')
 
     def _resolve_address_href(self, addr, hex_str):
         """Resolve `address:HEX` to (href, extra_attrs).
@@ -159,7 +241,8 @@ class ListingHTMLRenderer(HTMLRenderer):
 
 
 def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
-                    mm_links=None, label_tooltips=None):
+                    mm_links=None, label_tooltips=None, label_addrs=None,
+                    glossary_lookup=None):
     """Render `text` (Markdown) as HTML for the disassembly listing.
 
     `valid_addrs` / `sorted_addrs` supply the ROM-range anchor set
@@ -192,6 +275,12 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
         renderer.valid_addrs = valid_addrs
         renderer.sorted_addrs = sorted_addrs
         renderer.label_tooltips = label_tooltips or {}
+        renderer.label_addrs = (
+            label_addrs if label_addrs is not None
+            else _LISTING_CONTEXT["label_addrs"])
+        renderer.glossary_lookup = (
+            glossary_lookup if glossary_lookup is not None
+            else _LISTING_CONTEXT["glossary_lookup"])
         if inline:
             # Inline contexts (inline comments, titles, register cells)
             # are single-line and must not be parsed as block-level

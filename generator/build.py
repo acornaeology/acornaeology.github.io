@@ -6,6 +6,7 @@ import json
 import re
 import shutil
 import subprocess
+from html import escape
 from pathlib import Path
 from urllib.parse import quote
 
@@ -15,7 +16,7 @@ from markupsafe import Markup
 
 from datetime import datetime
 
-from .disassembly import build_macros, process_disassembly
+from .disassembly import build_label_addrs, build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossary
 
@@ -394,12 +395,16 @@ def build_disassemblies(env, sources, pages):
         # Load and parse glossary if present
         glossary = None
         glossary_lookup = {}
+        glossary_slug_lookup = {}
         glossary_filepath_rel = source.get("glossary")
         if glossary_filepath_rel:
             glossary_filepath = repo_dirpath / glossary_filepath_rel
             if glossary_filepath.exists():
                 glossary = parse_glossary(glossary_filepath.read_text())
                 glossary_lookup = build_glossary_lookup(glossary)
+                # Slug-keyed view for the `glossary:SLUG` link scheme.
+                glossary_slug_lookup = {
+                    e["slug"]: e for e in glossary_lookup.values()}
             else:
                 print(f"  Warning: glossary file {glossary_filepath} "
                       f"not found")
@@ -497,6 +502,7 @@ def build_disassemblies(env, sources, pages):
         # Build per-version disassembly pages
         version_anchors = {}  # version_id -> sorted list of anchor addresses
         version_mm_links = {}  # version_id -> {addr: "{version}-memory-map.html#mm-NAME"}
+        version_labels = {}    # version_id -> {label_name: addr} for label: links
         for version_id in source["versions"]:
             version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
             if version_dirpath is None:
@@ -534,6 +540,9 @@ def build_disassemblies(env, sources, pages):
                 entry["addr"]: f"{version_id}-memory-map.html#mm-{entry['name']}"
                 for entry in _normalized_memory_map(data)
             }
+
+            # Label -> address map for `label:NAME` links cited from docs.
+            version_labels[version_id] = build_label_addrs(data)
 
             # Read version metadata
             rom_json_filepath = version_dirpath / "rom" / "rom.json"
@@ -629,7 +638,9 @@ def build_disassemblies(env, sources, pages):
 
             link_groups = _group_links(links)
 
-            sections = process_disassembly(data, version_id=version_id)
+            sections = process_disassembly(
+                data, version_id=version_id,
+                glossary_lookup=glossary_slug_lookup)
             macros = build_macros(data)
 
             html = disassembly_template.render(
@@ -662,7 +673,9 @@ def build_disassemblies(env, sources, pages):
             _render_doc_pages(env, source, version_id, version_dirpath,
                               rom_meta, output_dirpath, version_anchors,
                               glossary_lookup, pages,
-                              version_mm_links=version_mm_links)
+                              version_mm_links=version_mm_links,
+                              version_labels=version_labels,
+                              glossary_slug_lookup=glossary_slug_lookup)
 
             # Build the memory-map page for this version (if the driver
             # enriched any non-ROM labels with memory-map metadata —
@@ -853,6 +866,70 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
     return _ADDRESS_URI_RE.sub(rewrite, html)
 
 
+_LABEL_URI_RE = re.compile(
+    r'<a href="label:'
+    r'(?P<name>[^"@?]+)'      # label name
+    r'(?P<at>@[^"?]+)?'       # optional @version (preserved)
+    r'(?P<flag>\?[^"]*)?'     # optional ?flag (preserved)
+    r'">',
+)
+
+
+def apply_label_uri_links(html, version_labels, default_version=None,
+                          source_label=""):
+    """Translate `label:NAME[@version][?flag]` hrefs into the equivalent
+    `address:HEX[@version][?flag]` href, so the downstream
+    `apply_address_uri_links` resolves them like any address link. The
+    label text is untouched.
+
+    `version_labels` is `{version_id: {name: addr}}`. An unqualified
+    `label:` uses `default_version`.
+    """
+    def rewrite(match):
+        name = match.group("name")
+        at = match.group("at") or ""
+        flag = match.group("flag") or ""
+        version = at[1:] if at else default_version
+        addr = (version_labels or {}).get(version, {}).get(name)
+        if addr is None:
+            src = f" ({source_label})" if source_label else ""
+            ver = f"@{version}" if version else ""
+            print(f"  Warning: label:{name}{ver} — unknown label{src}")
+            return match.group(0)
+        return f'<a href="address:{addr:04X}{at}{flag}">'
+
+    return _LABEL_URI_RE.sub(rewrite, html)
+
+
+_GLOSSARY_URI_RE = re.compile(
+    r'<a href="glossary:'
+    r'(?P<slug>[^"]+)'
+    r'">'
+    r'(?P<text>.*?)'
+    r'</a>',
+    re.DOTALL,
+)
+
+
+def apply_glossary_uri_links(html, glossary_slug_lookup, source_label=""):
+    """Rewrite `<a href="glossary:SLUG">text</a>` to the glossary-ref
+    anchor. `SLUG` is matched case-insensitively against the anchor slug
+    (the key of `glossary_slug_lookup`)."""
+    def rewrite(match):
+        slug = match.group("slug")
+        text = match.group("text")
+        entry = (glossary_slug_lookup or {}).get(slug.lower())
+        if entry is None:
+            src = f" ({source_label})" if source_label else ""
+            print(f"  Warning: glossary:{slug} — unknown glossary slug{src}")
+            return match.group(0)
+        return (f'<a href="glossary.html#term-{entry["slug"]}"'
+                f' class="glossary-ref"'
+                f' data-tip="{escape(entry["tooltip"])}">{text}</a>')
+
+    return _GLOSSARY_URI_RE.sub(rewrite, html)
+
+
 def _apply_address_links(md_text, address_links, version_anchors=None):
     """Insert Markdown links for address references before HTML conversion.
 
@@ -941,7 +1018,8 @@ def _render_glossary_page(env, slug, name, glossary, output_dirpath, pages):
 def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
                       output_dirpath, version_anchors=None,
                       glossary_lookup=None, pages=None,
-                      version_mm_links=None):
+                      version_mm_links=None, version_labels=None,
+                      glossary_slug_lookup=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
     name = source["name"]
@@ -970,13 +1048,24 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
                 source["slug"])
 
         doc_filename = _doc_output_filename(version_id, doc["path"])
+        src_label = f"{source['slug']}/{doc_filename}"
 
-        # Rewrite inline [label](address:HEX[@version]) URIs. Unqualified
-        # URIs default to this doc's own version.
+        # Inline [text](glossary:SLUG) references.
+        content_html = apply_glossary_uri_links(
+            content_html, glossary_slug_lookup, source_label=src_label)
+
+        # Inline [text](label:NAME[@version]) references translate to the
+        # equivalent address: URI, resolved below. Unqualified label: /
+        # address: URIs default to this doc's own version.
+        content_html = apply_label_uri_links(
+            content_html, version_labels, default_version=version_id,
+            source_label=src_label)
+
+        # Rewrite inline [label](address:HEX[@version]) URIs.
         content_html = apply_address_uri_links(
             content_html, version_anchors,
             default_version=version_id,
-            source_label=f"{source['slug']}/{doc_filename}",
+            source_label=src_label,
             version_mm_links=version_mm_links)
 
         disassembly_title = rom_meta.get("title", f"{name} {version_id}")

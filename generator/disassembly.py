@@ -7,7 +7,7 @@ from collections import namedtuple
 
 from markupsafe import Markup, escape
 
-from .markdown_listing import render_markdown
+from .markdown_listing import listing_context, render_markdown
 
 CONTENT_MAX_WIDTH = 64
 RELOCATED_MAX_WIDTH = 58
@@ -91,7 +91,35 @@ def _optimal_data_max_width(n_values, comment, value_width,
     return row_width(best_vpr)
 
 
-def process_disassembly(data, version_id=None):
+def build_label_addrs(data):
+    """Map every disassembly label name to its address for `label:NAME`
+    resolution. In-ROM item labels are authoritative; memory-map /
+    index-base / subroutine / external names fill in non-ROM targets."""
+    label_addrs = {}
+    for entry in data.get("memory_map", []):
+        if entry.get("name"):
+            label_addrs.setdefault(entry["name"], entry["addr"])
+    for entry in data.get("index_bases", []):
+        if entry.get("name"):
+            label_addrs.setdefault(entry["name"], entry["addr"])
+    for sub in data.get("subroutines", []):
+        if sub.get("name"):
+            label_addrs.setdefault(sub["name"], sub["addr"])
+    ext = data.get("external_labels") or {}
+    if isinstance(ext, dict):
+        for name, addr in ext.items():
+            label_addrs.setdefault(name, addr)
+    for item in data["items"]:
+        for name in item.get("labels", []):
+            label_addrs[name] = item["addr"]
+        # Secondary labels at sub-addresses within a multi-byte item.
+        for addr_str, names in item.get("sub_labels", {}).items():
+            for name in names:
+                label_addrs[name] = int(addr_str)
+    return label_addrs
+
+
+def process_disassembly(data, version_id=None, glossary_lookup=None):
     """Process structured JSON into sections of template-ready lines.
 
     `version_id` is the per-version URL stem (e.g. `"1"` for
@@ -204,6 +232,9 @@ def process_disassembly(data, version_id=None):
         for region in data.get("regions", [])
     }
 
+    # Label -> address map for `label:NAME` comment links.
+    label_addrs = build_label_addrs(data)
+
     # Schema gate: `meta.schema_version` selects how each `expressions[i]`
     # (and code-item `expr`) is shaped — a bare string under v2, a
     # `{"text", "tree"}` object under v3. Read it once here and carry it,
@@ -227,38 +258,41 @@ def process_disassembly(data, version_id=None):
     lines = []
     current_sub = None
     in_relocated = False
-    for item in data["items"]:
-        key = (item["addr"], item.get("binary_addr"))
-        sub = sub_lookup.get(key)
-        if sub:
-            if current_sub and current_sub.get("fall_through"):
-                lines.append({
-                    "id": None,
-                    "addr": None,
-                    "html": Markup(
-                        '<span class="fall-through">'
-                        'fall through \u2193</span>'
-                    ),
-                })
-            current_sub = sub
-        if sub and sub.get("title"):
-            in_relocated = (item["addr"], item.get("binary_addr")) in relocated_sections
-        max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
-        lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
-                                   sorted_addrs, label_tooltips, mm_links,
-                                   region_anchors, max_width, expr_ctx))
+    # Scope the label:/glossary: resolution context for every
+    # render_markdown call reached from this listing.
+    with listing_context(label_addrs, glossary_lookup):
+        for item in data["items"]:
+            key = (item["addr"], item.get("binary_addr"))
+            sub = sub_lookup.get(key)
+            if sub:
+                if current_sub and current_sub.get("fall_through"):
+                    lines.append({
+                        "id": None,
+                        "addr": None,
+                        "html": Markup(
+                            '<span class="fall-through">'
+                            'fall through \u2193</span>'
+                        ),
+                    })
+                current_sub = sub
+            if sub and sub.get("title"):
+                in_relocated = (item["addr"], item.get("binary_addr")) in relocated_sections
+            max_width = RELOCATED_MAX_WIDTH if in_relocated else CONTENT_MAX_WIDTH
+            lines.extend(_process_item(item, sub_lookup, item_by_addr, valid_addrs,
+                                       sorted_addrs, label_tooltips, mm_links,
+                                       region_anchors, max_width, expr_ctx))
 
-    if current_sub and current_sub.get("fall_through"):
-        lines.append({
-            "id": None,
-            "addr": None,
-            "html": Markup(
-                '<span class="fall-through">'
-                'fall through \u2193</span>'
-            ),
-        })
+        if current_sub and current_sub.get("fall_through"):
+            lines.append({
+                "id": None,
+                "addr": None,
+                "html": Markup(
+                    '<span class="fall-through">'
+                    'fall through \u2193</span>'
+                ),
+            })
 
-    _align_inline_comments(lines, valid_addrs, sorted_addrs, label_tooltips, mm_links)
+        _align_inline_comments(lines, valid_addrs, sorted_addrs, label_tooltips, mm_links)
     return _split_into_sections(lines)
 
 

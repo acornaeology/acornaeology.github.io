@@ -145,11 +145,13 @@ def build_glossary_lookup(glossary):
     lookup = {}
     for category in glossary["categories"]:
         for entry in category["terms"]:
-            lookup[entry["term"]] = {
+            item = {
                 "slug": entry["slug"],
                 "expansion": entry["expansion"],
                 "brief": entry["brief"],
             }
+            item["tooltip"] = _build_tooltip(item)
+            lookup[entry["term"]] = item
     return lookup
 
 
