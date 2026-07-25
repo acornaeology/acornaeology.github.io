@@ -53,6 +53,23 @@ Resolution (HTML pipeline):
 3. Otherwise the link is left unresolved and a build-time warning
    is printed.
 
+**Prefer `label:NAME` for named targets.** When the target is a *named*
+routine or data label, use the symbolic `label:` scheme rather than a
+numeric address — it resolves to the label's current address at build
+time, so the link never goes stale when code shifts between versions:
+
+```python
+comment(0xE041, "Mismatch → [`ram_test_fail`](label:ram_test_fail)",
+        inline=True)
+```
+
+`label:NAME`, `label:NAME@VERSION`, and `label:NAME?hex` mirror the
+`address:` forms exactly and resolve identically once the name is looked
+up. A label named like a hex string (e.g. `E263`) *must* use `label:` to
+be unambiguous. Keep numeric `address:HEX` for genuine raw-address or
+`&XXXX`-prose references. `lint` validates every `label:` name against
+the version's label set.
+
 ### 1.2 Bare `&XXXX` is no longer auto-linked
 
 Prior versions would silently wrap any bare `&XXXX` in a listing
@@ -316,10 +333,23 @@ Each project can supply a `GLOSSARY.md` registered via
   glossary page, not in tooltips.
 ```
 
-Entries appear on the generated glossary page and are
-tooltip-attached to matching terms in writeups (via the
-`glossary_links` map in `rom.json` / `acornaeology.json`, checked
-at lint time).
+Entries appear on the generated glossary page. Link a term from prose
+with the explicit `glossary:SLUG` scheme, where `SLUG` is the term's
+anchor slug — its lower-cased, hyphenated form (`cmos`, `master-128`) —
+matched case-insensitively:
+
+```markdown
+…the station number lives in [CMOS](glossary:cmos), paged in via
+[HAZEL](glossary:hazel)…
+```
+
+You place the link exactly where you want it, so it always lands on a
+whole word (the old auto-matcher could link *MOS* inside *CMOS*). This
+works the same in inline comments, descriptions, per-version docs, and
+analyses. `lint` validates every `glossary:` slug against `GLOSSARY.md`.
+
+> The former `glossary_links` map in `rom.json` / `acornaeology.json`
+> (pattern + occurrence) has been retired in favour of `glossary:`.
 
 ---
 

@@ -2,8 +2,6 @@
 
 import re
 
-from markupsafe import escape
-
 _TERM_RE = re.compile(r"^\*\*(.+?)\*\*(?:\s*\((.+?)\))?\s*$")
 
 
@@ -166,100 +164,3 @@ def _build_tooltip(entry):
     if entry["expansion"]:
         return f"{entry['expansion']}: {brief}"
     return brief
-
-
-def _find_text_occurrences(html_text, pattern):
-    """Find all occurrences of pattern in HTML text nodes.
-
-    Returns a list of (start, end) tuples for matches that fall outside
-    HTML tags and outside <a>...</a> elements."""
-    matches = []
-    i = 0
-    inside_tag = False
-    tag_start = 0
-    anchor_depth = 0
-    pat_len = len(pattern)
-
-    while i < len(html_text):
-        ch = html_text[i]
-
-        if ch == "<":
-            inside_tag = True
-            tag_start = i
-            i += 1
-            continue
-
-        if ch == ">" and inside_tag:
-            tag_content = html_text[tag_start + 1:i]
-            tag_lower = tag_content.lower().lstrip()
-            if tag_lower.startswith("a ") or tag_lower == "a":
-                anchor_depth += 1
-            elif tag_lower.startswith("/a"):
-                anchor_depth = max(0, anchor_depth - 1)
-            inside_tag = False
-            i += 1
-            continue
-
-        if not inside_tag and anchor_depth == 0:
-            if html_text[i:i + pat_len] == pattern:
-                matches.append((i, i + pat_len))
-                i += pat_len
-                continue
-
-        i += 1
-
-    return matches
-
-
-def apply_glossary_links(html_text, glossary_links, glossary_lookup, slug):
-    """Apply glossary links to HTML content.
-
-    Wraps matched terms with <a> elements linking to the glossary page.
-    Matches only in text nodes, skipping content inside HTML tags and
-    existing <a> elements.
-
-    Args:
-        html_text:       HTML string (post markdown conversion)
-        glossary_links:  list of dicts with pattern, occurrence, term
-        glossary_lookup: dict from build_glossary_lookup()
-        slug:            source slug for constructing glossary URL
-    """
-    replacements = []
-
-    for link_spec in glossary_links:
-        pattern = link_spec["pattern"]
-        occurrence = link_spec["occurrence"]
-        term = link_spec["term"]
-
-        entry = glossary_lookup.get(term)
-        if not entry:
-            print(f"  Warning: glossary term '{term}' not found in glossary")
-            continue
-
-        matches = _find_text_occurrences(html_text, pattern)
-        if not matches:
-            print(f"  Warning: glossary pattern '{pattern}' not found in HTML")
-            continue
-
-        idx = occurrence if occurrence >= 0 else len(matches) + occurrence
-        if idx < 0 or idx >= len(matches):
-            print(f"  Warning: occurrence {occurrence} out of range "
-                  f"for glossary pattern '{pattern}'")
-            continue
-
-        start, end = matches[idx]
-        tooltip = _build_tooltip(entry)
-        matched_text = html_text[start:end]
-        replacement = (
-            f'<a href="glossary.html#term-{entry["slug"]}"'
-            f' class="glossary-ref"'
-            f' data-tip="{escape(tooltip)}">{escape(matched_text)}</a>'
-        )
-        replacements.append((start, end, replacement))
-
-    # Apply end-to-start to avoid position shifts
-    replacements.sort(key=lambda r: r[0], reverse=True)
-    for start, end, replacement in replacements:
-        html_text = html_text[:start] + replacement + html_text[end:]
-
-    return html_text

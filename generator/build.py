@@ -18,7 +18,7 @@ from datetime import datetime
 
 from .disassembly import build_label_addrs, build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
-from .glossary import apply_glossary_links, build_glossary_lookup, parse_glossary
+from .glossary import build_glossary_lookup, parse_glossary
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -355,7 +355,6 @@ def load_sources():
                 "icon": a.get("icon", "doc"),
                 "note": a.get("note", ""),
                 "address_links": a.get("address_links", []),
-                "glossary_links": a.get("glossary_links", []),
             }
             for a in manifest.get("analyses", [])
         ]
@@ -697,7 +696,9 @@ def build_disassemblies(env, sources, pages):
         # analyses can link into any version's anchors)
         _render_analysis_pages(env, source, output_dirpath,
                                version_anchors, glossary_lookup, pages,
-                               version_mm_links=version_mm_links)
+                               version_mm_links=version_mm_links,
+                               version_labels=version_labels,
+                               glossary_slug_lookup=glossary_slug_lookup)
 
 
 def _doc_output_filename(version_id, doc_path):
@@ -1040,13 +1041,6 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
         content_html = converter.convert(md_text)
 
-        # Apply glossary links (post-HTML-conversion)
-        glossary_links = doc.get("glossary_links", [])
-        if glossary_links and glossary_lookup:
-            content_html = apply_glossary_links(
-                content_html, glossary_links, glossary_lookup,
-                source["slug"])
-
         doc_filename = _doc_output_filename(version_id, doc["path"])
         src_label = f"{source['slug']}/{doc_filename}"
 
@@ -1120,13 +1114,15 @@ def _rewrite_md_links_to_html(html, analyses):
 
 def _render_analysis_pages(env, source, output_dirpath,
                            version_anchors=None, glossary_lookup=None,
-                           pages=None, version_mm_links=None):
+                           pages=None, version_mm_links=None,
+                           version_labels=None, glossary_slug_lookup=None):
     """Build project-level analysis pages from acornaeology.json.
 
     Each entry in `source["analyses"]` points to a Markdown file
     inside the source repo and is rendered to a standalone HTML
-    page at `<slug>/<stem>.html`. `address_links` and
-    `glossary_links` behave as for per-version docs.
+    page at `<slug>/<stem>.html`. Inline `address:` / `label:` /
+    `glossary:` links behave as for per-version docs (analyses are
+    project-level, so `address:` / `label:` must carry `@version`).
     """
     analyses = source.get("analyses", [])
     if not analyses:
@@ -1159,12 +1155,18 @@ def _render_analysis_pages(env, source, output_dirpath,
         # navigable.
         content_html = _rewrite_md_links_to_html(content_html, analyses)
 
-        glossary_links = analysis.get("glossary_links", [])
-        if glossary_links and glossary_lookup:
-            content_html = apply_glossary_links(
-                content_html, glossary_links, glossary_lookup, slug)
-
         analysis_filename = _analysis_output_filename(analysis["url"])
+        src_label = f"{slug}/{analysis_filename}"
+
+        # Inline [text](glossary:SLUG) references.
+        content_html = apply_glossary_uri_links(
+            content_html, glossary_slug_lookup, source_label=src_label)
+
+        # Inline [text](label:NAME@version) references. Analyses are
+        # project-level, so label: (like address:) must carry @version.
+        content_html = apply_label_uri_links(
+            content_html, version_labels, default_version=None,
+            source_label=src_label)
 
         # Rewrite inline [label](address:HEX[@version]) URIs. Analyses
         # are project-level, so there's no implicit "current version";
@@ -1173,7 +1175,7 @@ def _render_analysis_pages(env, source, output_dirpath,
         content_html = apply_address_uri_links(
             content_html, version_anchors,
             default_version=None,
-            source_label=f"{slug}/{analysis_filename}",
+            source_label=src_label,
             version_mm_links=version_mm_links)
         html = doc_template.render(
             root="../",
