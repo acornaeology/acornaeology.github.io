@@ -690,7 +690,9 @@ def build_disassemblies(env, sources, pages):
                                         group_titles=group_titles,
                                         rom_load_addr=meta.get("load_addr"),
                                         rom_end_addr=meta.get("end_addr"),
-                                        regions=data.get("regions", []))
+                                        regions=data.get("regions", []),
+                                        version_labels=version_labels,
+                                        glossary_slug_lookup=glossary_slug_lookup)
 
         # Build project-level analysis pages (after all versions, so
         # analyses can link into any version's anchors)
@@ -1248,7 +1250,8 @@ def _render_memory_map_page(env, source, version_id, version_title,
                             memory_map, output_dirpath, version_anchors,
                             pages=None, group_titles=None,
                             rom_load_addr=None, rom_end_addr=None,
-                            regions=None):
+                            regions=None, version_labels=None,
+                            glossary_slug_lookup=None):
     """Render {version_id}-memory-map.html for one version of a project.
 
     `memory_map` is this version's entries already normalised to the v4
@@ -1344,6 +1347,14 @@ def _render_memory_map_page(env, source, version_id, version_title,
         # for intra-memory-map cross-references.
         converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
         html = converter.convert(md)
+        # glossary: → anchor; label: → equivalent address: URI, so it then
+        # flows through the same #mm-NAME / ROM-anchor resolution below.
+        html = apply_glossary_uri_links(
+            html, glossary_slug_lookup,
+            source_label=f"{source['slug']}/{output_filename}")
+        html = apply_label_uri_links(
+            html, version_labels, default_version=version_id,
+            source_label=f"{source['slug']}/{output_filename}")
         html = rewrite_mm_refs(html)
         html = apply_address_uri_links(
             html, version_anchors,
