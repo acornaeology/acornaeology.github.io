@@ -91,6 +91,25 @@ class TestBuildSourcePageMap:
         asm = (version_dirpath / "output" / "j-driver-a.asm").resolve()
         assert page_map[asm] == "joystik-driver-a.html"
 
+    def test_additional_disassembly_maps_to_its_own_page(self, tmp_path):
+        # A declared additional disassembly's JSON and its sibling .asm/.s
+        # map to that listing's own page, not the primary disassembly.
+        version_dirpath = tmp_path / "versions" / "proj-joystik"
+        (version_dirpath / "output").mkdir(parents=True)
+        (version_dirpath / "output" / "j.json").write_text("{}")
+        (version_dirpath / "output" / "j-driver-a.json").write_text("{}")
+        (version_dirpath / "output" / "j-driver-a.asm").write_text("; a")
+        rom_meta = {"disassemblies": [
+            {"label": "A", "slug": "driver-a",
+             "json": "output/j-driver-a.json"}]}
+        page_map = _build_source_page_map([("joystik", version_dirpath, rom_meta)])
+        djson = (version_dirpath / "output" / "j-driver-a.json").resolve()
+        dasm = (version_dirpath / "output" / "j-driver-a.asm").resolve()
+        primary = (version_dirpath / "output" / "j.json").resolve()
+        assert page_map[djson] == "joystik-driver-a.html"
+        assert page_map[dasm] == "joystik-driver-a.html"
+        assert page_map[primary] == "joystik.html"
+
 
 class TestRewriteSourceFileLinks:
 
