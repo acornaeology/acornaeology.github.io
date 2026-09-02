@@ -1259,6 +1259,17 @@ def _build_source_page_map(version_entries):
             src_filepath = (version_dirpath / entry["path"]).resolve()
             page_map[src_filepath] = _source_output_filename(version_id, entry)
 
+        # Additional disassembly listings (driver variants) have their own
+        # formatted page; map their JSON and its sibling assembler output
+        # there rather than to the primary disassembly. These also win over
+        # the generic output→primary aliasing below.
+        for entry in rom_meta.get("disassemblies", []):
+            extra_filename = f"{version_id}-{entry['slug']}.html"
+            json_filepath = (version_dirpath / entry["json"]).resolve()
+            page_map[json_filepath] = extra_filename
+            for suffix in (".asm", ".s"):
+                page_map[json_filepath.with_suffix(suffix)] = extra_filename
+
         disassembly_filename = f"{version_id}.html"
         # The main assembler/JSON listings and the program binary all
         # belong to the primary disassembly page.
