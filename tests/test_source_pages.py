@@ -6,12 +6,29 @@ repoints GitHub-relative source links at their rendered pages.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from generator.build import (
     _resolve_version_meta_filepath,
     _source_output_filename,
+    _source_address_label,
     _build_source_page_map,
     _rewrite_source_file_links,
 )
+
+
+class TestSourceAddressLabel:
+
+    def test_binary_layout_defaults_to_load(self):
+        assert _source_address_label(Path("v/binary/binary.json"), {}) == "Load"
+
+    def test_rom_layout_defaults_to_rom(self):
+        assert _source_address_label(Path("v/rom/rom.json"), {}) == "ROM"
+
+    def test_explicit_override_wins(self):
+        meta = {"source_address_label": "Sideways"}
+        assert _source_address_label(Path("v/rom/rom.json"), meta) == "Sideways"
+        assert _source_address_label(Path("v/binary/binary.json"), meta) == "Sideways"
 
 
 class TestResolveVersionMetaFilepath:

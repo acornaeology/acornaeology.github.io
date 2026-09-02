@@ -719,6 +719,7 @@ def build_disassemblies(env, sources, pages):
                 glossary_lookup=glossary_slug_lookup)
             macros = build_macros(data)
 
+            source_addr_label = _source_address_label(meta_filepath, rom_meta)
             html = disassembly_template.render(
                 root="../",
                 slug=slug,
@@ -732,6 +733,7 @@ def build_disassemblies(env, sources, pages):
                 subroutines=_filter_subroutines(data),
                 updated_iso=updated_iso,
                 updated_display=updated_display,
+                source_addr_label=source_addr_label,
             )
 
             version_filepath = output_dirpath / f"{version_id}.html"
@@ -823,6 +825,23 @@ def _source_output_filename(version_id, source_entry):
     """
     slug = source_entry.get("slug") or Path(source_entry["path"]).stem.lower()
     return f"{version_id}-{slug}.html"
+
+
+def _source_address_label(meta_filepath, rom_meta):
+    """Header for the pre-relocation (stored) address column, shown for a
+    listing whose code carries a load-time move.
+
+    ROM disassemblies show that address as `ROM`. Ordinary program
+    binaries are loaded at a DFS load address, so the neutral
+    `binary/binary.json` layout defaults the header to `Load` — pairing
+    with `Exec`, as in Acorn's Load/Exec file metadata. Either default
+    can be overridden with a `source_address_label` field in the version
+    metadata.
+    """
+    explicit = rom_meta.get("source_address_label")
+    if explicit:
+        return explicit
+    return "Load" if meta_filepath.name == "binary.json" else "ROM"
 
 
 def _additional_disassembly_json_names(rom_meta):
@@ -1343,6 +1362,8 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
     slug = source["slug"]
     name = source["name"]
     description = source["description"]
+    source_addr_label = _source_address_label(
+        _resolve_version_meta_filepath(version_dirpath), rom_meta)
 
     for entry in disassemblies:
         json_filepath = version_dirpath / entry["json"]
@@ -1398,6 +1419,7 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
             subroutines=_filter_subroutines(data),
             updated_iso=updated_iso,
             updated_display=updated_display,
+            source_addr_label=source_addr_label,
         )
         (output_dirpath / f"{page_id}.html").write_text(html)
         print(f"  {slug}/{page_id}.html")
