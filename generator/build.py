@@ -422,22 +422,47 @@ def build_disassemblies(env, sources, pages):
                       f"'{version_id}', skipping")
                 continue
 
-            output_json_dirpath = version_dirpath / "output"
-            vjson_filepaths = list(output_json_dirpath.glob("*.json"))
-            has_memory_map = False
-            if vjson_filepaths:
-                vdata = json.loads(vjson_filepaths[0].read_text())
-                has_memory_map = bool(
-                    vdata.get("memory_map") or vdata.get("index_bases"))
-
             meta_filepath = _resolve_version_meta_filepath(version_dirpath)
             if meta_filepath.exists():
                 rom_meta = json.loads(meta_filepath.read_text())
                 title = rom_meta.get("title", f"{name} {version_id}")
                 doc_entries = rom_meta.get("docs", [])
+                source_file_entries = rom_meta.get("source_files", [])
             else:
+                rom_meta = {}
                 title = f"{name} {version_id}"
                 doc_entries = []
+                source_file_entries = []
+
+            primary_json_filepath = _primary_disassembly_json(
+                version_dirpath, rom_meta)
+            has_memory_map = False
+            if primary_json_filepath is not None:
+                vdata = json.loads(primary_json_filepath.read_text())
+                has_memory_map = bool(
+                    vdata.get("memory_map") or vdata.get("index_bases"))
+
+            # Additional disassembly listings (e.g. driver variants) — each
+            # rendered as its own formatted page and listed under the parent
+            # program in the index.
+            additional_disassemblies = []
+            for extra in rom_meta.get("disassemblies", []):
+                extra_page_id = f"{version_id}-{extra['slug']}"
+                extra_has_mm = False
+                extra_json_filepath = version_dirpath / extra["json"]
+                if extra_json_filepath.exists():
+                    extra_data = json.loads(extra_json_filepath.read_text())
+                    extra_has_mm = bool(
+                        extra_data.get("memory_map")
+                        or extra_data.get("index_bases"))
+                additional_disassemblies.append({
+                    "label": extra["label"],
+                    "disassembly_url": f"{extra_page_id}.html",
+                    "memory_map_url": (
+                        f"{extra_page_id}-memory-map.html"
+                        if extra_has_mm else None
+                    ),
+                })
 
             changes_doc = None
             other_docs = []
@@ -466,6 +491,15 @@ def build_disassemblies(env, sources, pages):
                     }
                     for d in other_docs
                 ],
+                "source_files": [
+                    {
+                        "label": sf["label"],
+                        "url": _source_output_filename(version_id, sf),
+                        "language": sf.get("language", ""),
+                    }
+                    for sf in source_file_entries
+                ],
+                "additional_disassemblies": additional_disassemblies,
             })
 
         # Build per-ROM index page
@@ -531,13 +565,25 @@ def build_disassemblies(env, sources, pages):
             updated_iso = git_last_modified_iso(repo_dirpath, version_dirpath)
             updated_display = format_display_date(updated_iso) if updated_iso else None
 
-            # Find the disassembly JSON
-            output_json_dirpath = version_dirpath / "output"
-            json_files = list(output_json_dirpath.glob("*.json"))
-            if not json_files:
-                print(f"  Warning: no JSON found in {output_json_dirpath}, skipping")
+            # Read version metadata (needed to pick the primary listing when
+            # a version ships more than one disassembly JSON).
+            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
+            if meta_filepath.exists():
+                rom_meta = json.loads(meta_filepath.read_text())
+                title = rom_meta.get("title", f"{name} {version_id}")
+                links = list(rom_meta.get("links", []))
+            else:
+                rom_meta = {}
+                title = f"{name} {version_id}"
+                links = []
+
+            # Find the primary disassembly JSON (the main program image),
+            # excluding any additional listings declared in the metadata.
+            data_filepath = _primary_disassembly_json(version_dirpath, rom_meta)
+            if data_filepath is None:
+                print(f"  Warning: no JSON found in "
+                      f"{version_dirpath / 'output'}, skipping")
                 continue
-            data_filepath = json_files[0]
             data = json.loads(data_filepath.read_text())
 
             # Collect valid anchor addresses for this version
@@ -560,17 +606,6 @@ def build_disassemblies(env, sources, pages):
 
             # Label -> address map for `label:NAME` links cited from docs.
             version_labels[version_id] = build_label_addrs(data)
-
-            # Read version metadata
-            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
-            if meta_filepath.exists():
-                rom_meta = json.loads(meta_filepath.read_text())
-                title = rom_meta.get("title", f"{name} {version_id}")
-                links = list(rom_meta.get("links", []))
-            else:
-                rom_meta = {}
-                title = f"{name} {version_id}"
-                links = []
 
             # Prepend the disassembly-source link. A version may ship the
             # same disassembly in more than one assembler flavour (e.g.
@@ -625,6 +660,16 @@ def build_disassemblies(env, sources, pages):
                     "icon": "map",
                     "target": "memory-map",
                     "class": "mm-link",
+                    "category": "ours",
+                })
+
+            # Link to the version's additional disassembly listings (e.g.
+            # driver variants) — these are peers of this disassembly.
+            for extra in rom_meta.get("disassemblies", []):
+                links.append({
+                    "label": extra["label"],
+                    "url": f"{version_id}-{extra['slug']}.html",
+                    "icon": "code",
                     "category": "ours",
                 })
 
@@ -713,6 +758,14 @@ def build_disassemblies(env, sources, pages):
             _render_source_pages(env, source, version_id, version_dirpath,
                                  rom_meta, title, output_dirpath, pages)
 
+            # Build additional disassembly pages (e.g. driver variants),
+            # each a formatted, anchored listing like the primary one.
+            _render_additional_disassemblies(
+                env, source, version_id, version_dirpath, rom_meta, title,
+                output_dirpath, glossary_slug_lookup=glossary_slug_lookup,
+                pages=pages, updated_iso=updated_iso,
+                updated_display=updated_display)
+
             # Build the memory-map page for this version (if the driver
             # enriched any non-ROM labels with memory-map metadata —
             # including indexing bases, which since schema v4 are ordinary
@@ -770,6 +823,34 @@ def _source_output_filename(version_id, source_entry):
     """
     slug = source_entry.get("slug") or Path(source_entry["path"]).stem.lower()
     return f"{version_id}-{slug}.html"
+
+
+def _additional_disassembly_json_names(rom_meta):
+    """Basenames of the JSON listings declared as additional disassemblies."""
+    return {Path(d["json"]).name for d in rom_meta.get("disassemblies", [])}
+
+
+def _primary_disassembly_json(version_dirpath, rom_meta):
+    """The version's primary disassembly JSON in its `output/` directory.
+
+    A version may ship extra disassembly listings — e.g. JOYSTIK's two
+    driver variants, disassembled separately from the main image. Those
+    are declared under `disassemblies` in the metadata and excluded here,
+    so the primary (the main program image) is chosen deterministically
+    rather than by glob order. Prefers the JSON whose stem matches the
+    version directory name; falls back to the first remaining JSON.
+    """
+    json_filepaths = sorted((version_dirpath / "output").glob("*.json"))
+    if not json_filepaths:
+        return None
+    additional = _additional_disassembly_json_names(rom_meta)
+    candidates = [p for p in json_filepaths if p.name not in additional]
+    if not candidates:
+        candidates = json_filepaths
+    for candidate in candidates:
+        if candidate.stem == version_dirpath.name:
+            return candidate
+    return candidates[0]
 
 
 def _analysis_output_filename(analysis_url):
@@ -1224,6 +1305,119 @@ def _rewrite_source_file_links(html, doc_dirpath, source_page_map):
     # Relative hrefs only (no scheme, no leading //, no in-page anchor).
     return re.sub(
         r'href="((?!https?:|//|#)[^"#?]+)(#[^"]*)?"', repl, html)
+
+
+def _render_additional_disassemblies(env, source, version_id, version_dirpath,
+                                     rom_meta, parent_title, output_dirpath,
+                                     glossary_slug_lookup=None, pages=None,
+                                     updated_iso=None, updated_display=None):
+    """Render each additional disassembly listing declared for a version.
+
+    A program can comprise more than one separately-disassembled body of
+    code — JOYSTIK, for instance, carries two 256-byte driver variants
+    disassembled apart from its main image. Each is declared under
+    `disassemblies` in the version metadata (label, slug, json) and gets
+    its own formatted, anchored listing page (and a memory-map page when
+    the listing carries one), exactly like the primary disassembly — so a
+    driver variant reads as a first-class disassembly, not plain text.
+
+    Navigation links each variant back to the parent program and across
+    to its sibling variants.
+    """
+    disassemblies = rom_meta.get("disassemblies", [])
+    if not disassemblies:
+        return
+
+    disassembly_template = env.get_template("_disassembly.html")
+    slug = source["slug"]
+    name = source["name"]
+    description = source["description"]
+
+    for entry in disassemblies:
+        json_filepath = version_dirpath / entry["json"]
+        if not json_filepath.exists():
+            print(f"  Warning: disassembly JSON {json_filepath} not found, "
+                  f"skipping")
+            continue
+        data = json.loads(json_filepath.read_text())
+        page_id = f"{version_id}-{entry['slug']}"
+
+        # Navigation: back to the parent program, then across to siblings,
+        # then this listing's own memory map (if any).
+        links = [{
+            "label": f"{parent_title} disassembly",
+            "url": f"{version_id}.html",
+            "icon": "code",
+            "category": "ours",
+        }]
+        for sibling in disassemblies:
+            if sibling["slug"] == entry["slug"]:
+                continue
+            links.append({
+                "label": sibling["label"],
+                "url": f"{version_id}-{sibling['slug']}.html",
+                "icon": "code",
+                "category": "ours",
+            })
+        if data.get("memory_map") or data.get("index_bases"):
+            links.append({
+                "label": "Memory map",
+                "url": f"{page_id}-memory-map.html",
+                "icon": "map",
+                "target": "memory-map",
+                "class": "mm-link",
+                "category": "ours",
+            })
+        link_groups = _group_links(links)
+
+        sections = process_disassembly(
+            data, version_id=page_id, glossary_lookup=glossary_slug_lookup)
+        macros = build_macros(data)
+
+        html = disassembly_template.render(
+            root="../",
+            slug=slug,
+            name=name,
+            version_id=page_id,
+            title=entry["label"],
+            description=entry.get("runtime", description),
+            link_groups=link_groups,
+            sections=sections,
+            macros=macros,
+            subroutines=_filter_subroutines(data),
+            updated_iso=updated_iso,
+            updated_display=updated_display,
+        )
+        (output_dirpath / f"{page_id}.html").write_text(html)
+        print(f"  {slug}/{page_id}.html")
+        if pages is not None:
+            pages.append({
+                "url": f"{BASE_URL}{slug}/{page_id}.html",
+                "title": entry["label"],
+                "description": description,
+                "is_disassembly": True,
+                "updated": updated_iso,
+            })
+
+        # A memory-map page too, if this listing enriched any non-ROM
+        # labels with memory-map metadata.
+        mm_entries = _normalized_memory_map(data)
+        if mm_entries:
+            anchors = set()
+            for item in data["items"]:
+                anchors.add(item["addr"])
+                if "binary_addr" in item:
+                    anchors.add(item["binary_addr"])
+            meta = data.get("meta", {})
+            _render_memory_map_page(
+                env, source, page_id, entry["label"], mm_entries,
+                output_dirpath, {page_id: sorted(anchors)}, pages,
+                group_titles=rom_meta.get("memory_map_groups", {}),
+                rom_load_addr=meta.get("load_addr"),
+                rom_end_addr=meta.get("end_addr"),
+                regions=data.get("regions", []),
+                version_labels={page_id: build_label_addrs(data)},
+                glossary_slug_lookup=glossary_slug_lookup)
 
 
 def _render_source_pages(env, source, version_id, version_dirpath, rom_meta,

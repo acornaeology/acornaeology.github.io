@@ -30,9 +30,34 @@
     <td>{% if version.memory_map_url %}<a href="{{ version.memory_map_url }}">Memory map</a>{% endif %}</td>
     <td>{% if version.changes_url %}<a href="{{ version.changes_url }}">{{ version.changes_label }}</a>{% endif %}</td>
 </tr>
+{% for extra in version.additional_disassemblies %}
+<tr class="version-subrow">
+    <td><a href="{{ extra.disassembly_url }}"><span class="version-subrow-branch" aria-hidden="true">&#8627;</span>{{ extra.label }}</a></td>
+    <td>{% if extra.memory_map_url %}<a href="{{ extra.memory_map_url }}">Memory map</a>{% endif %}</td>
+    <td></td>
+</tr>
+{% endfor %}
 {% endfor %}
 </tbody>
 </table>
+
+{% set versions_with_sources = versions | selectattr('source_files') | list %}
+{% if versions_with_sources %}
+<h2>Source Listings</h2>
+<p>The other source that makes up each program: the BBC BASIC front-ends, and the machine-code driver variants held encoded in the image.</p>
+<ul class="source-listings">
+{% for version in versions_with_sources %}
+<li>
+    <span class="source-listings-program">{{ version.title }}</span>
+    <ul>
+    {% for sf in version.source_files %}
+        <li><a href="{{ sf.url }}">{{ icon("code") }}{{ sf.label }}</a>{% if sf.language %} <span class="source-listings-lang">{{ sf.language }}</span>{% endif %}</li>
+    {% endfor %}
+    </ul>
+</li>
+{% endfor %}
+</ul>
+{% endif %}
 
 {% if analyses %}
 <h2>Analyses</h2>
