@@ -18,5 +18,9 @@
     {
         "repo": "https://github.com/acornaeology/bbc-basic",
         "path": "../../bbc-basic"
+    },
+    {
+        "repo": "https://github.com/acornaeology/voltmace-delta14b-driver",
+        "path": "../../voltmace-delta14b-driver"
     }
 ]

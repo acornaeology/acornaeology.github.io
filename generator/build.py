@@ -57,6 +57,7 @@ _ICON_LINK_CATEGORY = {
     "chip": "rom-image",
     "ref": "source",
     "doc": "source",
+    "code": "ours",
     "chat": "discussion",
     "bug": "feedback",
 }
@@ -190,10 +191,10 @@ def _index_references(source):
         version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
         if version_dirpath is None:
             continue
-        rom_json_filepath = version_dirpath / "rom" / "rom.json"
-        if not rom_json_filepath.exists():
+        meta_filepath = _resolve_version_meta_filepath(version_dirpath)
+        if not meta_filepath.exists():
             continue
-        rom_meta = json.loads(rom_json_filepath.read_text())
+        rom_meta = json.loads(meta_filepath.read_text())
         version_refs.extend(rom_meta.get("references", []))
         version_discussion.extend(
             link for link in rom_meta.get("links", [])
@@ -429,9 +430,9 @@ def build_disassemblies(env, sources, pages):
                 has_memory_map = bool(
                     vdata.get("memory_map") or vdata.get("index_bases"))
 
-            rom_json_filepath = version_dirpath / "rom" / "rom.json"
-            if rom_json_filepath.exists():
-                rom_meta = json.loads(rom_json_filepath.read_text())
+            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
+            if meta_filepath.exists():
+                rom_meta = json.loads(meta_filepath.read_text())
                 title = rom_meta.get("title", f"{name} {version_id}")
                 doc_entries = rom_meta.get("docs", [])
             else:
@@ -502,6 +503,23 @@ def build_disassemblies(env, sources, pages):
         version_anchors = {}  # version_id -> sorted list of anchor addresses
         version_mm_links = {}  # version_id -> {addr: "{version}-memory-map.html#mm-NAME"}
         version_labels = {}    # version_id -> {label_name: addr} for label: links
+
+        # Map each version's repo source files to the site page that
+        # renders them, so prose docs/analyses can keep GitHub-relative
+        # file links yet resolve to the right page on the site. Built
+        # up-front (over all versions) so an analysis can cite any
+        # version's sources.
+        source_page_entries = []
+        for version_id in source["versions"]:
+            version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
+            if version_dirpath is None:
+                continue
+            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
+            rom_meta = json.loads(meta_filepath.read_text()) \
+                if meta_filepath.exists() else {}
+            source_page_entries.append((version_id, version_dirpath, rom_meta))
+        source_page_map = _build_source_page_map(source_page_entries)
+
         for version_id in source["versions"]:
             version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
             if version_dirpath is None:
@@ -544,9 +562,9 @@ def build_disassemblies(env, sources, pages):
             version_labels[version_id] = build_label_addrs(data)
 
             # Read version metadata
-            rom_json_filepath = version_dirpath / "rom" / "rom.json"
-            if rom_json_filepath.exists():
-                rom_meta = json.loads(rom_json_filepath.read_text())
+            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
+            if meta_filepath.exists():
+                rom_meta = json.loads(meta_filepath.read_text())
                 title = rom_meta.get("title", f"{name} {version_id}")
                 links = list(rom_meta.get("links", []))
             else:
@@ -621,6 +639,20 @@ def build_disassemblies(env, sources, pages):
                     "category": doc.get("category", "ours"),
                 })
 
+            # Append companion source-view pages. A multi-source artefact
+            # is more than its primary disassembly: it may carry extra
+            # source files — detokenised BBC BASIC, or machine-code driver
+            # variants held encoded in the image — each presentable as its
+            # own page. They render as plain text for now (see
+            # `_render_source_pages`).
+            for entry in rom_meta.get("source_files", []):
+                links.append({
+                    "label": entry["label"],
+                    "url": _source_output_filename(version_id, entry),
+                    "icon": entry.get("icon", "code"),
+                    "category": entry.get("category", "ours"),
+                })
+
             # Merge the research references into the page's links so the
             # reader sees the full attribution — sources consulted,
             # further reading, discussion — on the disassembly page
@@ -674,7 +706,12 @@ def build_disassemblies(env, sources, pages):
                               glossary_lookup, pages,
                               version_mm_links=version_mm_links,
                               version_labels=version_labels,
-                              glossary_slug_lookup=glossary_slug_lookup)
+                              glossary_slug_lookup=glossary_slug_lookup,
+                              source_page_map=source_page_map)
+
+            # Build companion source-view pages for this version
+            _render_source_pages(env, source, version_id, version_dirpath,
+                                 rom_meta, title, output_dirpath, pages)
 
             # Build the memory-map page for this version (if the driver
             # enriched any non-ROM labels with memory-map metadata —
@@ -700,13 +737,39 @@ def build_disassemblies(env, sources, pages):
                                version_anchors, glossary_lookup, pages,
                                version_mm_links=version_mm_links,
                                version_labels=version_labels,
-                               glossary_slug_lookup=glossary_slug_lookup)
+                               glossary_slug_lookup=glossary_slug_lookup,
+                               source_page_map=source_page_map)
+
+
+def _resolve_version_meta_filepath(version_dirpath):
+    """Locate a version's metadata JSON.
+
+    Projects that disassemble ROM images keep it at `rom/rom.json`;
+    projects that disassemble ordinary program binaries use the neutral
+    `binary/binary.json` layout (the file is a program, not a ROM). Prefer
+    the neutral layout, falling back to the ROM layout so existing
+    projects are unaffected.
+    """
+    binary_meta_filepath = version_dirpath / "binary" / "binary.json"
+    if binary_meta_filepath.exists():
+        return binary_meta_filepath
+    return version_dirpath / "rom" / "rom.json"
 
 
 def _doc_output_filename(version_id, doc_path):
     """Derive the output HTML filename for a doc entry."""
     stem = Path(doc_path).stem.lower()
     return f"{version_id}-{stem}.html"
+
+
+def _source_output_filename(version_id, source_entry):
+    """Derive the output HTML filename for a companion source-view page.
+
+    An entry may supply a short `slug` for a tidy URL
+    (`joystik-driver-a.html`); otherwise the source file's stem is used.
+    """
+    slug = source_entry.get("slug") or Path(source_entry["path"]).stem.lower()
+    return f"{version_id}-{slug}.html"
 
 
 def _analysis_output_filename(analysis_url):
@@ -1022,7 +1085,7 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
                       output_dirpath, version_anchors=None,
                       glossary_lookup=None, pages=None,
                       version_mm_links=None, version_labels=None,
-                      glossary_slug_lookup=None):
+                      glossary_slug_lookup=None, source_page_map=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
     name = source["name"]
@@ -1064,6 +1127,11 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
             source_label=src_label,
             version_mm_links=version_mm_links)
 
+        # Repoint GitHub-relative links to repo source files at their
+        # rendered site pages.
+        content_html = _rewrite_source_file_links(
+            content_html, md_filepath.parent, source_page_map)
+
         disassembly_title = rom_meta.get("title", f"{name} {version_id}")
         html = doc_template.render(
             root="../",
@@ -1083,6 +1151,139 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         if pages is not None:
             pages.append({
                 "url": f"{BASE_URL}{source['slug']}/{doc_filename}",
+            })
+
+
+def _build_source_page_map(version_entries):
+    """Map a repo source file to the site page that renders it.
+
+    Prose docs and analyses cite the repository's own files with
+    relative links (`../../versions/…/basic/x.bas`) so they read
+    correctly on GitHub. On the site those files aren't served, but each
+    now has a rendered page: `source_files` entries have their own
+    plain-text page, and the primary disassembly artefacts (the main
+    `.asm`/`.json` and the program binary) are shown by the version's
+    disassembly page. This returns `{resolved_abs_path: site_filename}`
+    so `_rewrite_source_file_links` can repoint those links without the
+    Markdown needing site-specific URLs.
+
+    `version_entries` is a list of `(version_id, version_dirpath,
+    rom_meta)`.
+    """
+    page_map = {}
+    for version_id, version_dirpath, rom_meta in version_entries:
+        # Companion source-view pages win over the primary-disassembly
+        # aliases below, so add them first and never overwrite them.
+        for entry in rom_meta.get("source_files", []):
+            src_filepath = (version_dirpath / entry["path"]).resolve()
+            page_map[src_filepath] = _source_output_filename(version_id, entry)
+
+        disassembly_filename = f"{version_id}.html"
+        # The main assembler/JSON listings and the program binary all
+        # belong to the primary disassembly page.
+        alias_filepaths = []
+        output_dirpath = version_dirpath / "output"
+        if output_dirpath.is_dir():
+            alias_filepaths += [
+                p for p in output_dirpath.iterdir()
+                if p.suffix in (".asm", ".json", ".s")
+            ]
+        binary_dirpath = version_dirpath / "binary"
+        if binary_dirpath.is_dir():
+            alias_filepaths += [
+                p for p in binary_dirpath.iterdir()
+                if p.name != "binary.json"
+            ]
+        for alias_filepath in alias_filepaths:
+            resolved = alias_filepath.resolve()
+            page_map.setdefault(resolved, disassembly_filename)
+    return page_map
+
+
+def _rewrite_source_file_links(html, doc_dirpath, source_page_map):
+    """Repoint links that target a repository source file at its page.
+
+    `doc_dirpath` is the on-disk directory the Markdown lived in, so a
+    relative href resolves the same way a reader on GitHub would resolve
+    it. Only links whose resolved target is a known source file are
+    rewritten; everything else (external URLs, in-page anchors, links to
+    files with no page) is left untouched.
+    """
+    if not source_page_map:
+        return html
+
+    def repl(match):
+        href = match.group(1)
+        fragment = match.group(2) or ""
+        target = (doc_dirpath / href).resolve()
+        site_filename = source_page_map.get(target)
+        if site_filename:
+            return f'href="{site_filename}{fragment}"'
+        return match.group(0)
+
+    # Relative hrefs only (no scheme, no leading //, no in-page anchor).
+    return re.sub(
+        r'href="((?!https?:|//|#)[^"#?]+)(#[^"]*)?"', repl, html)
+
+
+def _render_source_pages(env, source, version_id, version_dirpath, rom_meta,
+                         disassembly_title, output_dirpath, pages=None):
+    """Build plain-text source-view pages for a version.
+
+    A multi-source artefact is more than its primary disassembly. A
+    version may list companion source files under `source_files` in its
+    metadata — for example a detokenised BBC BASIC front-end carried as
+    editable text, or machine-code driver variants that live encoded in
+    the image and are assembled back at build time. Each is rendered
+    verbatim inside a <pre> block so every source that makes up the
+    artefact is presentable and linkable.
+
+    This is deliberately plain: no syntax highlighting or cross-linking
+    yet. It reuses the doc page shell (heading, back link, base layout)
+    so a source view sits naturally beside the disassembly and its docs.
+    """
+    source_files = rom_meta.get("source_files", [])
+    if not source_files:
+        return
+
+    doc_template = env.get_template("_doc.html")
+    slug = source["slug"]
+
+    for entry in source_files:
+        src_filepath = version_dirpath / entry["path"]
+        if not src_filepath.exists():
+            print(f"  Warning: source file {src_filepath} not found, skipping")
+            continue
+
+        text = src_filepath.read_text()
+        language = entry.get("language", "")
+        origin_filename = Path(entry["path"]).name
+        meta_bits = " · ".join(bit for bit in (language, origin_filename) if bit)
+
+        caption_html = (
+            f'<p class="source-meta">{escape(meta_bits)}</p>' if meta_bits else "")
+        listing_html = f'<pre class="source-listing">{escape(text)}</pre>'
+        content_html = caption_html + listing_html
+
+        source_filename = _source_output_filename(version_id, entry)
+        html = doc_template.render(
+            root="../",
+            slug=slug,
+            doc_filename=source_filename,
+            version_id=version_id,
+            title=entry["label"],
+            description=source["description"],
+            content=Markup(content_html),
+            back_url=f"{version_id}.html",
+            back_label=f"{disassembly_title} disassembly",
+        )
+
+        output_filepath = output_dirpath / source_filename
+        output_filepath.write_text(html)
+        print(f"  {slug}/{source_filename}")
+        if pages is not None:
+            pages.append({
+                "url": f"{BASE_URL}{slug}/{source_filename}",
             })
 
 
@@ -1117,7 +1318,8 @@ def _rewrite_md_links_to_html(html, analyses):
 def _render_analysis_pages(env, source, output_dirpath,
                            version_anchors=None, glossary_lookup=None,
                            pages=None, version_mm_links=None,
-                           version_labels=None, glossary_slug_lookup=None):
+                           version_labels=None, glossary_slug_lookup=None,
+                           source_page_map=None):
     """Build project-level analysis pages from acornaeology.json.
 
     Each entry in `source["analyses"]` points to a Markdown file
@@ -1179,6 +1381,12 @@ def _render_analysis_pages(env, source, output_dirpath,
             default_version=None,
             source_label=src_label,
             version_mm_links=version_mm_links)
+
+        # Repoint GitHub-relative links to repo source files at their
+        # rendered site pages.
+        content_html = _rewrite_source_file_links(
+            content_html, md_filepath.parent, source_page_map)
+
         html = doc_template.render(
             root="../",
             slug=slug,
