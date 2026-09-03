@@ -36,6 +36,7 @@ CACHE_DIRPATH = REPO_ROOT / ".cache"
 # in this order under these headings; empty groups are omitted.
 LINK_CATEGORIES = [
     ("ours", "This disassembly"),
+    ("download", "Downloads"),
     ("rom-image", "ROM image"),
     ("source", "Sources consulted"),
     ("related", "Further reading"),
@@ -60,6 +61,7 @@ _ICON_LINK_CATEGORY = {
     "code": "ours",
     "chat": "discussion",
     "bug": "feedback",
+    "disc": "download",
 }
 DEFAULT_LINK_CATEGORY = "related"
 
@@ -376,6 +378,35 @@ def load_sources():
     return result
 
 
+def _localise_reference_assets(references, repo_dirpath, slug, output_dirpath):
+    """Serve repo-local reference files from the site and rewrite their URLs.
+
+    A reference whose ``url`` is a repo-relative path to a file in the source
+    repo (e.g. ``docs/sn74ls157.pdf`` or ``disc/foo.ssd``) would otherwise be
+    a dead link: the generator copies no source-repo files. Copy any such file
+    to ``<output>/<slug>/<url>`` and rewrite the reference ``url`` to the
+    absolute site URL, so it resolves identically from the index and every
+    version page. URLs that are external (scheme-qualified), site-absolute, a
+    fragment/mailto, or that don't resolve to a real file inside the repo are
+    left untouched.
+    """
+    repo_root = repo_dirpath.resolve()
+    for ref in references:
+        url = ref.get("url", "")
+        if not url or "://" in url or url.startswith(("/", "#", "mailto:")):
+            continue
+        src_filepath = (repo_dirpath / url).resolve()
+        if not src_filepath.is_file():
+            continue
+        # Never copy from outside the source repo.
+        if not src_filepath.is_relative_to(repo_root):
+            continue
+        dst_filepath = output_dirpath / url
+        dst_filepath.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_filepath, dst_filepath)
+        ref["url"] = f"{BASE_URL}{slug}/{Path(url).as_posix()}"
+
+
 def build_disassemblies(env, sources, pages):
     """Build disassembly pages from external disassembly repos."""
     rom_index_template = env.get_template("_rom_index.html")
@@ -391,6 +422,11 @@ def build_disassemblies(env, sources, pages):
         # Create output directory
         output_dirpath = OUTPUT_DIRPATH / slug
         output_dirpath.mkdir(parents=True, exist_ok=True)
+
+        # Copy repo-local reference files (PDFs, disc images, …) into the
+        # output and rewrite their URLs to the served copies.
+        _localise_reference_assets(
+            source["references"], repo_dirpath, slug, output_dirpath)
 
         # Load and parse glossary if present
         glossary = None
