@@ -15,8 +15,8 @@ window.name = "memory-map";
 <h1>{{ title }} Memory Map</h1>
 <p class="doc-back"><a href="./">&larr; {{ name }}</a></p>
 
-<p>Addresses outside the ROM used by {{ title }} at run time — zero-page
-workspace, RAM buffers, and memory-mapped I/O. For the ROM code
+<p>Addresses outside {{ title }}'s own code that it uses at run time — zero-page
+workspace, RAM buffers, and memory-mapped I/O. For the code
 itself{% if rom_start_hex %} (<code>&amp;{{ rom_start_hex }}</code>{% if rom_end_hex %}&ndash;<code>&amp;{{ rom_end_hex }}</code>{% endif %}){% endif %}, see the
 <a href="{{ version_id }}.html">disassembly listing</a>.</p>
 
