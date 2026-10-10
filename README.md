@@ -1,6 +1,6 @@
 # acornaeology.uk
 
-[![Deploy to GitHub Pages](https://github.com/acornaeology/acornaeology.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/acornaeology/acornaeology.github.io/actions/workflows/deploy.yml)
+[![CI](https://github.com/acornaeology/acornaeology.github.io/actions/workflows/ci.yml/badge.svg)](https://github.com/acornaeology/acornaeology.github.io/actions/workflows/ci.yml)
 
 Static site generator for [acornaeology.uk](https://acornaeology.uk), a collection of resources for exploring the software and hardware of Acorn Computers.
 
