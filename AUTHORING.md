@@ -257,14 +257,19 @@ collapse to a single `for … next` line in the asm output. Use
 `fill()` to mark them; the round-trip verify still expects the
 exact byte pattern.
 
-### 4.2 Subroutine-style banners on data
+### 4.2 Banners on data
 
-`subroutine()` can be used on data addresses too, deliberately, to
-put a visible section break in the HTML listing between large fill
-regions, the hardware vector table, or any other landmark. Pick a
-name that makes sense as a heading (`rom_body_gap`,
-`hardware_vectors`, etc.) and write a description that explains
-what the region is and why it's there.
+Give every data region that is logically separate from the code
+before it a banner, to put a visible section break in the HTML
+listing between large fill regions, the hardware vector table, or
+any other landmark: `d.banner(addr, title=..., description=...)`
+plus `d.label(addr, name)`. Pick a name that makes sense as a
+heading (`rom_body_gap`, `hardware_vectors`, etc.) and write a
+description that explains what the region is and why it's there.
+
+Don't use `subroutine()` for this: it declares the address as a
+code entry point, so the disassembler decodes the table as
+instructions.
 
 ---
 
@@ -362,9 +367,9 @@ journey:
 
 - ✗ "I originally mis-labelled this routine `foo_bar` before
    realising it was actually `foo_baz`…"
-- ✓ "`foo_baz` … (earlier drafts used the name `foo_bar`, which
-   reflected its use in a single caller rather than its general
-   role)."
+- ✓ "`foo_baz` …", describing the routine as it is. The old name,
+   and why it changed, belong in the commit message, not the
+   published text.
 
 Keep internal-monologue commentary out of committed descriptions
 and analyses – it's conversation context, not published content.
