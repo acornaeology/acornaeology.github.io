@@ -48,6 +48,12 @@ named by address alone collide when moves share or overlap addresses
 (#15), and a move-aware scheme is meant to replace them in that one
 module.
 
+**Existing `addr-XXXX` ids are permalinks and must never change.** That
+covers run- and stored-address anchors alike. A new scheme may only add
+ids, such as extra move-qualified aliases, or qualify ids that are
+duplicated today and so already broken. Check any anchor change by
+building the published sources and diffing the output against master.
+
 ### Schema versions
 
 Each disassembly JSON carries `meta.schema_version` (integer). The generator
