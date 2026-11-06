@@ -10,6 +10,10 @@ uv run python -m generator.build
 
 This cleans `output/`, copies static assets from `site/`, renders Jinja2 templates, and generates disassembly pages from JSON data. Output goes to `output/` (gitignored). Deployed to GitHub Pages via `.github/workflows/deploy.yml` on push to `master`.
 
+Add `--sources PATH` to build from a different sources list, e.g. to add
+an unpublished sibling checkout without editing `data/sources.json`.
+Relative `path` entries resolve against that file's directory.
+
 ## Tests
 
 ```bash

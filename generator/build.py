@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static site builder for acornaeology.uk"""
 
+import argparse
 import json
 import re
 import shutil
@@ -275,13 +276,15 @@ def build_templates(env, roms, pages):
             pages.append({"url": url})
 
 
-def resolve_source(source):
+def resolve_source(source, base_dirpath=DATA_DIRPATH):
     """Resolve a disassembly source to a local directory path.
 
-    Uses the local path if available, otherwise clones the repo.
+    Uses the local path if available, otherwise clones the repo. A
+    relative `path` is resolved against `base_dirpath`, the directory
+    of the sources file that lists it.
     """
     if "path" in source:
-        local_dirpath = (DATA_DIRPATH / source["path"]).resolve()
+        local_dirpath = (base_dirpath / source["path"]).resolve()
         if local_dirpath.is_dir():
             return local_dirpath
 
@@ -304,12 +307,14 @@ def resolve_source(source):
     return clone_dirpath
 
 
-def load_sources():
+DEFAULT_SOURCES_FILEPATH = DATA_DIRPATH / "sources.json"
+
+
+def load_sources(sources_filepath=DEFAULT_SOURCES_FILEPATH):
     """Load and resolve all disassembly sources.
 
     Returns a list of dicts with manifest metadata and resolved repo path.
     """
-    sources_filepath = DATA_DIRPATH / "sources.json"
     if not sources_filepath.exists():
         return []
 
@@ -317,7 +322,8 @@ def load_sources():
     result = []
 
     for source in sources:
-        repo_dirpath = resolve_source(source)
+        repo_dirpath = resolve_source(
+            source, base_dirpath=sources_filepath.parent)
         repo_url = source["repo"]
 
         manifest_filepath = repo_dirpath / "acornaeology.json"
@@ -1922,7 +1928,20 @@ def copy_static():
             print(f"  {filepath.name}")
 
 
-def main():
+def _parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--sources", dest="sources_filepath", type=Path,
+        default=DEFAULT_SOURCES_FILEPATH,
+        help="JSON list of disassembly sources to build (default: "
+             "data/sources.json). Relative local paths in it resolve "
+             "against its own directory, so a private sources file can "
+             "add unpublished checkouts without editing the committed one.")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = _parse_args(argv)
     print("Building acornaeology.uk...")
 
     # Clean output
@@ -1941,7 +1960,7 @@ def main():
     copy_static()
 
     # Load disassembly sources
-    sources = load_sources()
+    sources = load_sources(args.sources_filepath.resolve())
 
     # Track all pages for sitemap and feed
     pages = []
