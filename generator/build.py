@@ -1957,7 +1957,7 @@ def _filter_subroutines(data, anchors):
     in_range = [s for s in combined if load_addr <= s["addr"] < end_addr]
     in_range.sort(key=lambda s: s["addr"])
     return [
-        {**s, "anchor": anchors.row_ids(s)[0]}
+        {**s, "anchor": anchors.entry_link_id(s)}
         for s in in_range
     ]
 

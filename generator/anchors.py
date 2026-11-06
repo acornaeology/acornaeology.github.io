@@ -285,6 +285,26 @@ class AnchorIndex:
         ident = self._ids.get((_RUN, key)) or anchor_id(entry["addr"])
         return ident, list(self._aliases.get((_RUN, key), []))
 
+    def entry_link_id(self, entry):
+        """The id for a link to `entry` (a subroutine or banner).
+
+        That is its row's id; else, if some row already answers to the
+        plain id at its address (e.g. a stored-address anchor), that id,
+        since the link already lands there; else, for an entry point
+        inside another row's item (overlapping code), the id of the row
+        containing it in the same copy."""
+        key = row_key(entry)
+        if (_RUN, key) in self._ids:
+            return self._ids[(_RUN, key)]
+        if entry["addr"] in self._claims:
+            return anchor_id(entry["addr"])
+        move = entry.get("move")
+        flags = (LinkFlags(move=move) if move is not None
+                 else LinkFlags() if entry.get("binary_addr") is not None
+                 else LinkFlags(unmoved=True))
+        resolution = self.resolve(entry["addr"], flags, include_stored=False)
+        return resolution.id if resolution else anchor_id(entry["addr"])
+
     def stored_ids(self, entry):
         """`(id, aliases)` for a relocated row's stored-address anchor,
         or `(None, [])` if `entry` isn't relocated."""

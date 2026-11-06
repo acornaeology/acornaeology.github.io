@@ -277,6 +277,28 @@ class TestSubroutineNavAnchors:
                 for s in _filter_subroutines(data, anchors)] == [
             ("a", "addr-8000"), ("b", "addr-8003")]
 
+    def test_entry_point_inside_an_instruction_links_to_its_row(self):
+        # osword_12_handler in NFS 3.35D enters at &8E7C, the operand of
+        # the 3-byte instruction at &8E7A (a BIT-skip entry).
+        data = {
+            "meta": {"load_addr": 0x8000, "end_addr": 0xC000},
+            "items": [{"addr": 0x8E7A}, {"addr": 0x8E7D}],
+            "subroutines": [{"addr": 0x8E7C, "name": "osword_12_handler"}],
+        }
+        anchors = AnchorIndex.from_data(data)
+        assert _filter_subroutines(data, anchors)[0]["anchor"] == "addr-8E7A"
+
+    def test_entry_at_a_stored_address_keeps_its_working_link(self):
+        # ADFS 1.30's nmi_write_code is listed at its stored address,
+        # which a relocated row already answers to.
+        data = {
+            "meta": {"load_addr": 0x8000, "end_addr": 0xC000},
+            "items": [{"addr": 0x0D0A, "binary_addr": 0xBCDF}],
+            "subroutines": [{"addr": 0xBCDF, "name": "nmi_write_code"}],
+        }
+        anchors = AnchorIndex.from_data(data)
+        assert _filter_subroutines(data, anchors)[0]["anchor"] == "addr-BCDF"
+
     def test_overlay_subroutines_link_to_their_own_copy(self):
         data = dict(OVERLAYS, meta=dict(OVERLAYS["meta"], load_addr=0, end_addr=0x10000))
         anchors = AnchorIndex.from_data(data)
