@@ -22,5 +22,9 @@
     {
         "repo": "https://github.com/acornaeology/voltmace-delta14b-driver",
         "path": "../../voltmace-delta14b-driver"
+    },
+    {
+        "repo": "https://github.com/acornaeology/dunjunz",
+        "path": "../../dunjunz"
     }
 ]
