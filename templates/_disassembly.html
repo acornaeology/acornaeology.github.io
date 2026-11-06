@@ -59,13 +59,16 @@
 window.name = "listing";
 </script>
 
+{# Extra ids for a row: move-qualified permalinks for moved copies (see
+   generator/anchors.py). The row's own id stays on its <tr>. -#}
+{% macro alias_spans(ids) %}{% for alias in ids or [] %}<span id="{{ alias }}"></span>{% endfor %}{% endmacro -%}
 <div class="listing">
 {% for section in sections %}
 <table{% if section.has_binary_addr %} class="relocated"{% endif %}>
 {% for line in section.lines %}
 {% if line.banner %}
 <tr{% if line.id %} id="{{ line.id }}"{% endif %}>
-<td colspan="{{ 3 if section.has_binary_addr else 2 }}">{{ line.html }}</td>
+<td colspan="{{ 3 if section.has_binary_addr else 2 }}">{{ alias_spans(line.alias_ids) }}{{ line.html }}</td>
 </tr>
 {% if section.has_binary_addr %}
 <tr class="addr-header"><th>{{ source_addr_label | default("ROM", true) }}</th><th>Exec</th><th></th></tr>
@@ -74,14 +77,14 @@ window.name = "listing";
 <tr{% if line.id %} id="{{ line.id }}"{% endif %}>
 {% if section.has_binary_addr %}
 {% if line.binary_addr %}
-<td class="addr">{% if line.binary_addr %}<span id="{{ line.binary_addr_id }}"></span><a href="#{{ line.binary_addr_id }}">{{ line.binary_addr }}</a>{% endif %}</td>
-<td class="addr runtime-addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
+<td class="addr">{% if line.binary_addr %}<span id="{{ line.binary_addr_id }}"></span>{{ alias_spans(line.binary_alias_ids) }}<a href="#{{ line.binary_addr_id }}">{{ line.binary_addr }}</a>{% endif %}</td>
+<td class="addr runtime-addr">{{ alias_spans(line.alias_ids) }}{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
 {% else %}
-<td class="addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
+<td class="addr">{{ alias_spans(line.alias_ids) }}{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
 <td class="addr runtime-addr"></td>
 {% endif %}
 {% else %}
-<td class="addr">{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
+<td class="addr">{{ alias_spans(line.alias_ids) }}{% if line.addr %}<a href="#{{ line.addr_id }}">{{ line.addr }}</a>{% endif %}</td>
 {% endif %}
 <td>{{ line.html }}</td>
 </tr>

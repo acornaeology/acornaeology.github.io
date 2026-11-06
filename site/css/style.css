@@ -763,6 +763,13 @@ hr {
     background: var(--rule);
 }
 
+/* Which copy of moved code a caller is in, shown only when two copies
+   call from the same address. */
+.listing .ref-popup .ref-copy {
+    color: var(--dim);
+    font-style: italic;
+}
+
 .listing .label:hover .ref-popup {
     display: block;
 }

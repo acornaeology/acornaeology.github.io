@@ -2,13 +2,12 @@
 
 import html as html_mod
 import re
-from collections import namedtuple
+from collections import Counter, namedtuple
 
 from markupsafe import Markup, escape
 
-from .anchors import (
-    anchor_id, nearest_at_or_before, row_anchor_id, stored_anchor_id)
-from .markdown_listing import listing_context, render_markdown
+from .anchors import AnchorIndex, nearest_at_or_before
+from .markdown_listing import current_anchors, listing_context, render_markdown
 
 CONTENT_MAX_WIDTH = 64
 RELOCATED_MAX_WIDTH = 58
@@ -120,7 +119,8 @@ def build_label_addrs(data):
     return label_addrs
 
 
-def process_disassembly(data, version_id=None, glossary_lookup=None):
+def process_disassembly(data, version_id=None, glossary_lookup=None,
+                        anchors=None):
     """Process structured JSON into sections of template-ready lines.
 
     `version_id` is the per-version URL stem (e.g. `"1"` for
@@ -129,6 +129,9 @@ def process_disassembly(data, version_id=None, glossary_lookup=None):
     to the memory-map page, using a named `target="memory-map"`
     window so repeat clicks across a session share a single
     side-by-side memory-map window.
+
+    `anchors` is the listing's `AnchorIndex`; built from `data` when
+    omitted.
 
     Returns a list of section dicts, each with:
         lines           - list of line dicts
@@ -253,6 +256,9 @@ def process_disassembly(data, version_id=None, glossary_lookup=None):
         macro_names=macro_names,
     )
 
+    if anchors is None:
+        anchors = AnchorIndex.from_data(data)
+
     # Pre-scan to find which subroutine sections contain relocated code
     relocated_sections = _find_relocated_sections(data["items"], sub_lookup)
 
@@ -261,7 +267,7 @@ def process_disassembly(data, version_id=None, glossary_lookup=None):
     in_relocated = False
     # Scope the label:/glossary: resolution context for every
     # render_markdown call reached from this listing.
-    with listing_context(label_addrs, glossary_lookup):
+    with listing_context(label_addrs, glossary_lookup, anchors):
         for item in data["items"]:
             key = (item["addr"], item.get("binary_addr"))
             sub = sub_lookup.get(key)
@@ -330,14 +336,19 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                   max_width=CONTENT_MAX_WIDTH, expr_ctx=None):
     lines = []
     addr = item["addr"]
-    addr_id = row_anchor_id(item)
+    anchors = current_anchors()
+    addr_id, alias_ids = anchors.row_ids(item)
+    # The row's id (and any alias ids) go on its first line.
+    first_line_ids = {"id": addr_id}
+    if alias_ids:
+        first_line_ids["alias_ids"] = alias_ids
     addr_display = f"{addr:04X}"
     id_used = False
     addr_shown = False
 
     # ROM source address for relocated code
     binary_addr_raw = item.get("binary_addr")
-    binary_addr_id = stored_anchor_id(item)
+    binary_addr_id, binary_alias_ids = anchors.stored_ids(item)
     if binary_addr_raw is not None:
         binary_addr_display = f"{binary_addr_raw:04X}"
     else:
@@ -383,7 +394,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
     # --- BEFORE_LABEL: ATX headings, then banner card, then prose ---
     for level, text in h_before_label:
         lines.append({
-            "id": addr_id if not id_used else None,
+            **(first_line_ids if not id_used else {"id": None}),
             "addr": None,
             "html": _render_heading_card(level, text, valid_addrs,
                                          sorted_addrs, label_tooltips, mm_links),
@@ -394,7 +405,7 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
 
     if has_banner and banner_align == "before_label":
         lines.append({
-            "id": addr_id if not id_used else None,
+            **(first_line_ids if not id_used else {"id": None}),
             "addr": None,
             "html": _render_subroutine_header(sub, valid_addrs, sorted_addrs,
                                               label_tooltips, mm_links),
@@ -415,11 +426,13 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
             f'<span class="label">.{escape(label_name)}{ref_html}</span>'
         )
         lines.append({
-            "id": addr_id if not id_used else None,
+            **(first_line_ids if not id_used else {"id": None}),
             "addr": addr_display if not addr_shown else None,
             "addr_id": addr_id,
             "binary_addr": binary_addr_display if not addr_shown else None,
             "binary_addr_id": binary_addr_id,
+            **({"binary_alias_ids": binary_alias_ids}
+               if binary_alias_ids and not addr_shown else {}),
             "html": label_html,
         })
         id_used = True
@@ -487,11 +500,13 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                                     region_anchors, render_width, expr_ctx)
 
     line_dict = {
-        "id": addr_id if not id_used else None,
+        **(first_line_ids if not id_used else {"id": None}),
         "addr": addr_display if not addr_shown else None,
         "addr_id": addr_id,
         "binary_addr": binary_addr_display if not addr_shown else None,
         "binary_addr_id": binary_addr_id,
+        **({"binary_alias_ids": binary_alias_ids}
+           if binary_alias_ids and not addr_shown else {}),
         "html": content_html,
         "_inline_comment": inline_comment,
         "_max_width": max_width,
@@ -1265,31 +1280,49 @@ def _classify_references(references):
     dasmos (acornaeology/dasmos#36) emits each reference as
     `{addr, kind, move_id?}`, where `kind` is the `ReferenceKind` \u2014 so
     the direct/index-base distinction is read straight off the data.
-    Returns `(direct_addrs, index_only_addrs)` as sorted lists of
-    distinct runtime addresses. An address touched directly anywhere is
-    direct even if also used as a base elsewhere (a mixed target), so the
-    index-only list excludes it \u2014 matching dasmos's own summary wording.
+    Returns `(direct, index_only)` as sorted lists of distinct
+    `(addr, move)` callers: the caller's runtime address and the move its
+    code is stored in (dasmos >= 4.4.0; None for unmoved code), since two
+    copies of the code can call from the same runtime address. A caller
+    that touches the target directly anywhere is direct even if also
+    using it as a base elsewhere (a mixed target), so the index-only list
+    excludes it \u2014 matching dasmos's own summary wording.
     """
     direct = set()
     index = set()
     for ref in references or []:
-        addr = ref["addr"]
+        caller = (ref["addr"], ref.get("move"))
         target = index if ref.get("kind") in _INDEX_BASE_KINDS else direct
-        target.add(addr)
-    return sorted(direct), sorted(index - direct)
+        target.add(caller)
+    def order(caller):
+        return (caller[0], caller[1] or "")
+    return sorted(direct, key=order), sorted(index - direct, key=order)
 
 
-def _ref_entry_html(ref_addr, item_by_addr):
-    """Render one caller line in the come-from popup."""
-    ref_item = item_by_addr.get(ref_addr)
+def _ref_entry_html(caller, item_by_addr, show_move=False):
+    """Render one caller line in the come-from popup.
+
+    `caller` is `(addr, move)`, linked to that copy's row. `show_move`
+    names the copy, for when another listed caller shares the address.
+    """
+    ref_addr, move = caller
+    anchors = current_anchors()
+    ref_item = anchors.copy_item(ref_addr, move) or item_by_addr.get(ref_addr)
     if ref_item and ref_item.get("type") == "code":
         mnemonic = ref_item["mnemonic"].upper()
     else:
         mnemonic = "ref"
     return (
-        f'<a href="#{anchor_id(ref_addr)}">'
-        f'\u2190 {ref_addr:04X} {escape(mnemonic)}</a>'
+        f'<a href="#{anchors.link_id(ref_addr, move)}">'
+        f'\u2190 {ref_addr:04X} {escape(mnemonic)}'
+        f'{_copy_suffix(move) if show_move else ""}</a>'
     )
+
+
+def _copy_suffix(move):
+    """Names the copy of moved code a come-from caller is in."""
+    return f' <span class="ref-copy">({escape(move or "unmoved")})</span>'
+
 
 
 def _render_ref_popup(references, item_by_addr):
@@ -1304,6 +1337,13 @@ def _render_ref_popup(references, item_by_addr):
     """
     direct_refs, index_refs = _classify_references(references)
     count = len(direct_refs) + len(index_refs)
+    # Name the copy only where two copies call from the same address.
+    addr_counts = Counter(addr for addr, _ in direct_refs + index_refs)
+
+    def entry(caller):
+        return _ref_entry_html(caller, item_by_addr,
+                               show_move=addr_counts[caller[0]] > 1)
+
     parts = [
         f'<span class="ref-badge">\u2190{count}</span>',
         '<span class="ref-popup">',
@@ -1312,11 +1352,11 @@ def _render_ref_popup(references, item_by_addr):
     if index_refs:
         if direct_refs:
             parts.append('<span class="ref-group-label">Referenced by</span>')
-            parts.extend(_ref_entry_html(r, item_by_addr) for r in direct_refs)
+            parts.extend(entry(r) for r in direct_refs)
         parts.append('<span class="ref-group-label">Used as index base by</span>')
-        parts.extend(_ref_entry_html(r, item_by_addr) for r in index_refs)
+        parts.extend(entry(r) for r in index_refs)
     else:
-        parts.extend(_ref_entry_html(r, item_by_addr) for r in direct_refs)
+        parts.extend(entry(r) for r in direct_refs)
 
     parts.append('</span>')
     return Markup("".join(parts))
@@ -1539,7 +1579,8 @@ def _render_code(item, valid_addrs, label_tooltips, mm_links, region_anchors):
     return html
 
 
-def _operand_label_ref(addr, label, valid_addrs, label_tooltips, mm_links):
+def _operand_label_ref(addr, label, valid_addrs, label_tooltips, mm_links,
+                       move=None, label_name=None):
     """Build the `<a>`/`<span>` markup that links a label substring.
 
     Three cases, in priority order:
@@ -1552,6 +1593,10 @@ def _operand_label_ref(addr, label, valid_addrs, label_tooltips, mm_links):
 
     `label` is the already-escaped substring to wrap; `label_tooltips`
     supplies the `data-tip` brief, falling back to the bare `&XXXX`.
+
+    When several copies run at `addr`, the link goes to the row carrying
+    `label_name` if given, else to the copy stored in `move` (an
+    operand's `target_move`), else to the default copy.
     """
     tip = label_tooltips.get(addr, f"&{addr:04X}")
     if addr in mm_links:
@@ -1561,7 +1606,10 @@ def _operand_label_ref(addr, label, valid_addrs, label_tooltips, mm_links):
             f' data-tip="{escape(tip)}">{label}</a>'
         )
     if addr in valid_addrs:
-        return (f'<a href="#{anchor_id(addr)}"'
+        anchors = current_anchors()
+        fragment = ((label_name and anchors.label_link_id(label_name))
+                    or anchors.link_id(addr, move))
+        return (f'<a href="#{fragment}"'
                 f' data-tip="{escape(tip)}">{label}</a>')
     return (f'<span class="ext-label"'
             f' data-tip="{escape(tip)}">{label}</span>')
@@ -1595,7 +1643,8 @@ def _linkify_operand(operand, item, valid_addrs, label_tooltips, mm_links,
         escaped_label = str(escape(target_label))
         if escaped_label in escaped_operand:
             replacement = _operand_label_ref(
-                target, escaped_label, valid_addrs, label_tooltips, mm_links)
+                target, escaped_label, valid_addrs, label_tooltips, mm_links,
+                move=item.get("target_move"))
             return Markup(escaped_operand.replace(escaped_label, replacement, 1))
         return escape(operand)
 
@@ -1786,7 +1835,7 @@ def _linkify_expr(text, tree, expr_ctx):
     for name, addr in label_refs.items():
         replacements[name] = _operand_label_ref(
             addr, str(escape(name)), expr_ctx.valid_addrs,
-            expr_ctx.label_tooltips, expr_ctx.mm_links)
+            expr_ctx.label_tooltips, expr_ctx.mm_links, label_name=name)
     for name in macro_refs:
         replacements.setdefault(
             name,

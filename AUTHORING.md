@@ -41,6 +41,14 @@ Supported target forms:
 - `address:HEX?hex` – appends a second hyperlink ` (&HEX)` so the
   label and the hex are both clickable. Use for the first mention
   of a routine in a prose block.
+- `address:HEX?move=NAME`, `?unmoved`, `?stored` – which copy to
+  link to when moves overlap (two overlays of one RAM region, or a
+  stored range overlapping run addresses). NAME is a move name from
+  `d.add_move(..., name=)`. Without a selector, a link to an address
+  where several copies sit goes to the unmoved code, else the first
+  move, and the build warns. Combine flags with `&`
+  (`?move=low_joystick&hex`). Prefer `label:NAME` (below), which always
+  links to the copy carrying that label.
 
 Resolution (HTML pipeline):
 

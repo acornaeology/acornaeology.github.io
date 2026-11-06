@@ -42,14 +42,14 @@ from mistletoe import span_token, token as mistletoe_token
 from markupsafe import Markup
 from mistletoe.html_renderer import HTMLRenderer
 
-from .anchors import anchor_id, nearest_at_or_before
+from .anchors import AnchorIndex, parse_link_flags
 
 
 _ADDRESS_URI_TARGET_RE = re.compile(
     r'^address:'
     r'(?P<hex>[0-9A-Fa-f]{4,})'
     r'(?:@[^?]+)?'         # @version: ignored in listing context
-    r'(?:\?(?P<flag>[^&]*))?'
+    r'(?:\?(?P<flag>\S*))?'  # ?flag[&flag...], see anchors.parse_link_flags
     r'$',
     re.IGNORECASE,
 )
@@ -62,7 +62,7 @@ _LABEL_URI_TARGET_RE = re.compile(
     r'^label:'
     r'(?P<name>[^@?]+)'
     r'(?:@[^?]+)?'
-    r'(?:\?(?P<flag>[^&]*))?'
+    r'(?:\?(?P<flag>\S*))?'
     r'$',
 )
 
@@ -80,20 +80,28 @@ _GLOSSARY_URI_TARGET_RE = re.compile(r'^glossary:(?P<slug>\S+)$')
 # mm_links, the listing renderer sets them once via `listing_context`;
 # `render_markdown` falls back to this when the maps aren't passed
 # explicitly (they are in unit tests).
-_LISTING_CONTEXT = {"label_addrs": {}, "glossary_lookup": {}}
+_LISTING_CONTEXT = {"label_addrs": {}, "glossary_lookup": {}, "anchors": None}
 
 
 @contextmanager
-def listing_context(label_addrs=None, glossary_lookup=None):
-    """Scope the label->address map and glossary lookup used to resolve
-    `label:` / `glossary:` links for the duration of a listing render."""
+def listing_context(label_addrs=None, glossary_lookup=None, anchors=None):
+    """Scope the label->address map, the glossary lookup and the listing's
+    `AnchorIndex` used to resolve links for the duration of a listing
+    render."""
     prev = dict(_LISTING_CONTEXT)
     _LISTING_CONTEXT["label_addrs"] = label_addrs or {}
     _LISTING_CONTEXT["glossary_lookup"] = glossary_lookup or {}
+    _LISTING_CONTEXT["anchors"] = anchors
     try:
         yield
     finally:
         _LISTING_CONTEXT.update(prev)
+
+
+def current_anchors():
+    """The `AnchorIndex` of the listing being rendered, or an empty one
+    outside a listing render (whose lookups fall back to plain ids)."""
+    return _LISTING_CONTEXT["anchors"] or AnchorIndex()
 
 
 class ListingHTMLRenderer(HTMLRenderer):
@@ -125,6 +133,7 @@ class ListingHTMLRenderer(HTMLRenderer):
         self.label_tooltips = {}
         self.label_addrs = {}       # {label_name: addr} for label: links
         self.glossary_lookup = {}   # {term: {"slug", "tooltip", ...}}
+        self.anchors = AnchorIndex()  # the listing's anchors
 
     def render_code_fence(self, token):
         language = getattr(token, "language", "") or ""
@@ -165,16 +174,28 @@ class ListingHTMLRenderer(HTMLRenderer):
             return super().render_link(token)
 
         hex_str = m.group("hex").upper()
-        flag = (m.group("flag") or "").lower()
+        flags = self._link_flags(m.group("flag"), f"address:{hex_str}")
         addr = int(hex_str, 16)
         inner = self.render_inner(token)
 
-        return self._address_anchor(addr, hex_str, flag, inner)
+        return self._address_anchor(addr, hex_str, flags, inner)
 
-    def _address_anchor(self, addr, hex_str, flag, inner):
+    @staticmethod
+    def _link_flags(flag_str, what):
+        flags = parse_link_flags(flag_str)
+        if flags.error:
+            print(f"  Warning: {what} -- {flags.error}")
+        return flags
+
+    def _address_anchor(self, addr, hex_str, flags, inner, fragment=None):
         """Emit the resolved `<a>` for an address (shared by address: and
-        label: links)."""
-        href, extra_attrs = self._resolve_address_href(addr, hex_str)
+        label: links). `fragment`, when given, is the anchor already
+        resolved for a label."""
+        if fragment is not None:
+            href, extra_attrs = f"#{fragment}", ""
+        else:
+            href, extra_attrs = self._resolve_address_href(
+                addr, hex_str, flags)
 
         # Enrich the tooltip from the label_tooltips lookup so hovering
         # a comment link gives the same "&XXXX - title / brief" text as
@@ -183,21 +204,26 @@ class ListingHTMLRenderer(HTMLRenderer):
         tip = self.label_tooltips.get(addr, f"&{hex_str}")
         tip_attr = f' data-tip="{html_escape(tip)}"'
 
-        if flag == "hex":
+        if flags.hex:
             return (f'<a{extra_attrs} href="{href}"{tip_attr}>{inner}</a> '
                     f'(<a{extra_attrs} href="{href}"{tip_attr}><code>&amp;{hex_str}</code></a>)')
         return f'<a{extra_attrs} href="{href}"{tip_attr}>{inner}</a>'
 
     def _render_label_link(self, name, flag, token):
         """Resolve `label:NAME` to its address for this version, then emit
-        the same anchor an equivalent `address:HEX` would."""
+        the same anchor an equivalent `address:HEX` would. A label carried
+        by a listing row links to that exact row (its copy, with moves)."""
         inner = self.render_inner(token)
         addr = self.label_addrs.get(name)
         if addr is None:
             print(f"  Warning: label:{name} -- unknown label in this version")
             return f'<a href="label:{html_escape(name)}">{inner}</a>'
-        return self._address_anchor(addr, f"{addr:04X}",
-                                    (flag or "").lower(), inner)
+        flags = self._link_flags(flag, f"label:{name}")
+        fragment = None
+        if not flags.selects_copy and addr not in self.mm_links:
+            fragment = self.anchors.label_link_id(name)
+        return self._address_anchor(addr, f"{addr:04X}", flags, inner,
+                                    fragment=fragment)
 
     def _render_glossary_link(self, slug, token):
         """Emit the glossary-ref anchor for `glossary:SLUG` (the lookup is
@@ -211,27 +237,35 @@ class ListingHTMLRenderer(HTMLRenderer):
         return (f'<a href="glossary.html#term-{entry["slug"]}"'
                 f' class="glossary-ref"{tip_attr}>{inner}</a>')
 
-    def _resolve_address_href(self, addr, hex_str):
+    def _resolve_address_href(self, addr, hex_str, flags):
         """Resolve `address:HEX` to (href, extra_attrs).
 
-        Priority: memory-map entry -> ROM-range anchor (exact or
-        nearest preceding) -> unresolved (leave as `address:HEX`).
-        Returns a pair so the caller can attach `class=""` /
-        `target=""` for memory-map links without rebuilding them.
+        Priority: memory-map entry -> listing anchor (exact or nearest
+        preceding, in the copy `flags` selects) -> unresolved (leave as
+        `address:HEX`). Returns a pair so the caller can attach
+        `class=""` / `target=""` for memory-map links without rebuilding
+        them.
         """
-        if addr in self.mm_links:
+        if addr in self.mm_links and not (flags.move or flags.stored):
             return self.mm_links[addr], ' class="mm-link" target="memory-map"'
 
-        if addr in self.valid_addrs:
-            return f"#{anchor_id(addr)}", ""
+        if flags.move is not None and not self.anchors.has_move(flags.move):
+            print(f"  Warning: address:{hex_str}?move={flags.move} -- "
+                  f"unknown move")
+            return f"address:{hex_str}", ""
 
-        nearest = nearest_at_or_before(self.sorted_addrs, addr)
         # Only use nearest-preceding if the address is inside the
         # anchored range (between first and last). Outside that range
         # it's neither a memory-map entry nor a ROM reference -- almost
         # certainly an author typo.
-        if nearest is not None and addr <= self.sorted_addrs[-1]:
-            return f"#{anchor_id(nearest)}", ""
+        resolution = self.anchors.resolve(
+            addr, flags, include_stored=False, within_range=True)
+        if resolution is not None:
+            if resolution.ambiguous:
+                print(f"  Warning: address:{hex_str} -- several copies run "
+                      f"here; linking to #{resolution.id}. Name one with "
+                      f"?move=NAME or ?unmoved")
+            return f"#{resolution.id}", ""
 
         print(f"  Warning: address:{hex_str} -- no memory-map entry "
               f"and not in ROM range")
@@ -272,6 +306,11 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
         renderer.mm_links = mm_links or {}
         renderer.valid_addrs = valid_addrs
         renderer.sorted_addrs = sorted_addrs
+        # The listing's anchors; outside a listing render (tests), an
+        # index of unmoved rows at `valid_addrs`.
+        renderer.anchors = (
+            _LISTING_CONTEXT["anchors"]
+            or AnchorIndex.from_addrs(valid_addrs or ()))
         renderer.label_tooltips = label_tooltips or {}
         renderer.label_addrs = (
             label_addrs if label_addrs is not None

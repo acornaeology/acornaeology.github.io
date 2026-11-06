@@ -43,10 +43,18 @@ address to an anchor goes through `generator/anchors.py`. That covers
 row ids, stored-address ids for relocated rows, the subroutine sidebar,
 come-from popups, operand links, inline `address:`/`label:` links, and
 links from docs, analyses and memory maps (`AnchorIndex`, held per page
-in `version_anchors`). Don't format `addr-` ids anywhere else: anchors
-named by address alone collide when moves share or overlap addresses
-(#15), and a move-aware scheme is meant to replace them in that one
-module.
+in `version_anchors`). Don't format `addr-` ids anywhere else.
+
+Anchors are move-aware (#15). dasmos >= 4.4.0 names each item's move
+(`move`) and lists moves in `meta.moves`. A plain `addr-XXXX` claimed by
+one row stays that row's id. When copies collide, the plain id goes to
+unmoved code, then the first move, then a stored address, and the others
+become `addr-XXXX@MOVE` / `stored-XXXX`. Moved rows also carry those
+qualified forms as alias ids (empty `<span id>`s). Links can pick a copy
+with `?move=NAME` / `?unmoved` / `?stored`. Operand links follow
+`target_move`, come-from links `references[].move`, and `label:` links
+the row carrying the label. JSON from older dasmos can't qualify
+collisions; the build leaves those ids as they were and warns.
 
 **Existing `addr-XXXX` ids are permalinks and must never change.** That
 covers run- and stored-address anchors alike. A new scheme may only add

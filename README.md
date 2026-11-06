@@ -86,7 +86,15 @@ A `?flag` suffix tweaks the rendered output:
 
 - **`?hex`** — append `` (&<HEX>) `` after the label as a *second* hyperlink to the same anchor. The label and the hex each become their own `<a>` tag; the space, parentheses, and `&` sigil between them are deliberately outside both links, so a reader can click either the name or the address. The hex is `<code>`-styled and upper-cased for consistency regardless of how the author typed it.
 
-Unresolvable URIs (unknown version, missing `@version` in an analysis, address before the first anchor, unknown flag) print a build warning and leave the link unchanged rather than failing the build.
+- **`?move=NAME`**, **`?unmoved`**, **`?stored`** — choose which copy of the code to link to when moves overlap, e.g. two overlays of the same RAM. These link to: the copy stored in move NAME (a name from the JSON's `meta.moves`); the copy that runs where it is stored; or the row whose *stored* address `HEX` is. Without one of these, a link to an address where several copies sit goes to the default copy (unmoved code first, then the first move) with a build warning. A `label:` link always goes to the copy carrying the label.
+
+Combine flags with `&`: `[add points](address:0400@disc?move=low_joystick&hex)`.
+
+Unresolvable URIs (unknown version, missing `@version` in an analysis, address before the first anchor, unknown flag or move) print a build warning and leave the link unchanged rather than failing the build.
+
+### Anchors are permalinks
+
+Listing rows are anchored `#addr-XXXX`, and those ids never change. When copies of moved code share an address, the default copy keeps `#addr-XXXX`. The others are `#addr-XXXX@MOVE`, or `#stored-XXXX` for a stored address. Every moved row also answers to `#addr-XXXX@MOVE` (and `#stored-XXXX`), a link that stays put whatever else moves to that address. See `generator/anchors.py`.
 
 ## Author
 

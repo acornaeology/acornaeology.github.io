@@ -16,7 +16,7 @@ from markupsafe import Markup
 
 from datetime import datetime
 
-from .anchors import AnchorIndex, anchor_id, row_anchor_id
+from .anchors import AnchorIndex, anchor_id, parse_link_flags
 from .disassembly import build_label_addrs, build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import build_glossary_lookup, parse_glossary
@@ -628,8 +628,8 @@ def build_disassemblies(env, sources, pages):
                 continue
             data = json.loads(data_filepath.read_text())
 
-            # Anchors for links into this version's listing.
-            anchors = AnchorIndex.from_items(data["items"])
+            # Anchors for this version's listing, and for links into it.
+            anchors = _listing_anchors(data, f"{slug}/{version_id}.html")
             version_anchors[version_id] = anchors
 
             # Collect memory-map links for this version: addresses with
@@ -754,7 +754,7 @@ def build_disassemblies(env, sources, pages):
 
             sections = process_disassembly(
                 data, version_id=version_id,
-                glossary_lookup=glossary_slug_lookup)
+                glossary_lookup=glossary_slug_lookup, anchors=anchors)
             macros = build_macros(data)
 
             source_addr_label = _source_address_label(meta_filepath, rom_meta)
@@ -768,7 +768,7 @@ def build_disassemblies(env, sources, pages):
                 link_groups=link_groups,
                 sections=sections,
                 macros=macros,
-                subroutines=_filter_subroutines(data),
+                subroutines=_filter_subroutines(data, anchors),
                 updated_iso=updated_iso,
                 updated_display=updated_display,
                 source_addr_label=source_addr_label,
@@ -832,6 +832,19 @@ def build_disassemblies(env, sources, pages):
                                version_labels=version_labels,
                                glossary_slug_lookup=glossary_slug_lookup,
                                source_page_map=source_page_map)
+
+
+def _listing_anchors(data, page_label):
+    """Index a listing's anchors, warning about any duplicated ids it
+    can't qualify (JSON from dasmos before 4.4.0 doesn't name moves)."""
+    anchors = AnchorIndex.from_data(data)
+    duplicates = sorted(set(anchors.unresolved_duplicates))
+    if duplicates:
+        print(f"  Warning: {page_label} has {len(duplicates)} duplicated "
+              f"anchor ids (e.g. {duplicates[0]}) because copies overlap "
+              f"and the JSON doesn't name their moves; regenerate it with "
+              f"dasmos >= 4.4.0")
+    return anchors
 
 
 def _resolve_version_meta_filepath(version_dirpath):
@@ -963,13 +976,18 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
     3. Otherwise a warning is printed and the original `<a>` tag is
        left in place.
 
-    Flags (after `?`) supported:
+    Flags (after `?`, separated by `&`; see `anchors.parse_link_flags`):
 
     - `hex` — append ` (&<HEX>)` as a second hyperlink to the same
       anchor, with the hex formatted in `<code>` for visual parity
       with backticked labels. The space between the two links and the
       enclosing parentheses are deliberately outside the `<a>` tags so
       only the label and the hex itself are clickable.
+    - `move=NAME`, `unmoved`, `stored` — which copy of the code to link
+      to, when moves overlap: the copy stored in move NAME, the copy
+      that runs where it is stored, or the row whose stored address
+      this is. Without one, a link to an address where several copies
+      run goes to the default copy (see `anchors`) with a warning.
 
     Arguments:
 
@@ -995,9 +1013,18 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
         extra_attrs += f' target="{target}"'
 
     def rewrite(match):
-        hex_str, version, flag, label = match.groups()
+        hex_str, version, flag_str, label = match.groups()
         version = version or default_version
         src = f" ({source_label})" if source_label else ""
+        flags = parse_link_flags(flag_str)
+        where = f"address:{hex_str}@{version}"
+
+        def emit(attrs, url):
+            if not flags.hex:
+                return f'<a{attrs} href="{url}">{label}</a>'
+            hex_display = f'<code>&amp;{hex_str.upper()}</code>'
+            return (f'<a{attrs} href="{url}">{label}</a> '
+                    f'(<a{attrs} href="{url}">{hex_display}</a>)')
 
         if version is None:
             print(f"  Warning: address:{hex_str} has no @version qualifier "
@@ -1009,43 +1036,35 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
                   f"version{src}")
             return match.group(0)
 
-        addr = int(hex_str, 16)
-
-        # Priority 1: memory-map entry → memory-map page link.
-        mm_for_version = (version_mm_links or {}).get(version, {})
-        if addr in mm_for_version:
-            url = mm_for_version[addr]
-            mm_attrs = ' class="mm-link" target="memory-map"'
-            if not flag:
-                return f'<a{mm_attrs} href="{url}">{label}</a>'
-            if flag.lower() == "hex":
-                hex_display = f'<code>&amp;{hex_str.upper()}</code>'
-                return (f'<a{mm_attrs} href="{url}">{label}</a> '
-                        f'(<a{mm_attrs} href="{url}">{hex_display}</a>)')
-            print(f"  Warning: address:{hex_str}@{version} — unknown flag "
-                  f"'?{flag}'{src}")
+        if flags.error:
+            print(f"  Warning: {where} — {flags.error}{src}")
             return match.group(0)
+
+        addr = int(hex_str, 16)
+        anchors = version_anchors[version]
+
+        # Priority 1: memory-map entry → memory-map page link, unless the
+        # author asked for a particular copy of moved code.
+        mm_for_version = (version_mm_links or {}).get(version, {})
+        if addr in mm_for_version and not (flags.move or flags.stored):
+            return emit(' class="mm-link" target="memory-map"',
+                        mm_for_version[addr])
 
         # Priority 2: an anchor in the version's listing.
-        fragment = version_anchors[version].resolve(addr)
-        if fragment is None:
-            print(f"  Warning: address:{hex_str}@{version} — no anchor at "
-                  f"or before &{hex_str}{src}")
+        if flags.move is not None and not anchors.has_move(flags.move):
+            print(f"  Warning: {where} — unknown move "
+                  f"'{flags.move}'{src}")
             return match.group(0)
-
-        url = f"{version}.html#{fragment}"
-
-        if not flag:
-            return f'<a{extra_attrs} href="{url}">{label}</a>'
-
-        if flag.lower() == "hex":
-            hex_display = f'<code>&amp;{hex_str.upper()}</code>'
-            return (f'<a{extra_attrs} href="{url}">{label}</a> '
-                    f'(<a{extra_attrs} href="{url}">{hex_display}</a>)')
-
-        print(f"  Warning: address:{hex_str}@{version} — unknown flag "
-              f"'?{flag}'{src}")
-        return match.group(0)
+        resolution = anchors.resolve(addr, flags)
+        if resolution is None:
+            print(f"  Warning: {where} — no anchor at or before "
+                  f"&{hex_str}{src}")
+            return match.group(0)
+        if resolution.ambiguous:
+            print(f"  Warning: {where} — several copies are at "
+                  f"&{hex_str}; linking to #{resolution.id}. Name one with "
+                  f"?move=NAME, ?unmoved or ?stored{src}")
+        return emit(extra_attrs, f"{version}.html#{resolution.id}")
 
     return _ADDRESS_URI_RE.sub(rewrite, html)
 
@@ -1060,7 +1079,7 @@ _LABEL_URI_RE = re.compile(
 
 
 def apply_label_uri_links(html, version_labels, default_version=None,
-                          source_label=""):
+                          source_label="", version_anchors=None):
     """Translate `label:NAME[@version][?flag]` hrefs into the equivalent
     `address:HEX[@version][?flag]` href, so the downstream
     `apply_address_uri_links` resolves them like any address link. The
@@ -1068,6 +1087,11 @@ def apply_label_uri_links(html, version_labels, default_version=None,
 
     `version_labels` is `{version_id: {name: addr}}`. An unqualified
     `label:` uses `default_version`.
+
+    When `version_anchors` (`{version_id: AnchorIndex}`) is given and a
+    listing row carries the label, the translated link also names that
+    row's copy (`?move=NAME` or `?unmoved`), so a label in one of several
+    overlapping copies links to its own copy.
     """
     def rewrite(match):
         name = match.group("name")
@@ -1080,6 +1104,13 @@ def apply_label_uri_links(html, version_labels, default_version=None,
             ver = f"@{version}" if version else ""
             print(f"  Warning: label:{name}{ver} — unknown label{src}")
             return match.group(0)
+        anchors = (version_anchors or {}).get(version)
+        flags = parse_link_flags(flag[1:])
+        copy_flags = anchors.label_flags(name) if anchors else None
+        if copy_flags is not None and not flags.selects_copy:
+            flags.move = copy_flags.move
+            flags.unmoved = copy_flags.unmoved
+            flag = f"?{flags}"
         return f'<a href="address:{addr:04X}{at}{flag}">'
 
     return _LABEL_URI_RE.sub(rewrite, html)
@@ -1132,10 +1163,11 @@ def _apply_address_links(md_text, address_links, version_anchors=None):
         version = link_spec["version"]
         address = int(link_spec["address"], 0)
 
-        fragment = None
+        resolution = None
         if version_anchors and version in version_anchors:
-            fragment = version_anchors[version].resolve(address)
-        url = f"{version}.html#{fragment or anchor_id(address)}"
+            resolution = version_anchors[version].resolve(address)
+        fragment = resolution.id if resolution else anchor_id(address)
+        url = f"{version}.html#{fragment}"
 
         matches = list(re.finditer(pattern, md_text))
         if not matches:
@@ -1235,7 +1267,8 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         # address: URIs default to this doc's own version.
         content_html = apply_label_uri_links(
             content_html, version_labels, default_version=version_id,
-            source_label=src_label)
+            source_label=src_label,
+            version_anchors=version_anchors)
 
         # Rewrite inline [label](address:HEX[@version]) URIs.
         content_html = apply_address_uri_links(
@@ -1419,8 +1452,10 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
             })
         link_groups = _group_links(links)
 
+        anchors = _listing_anchors(data, f"{slug}/{page_id}.html")
         sections = process_disassembly(
-            data, version_id=page_id, glossary_lookup=glossary_slug_lookup)
+            data, version_id=page_id, glossary_lookup=glossary_slug_lookup,
+            anchors=anchors)
         macros = build_macros(data)
 
         html = disassembly_template.render(
@@ -1433,7 +1468,7 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
             link_groups=link_groups,
             sections=sections,
             macros=macros,
-            subroutines=_filter_subroutines(data),
+            subroutines=_filter_subroutines(data, anchors),
             updated_iso=updated_iso,
             updated_display=updated_display,
             source_addr_label=source_addr_label,
@@ -1457,7 +1492,7 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
             _render_memory_map_page(
                 env, source, page_id, entry["label"], mm_entries,
                 output_dirpath,
-                {page_id: AnchorIndex.from_items(data["items"])}, pages,
+                {page_id: anchors}, pages,
                 group_titles=rom_meta.get("memory_map_groups", {}),
                 rom_load_addr=meta.get("load_addr"),
                 rom_end_addr=meta.get("end_addr"),
@@ -1610,7 +1645,8 @@ def _render_analysis_pages(env, source, output_dirpath,
         # project-level, so label: (like address:) must carry @version.
         content_html = apply_label_uri_links(
             content_html, version_labels, default_version=None,
-            source_label=src_label)
+            source_label=src_label,
+            version_anchors=version_anchors)
 
         # Rewrite inline [label](address:HEX[@version]) URIs. Analyses
         # are project-level, so there's no implicit "current version";
@@ -1758,7 +1794,7 @@ def _render_memory_map_page(env, source, version_id, version_title,
 
     def rewrite_mm_refs(html):
         def repl(match):
-            hex_str, version, flag, label = match.groups()
+            hex_str, version, flag_str, label = match.groups()
             # Only intercept unqualified URIs (no @version). Explicitly
             # versioned URIs still go to the ROM-range resolver, which
             # also handles multi-version anchor disambiguation.
@@ -1768,6 +1804,11 @@ def _render_memory_map_page(env, source, version_id, version_title,
             name = mm_addr_to_name.get(addr)
             if name is None:
                 return match.group(0)
+            flags = parse_link_flags(flag_str)
+            # A link naming a copy of moved code (or with an unusable
+            # flag) is left to the listing resolver.
+            if flags.error or flags.move or flags.stored:
+                return match.group(0)
             url = f"#mm-{name}"
             # `mm-link` is the cyan "memory-location reference" class;
             # used here for same-page jumps between memory-map entries
@@ -1775,13 +1816,11 @@ def _render_memory_map_page(env, source, version_id, version_title,
             # shared class gives the two views a consistent palette:
             # memory locations read cyan regardless of which page the
             # reader is on.
-            if not flag:
+            if not flags.hex:
                 return f'<a class="mm-link" href="{url}">{label}</a>'
-            if flag.lower() == "hex":
-                hex_display = f'<code>&amp;{hex_str.upper()}</code>'
-                return (f'<a class="mm-link" href="{url}">{label}</a> '
-                        f'(<a class="mm-link" href="{url}">{hex_display}</a>)')
-            return match.group(0)
+            hex_display = f'<code>&amp;{hex_str.upper()}</code>'
+            return (f'<a class="mm-link" href="{url}">{label}</a> '
+                    f'(<a class="mm-link" href="{url}">{hex_display}</a>)')
         return _ADDRESS_URI_RE.sub(repl, html)
 
     output_filename = f"{version_id}-memory-map.html"
@@ -1802,7 +1841,8 @@ def _render_memory_map_page(env, source, version_id, version_title,
             source_label=f"{source['slug']}/{output_filename}")
         html = apply_label_uri_links(
             html, version_labels, default_version=version_id,
-            source_label=f"{source['slug']}/{output_filename}")
+            source_label=f"{source['slug']}/{output_filename}",
+            version_anchors=version_anchors)
         html = rewrite_mm_refs(html)
         html = apply_address_uri_links(
             html, version_anchors,
@@ -1886,7 +1926,7 @@ def _render_memory_map_page(env, source, version_id, version_title,
         pages.append({"url": f"{BASE_URL}{source['slug']}/{output_filename}"})
 
 
-def _filter_subroutines(data):
+def _filter_subroutines(data, anchors):
     """Return ROM-range subroutine and banner entries, in address order.
 
     The version-page sidebar TOC lists everything that has its own
@@ -1898,7 +1938,8 @@ def _filter_subroutines(data):
     merge cleanly here.
 
     Each entry is returned as a copy with an `anchor` key, the id of its
-    row in the listing, for the sidebar link.
+    row in the listing (from `anchors`, the listing's `AnchorIndex`), for
+    the sidebar link.
     """
     meta = data.get("meta", {})
     load_addr = meta.get("load_addr", 0)
@@ -1907,7 +1948,7 @@ def _filter_subroutines(data):
     in_range = [s for s in combined if load_addr <= s["addr"] < end_addr]
     in_range.sort(key=lambda s: s["addr"])
     return [
-        {**s, "anchor": row_anchor_id(s)}
+        {**s, "anchor": anchors.row_ids(s)[0]}
         for s in in_range
     ]
 

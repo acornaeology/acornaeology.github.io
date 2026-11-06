@@ -24,8 +24,12 @@ There are three schemes:
 
 | Scheme | Targets | Stable across versions? |
 |---|---|---|
-| `address:HEX[@version][?hex]` | a numeric ROM address | no — the address is literal |
-| `label:NAME[@version][?hex]` | a symbolic disassembly label | **yes** — resolves to the label's current address at build time |
+| `address:HEX[@version][?flags]` | a numeric ROM address | no — the address is literal |
+| `label:NAME[@version][?flags]` | a symbolic disassembly label | **yes** — resolves to the label's current address (and copy) at build time |
+
+`flags` are `hex`, and at most one copy selector, `move=NAME`, `unmoved` or
+`stored`, joined by `&` (`anchors.parse_link_flags`). Copy selectors matter only
+when moves overlap; see `generator/anchors.py`.
 | `glossary:TERM` | a glossary entry | n/a |
 
 `address:` is unchanged (see `apply_address_uri_links`). `label:` and
