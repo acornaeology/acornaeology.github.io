@@ -279,6 +279,17 @@ Don't use `subroutine()` for this: it declares the address as a
 code entry point, so the disassembler decodes the table as
 instructions.
 
+### 4.3 Name every move
+
+Give each `d.add_move(dest, src, length, name=...)` a name that says
+what the copy is (`tube_page4`, `nmi_tube_read`, `low_joystick`). The
+site uses move names in permalink anchors for relocated code
+(`#addr-0400@low_joystick`), in `address:…?move=NAME` links, and to
+tell overlapping copies apart in come-from lists. An unnamed move gets
+dasmos's generated `move_N`, which changes meaning if moves are added
+or reordered, and renaming a move later breaks links that use its name.
+Name moves before the disassembly is published.
+
 ---
 
 ## 5. Analyses and writeups
