@@ -32,6 +32,18 @@ Static site generator for annotated 6502 disassemblies of Acorn ROMs. Transforms
 4. `generator/disassembly.py` converts JSON items into template-ready line dicts with pre-rendered HTML (`Markup` objects)
 5. `templates/_disassembly.html` renders the two-column layout (subroutine nav + listing table)
 
+### Listing anchors
+
+Every anchor id on a listing page (`addr-XXXX`) and every lookup from an
+address to an anchor goes through `generator/anchors.py`. That covers
+row ids, stored-address ids for relocated rows, the subroutine sidebar,
+come-from popups, operand links, inline `address:`/`label:` links, and
+links from docs, analyses and memory maps (`AnchorIndex`, held per page
+in `version_anchors`). Don't format `addr-` ids anywhere else: anchors
+named by address alone collide when moves share or overlap addresses
+(#15), and a move-aware scheme is meant to replace them in that one
+module.
+
 ### Schema versions
 
 Each disassembly JSON carries `meta.schema_version` (integer). The generator

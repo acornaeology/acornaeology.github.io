@@ -1,12 +1,13 @@
 """Processes structured disassembly JSON into template-ready data."""
 
-import bisect
 import html as html_mod
 import re
 from collections import namedtuple
 
 from markupsafe import Markup, escape
 
+from .anchors import (
+    anchor_id, nearest_at_or_before, row_anchor_id, stored_anchor_id)
 from .markdown_listing import listing_context, render_markdown
 
 CONTENT_MAX_WIDTH = 64
@@ -329,18 +330,17 @@ def _process_item(item, sub_lookup, item_by_addr, valid_addrs, sorted_addrs,
                   max_width=CONTENT_MAX_WIDTH, expr_ctx=None):
     lines = []
     addr = item["addr"]
-    addr_id = f"addr-{addr:04X}"
+    addr_id = row_anchor_id(item)
     addr_display = f"{addr:04X}"
     id_used = False
     addr_shown = False
 
     # ROM source address for relocated code
     binary_addr_raw = item.get("binary_addr")
+    binary_addr_id = stored_anchor_id(item)
     if binary_addr_raw is not None:
-        binary_addr_id = f"addr-{binary_addr_raw:04X}"
         binary_addr_display = f"{binary_addr_raw:04X}"
     else:
-        binary_addr_id = None
         binary_addr_display = None
 
     sub = sub_lookup.get((addr, item.get("binary_addr")))
@@ -1287,7 +1287,7 @@ def _ref_entry_html(ref_addr, item_by_addr):
     else:
         mnemonic = "ref"
     return (
-        f'<a href="#addr-{ref_addr:04X}">'
+        f'<a href="#{anchor_id(ref_addr)}">'
         f'\u2190 {ref_addr:04X} {escape(mnemonic)}</a>'
     )
 
@@ -1561,7 +1561,7 @@ def _operand_label_ref(addr, label, valid_addrs, label_tooltips, mm_links):
             f' data-tip="{escape(tip)}">{label}</a>'
         )
     if addr in valid_addrs:
-        return (f'<a href="#addr-{addr:04X}"'
+        return (f'<a href="#{anchor_id(addr)}"'
                 f' data-tip="{escape(tip)}">{label}</a>')
     return (f'<span class="ext-label"'
             f' data-tip="{escape(tip)}">{label}</span>')
@@ -1639,10 +1639,7 @@ def _resolve_addr(addr, valid_addrs, sorted_addrs):
     this address).  Returns None if addr is before the first item."""
     if addr in valid_addrs:
         return addr
-    idx = bisect.bisect_right(sorted_addrs, addr) - 1
-    if idx >= 0:
-        return sorted_addrs[idx]
-    return None
+    return nearest_at_or_before(sorted_addrs, addr)
 
 
 _CONTROL_CHARS = {

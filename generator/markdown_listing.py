@@ -42,6 +42,8 @@ from mistletoe import span_token, token as mistletoe_token
 from markupsafe import Markup
 from mistletoe.html_renderer import HTMLRenderer
 
+from .anchors import anchor_id, nearest_at_or_before
+
 
 _ADDRESS_URI_TARGET_RE = re.compile(
     r'^address:'
@@ -221,19 +223,15 @@ class ListingHTMLRenderer(HTMLRenderer):
             return self.mm_links[addr], ' class="mm-link" target="memory-map"'
 
         if addr in self.valid_addrs:
-            return f"#addr-{addr:04X}", ""
+            return f"#{anchor_id(addr)}", ""
 
-        if self.sorted_addrs:
-            import bisect
-            idx = bisect.bisect_right(self.sorted_addrs, addr) - 1
-            if idx >= 0:
-                nearest = self.sorted_addrs[idx]
-                # Only use nearest-preceding if the address is inside
-                # the anchored range (between first and last). Outside
-                # that range it's neither a memory-map entry nor a ROM
-                # reference -- almost certainly an author typo.
-                if nearest <= addr <= self.sorted_addrs[-1]:
-                    return f"#addr-{nearest:04X}", ""
+        nearest = nearest_at_or_before(self.sorted_addrs, addr)
+        # Only use nearest-preceding if the address is inside the
+        # anchored range (between first and last). Outside that range
+        # it's neither a memory-map entry nor a ROM reference -- almost
+        # certainly an author typo.
+        if nearest is not None and addr <= self.sorted_addrs[-1]:
+            return f"#{anchor_id(nearest)}", ""
 
         print(f"  Warning: address:{hex_str} -- no memory-map entry "
               f"and not in ROM range")

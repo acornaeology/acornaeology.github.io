@@ -39,7 +39,7 @@
         {% for sub in subroutines %}
         {% if sub.name %}
         <li>
-            <a href="#addr-{{ '%04X' % sub.addr }}">{{ sub.name }}</a>
+            <a href="#{{ sub.anchor }}">{{ sub.name }}</a>
             {% if sub.title %}<span class="sub-title">{{ sub.title }}</span>{% endif %}
         </li>
         {% endif %}

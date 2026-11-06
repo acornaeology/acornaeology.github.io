@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Static site builder for acornaeology.uk"""
 
-import bisect
 import json
 import re
 import shutil
@@ -16,6 +15,7 @@ from markupsafe import Markup
 
 from datetime import datetime
 
+from .anchors import AnchorIndex, anchor_id, row_anchor_id
 from .disassembly import build_label_addrs, build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import build_glossary_lookup, parse_glossary
@@ -570,7 +570,7 @@ def build_disassemblies(env, sources, pages):
                                   pages)
 
         # Build per-version disassembly pages
-        version_anchors = {}  # version_id -> sorted list of anchor addresses
+        version_anchors = {}  # version_id -> AnchorIndex of its listing
         version_mm_links = {}  # version_id -> {addr: "{version}-memory-map.html#mm-NAME"}
         version_labels = {}    # version_id -> {label_name: addr} for label: links
 
@@ -622,13 +622,9 @@ def build_disassemblies(env, sources, pages):
                 continue
             data = json.loads(data_filepath.read_text())
 
-            # Collect valid anchor addresses for this version
-            anchors = set()
-            for item in data["items"]:
-                anchors.add(item["addr"])
-                if "binary_addr" in item:
-                    anchors.add(item["binary_addr"])
-            version_anchors[version_id] = sorted(anchors)
+            # Anchors for links into this version's listing.
+            anchors = AnchorIndex.from_items(data["items"])
+            version_anchors[version_id] = anchors
 
             # Collect memory-map links for this version: addresses with
             # memory_map metadata resolve to the per-version memory-map
@@ -919,20 +915,6 @@ def _analysis_output_filename(analysis_url):
     return f"{stem}.html"
 
 
-def _resolve_anchor(address, anchors):
-    """Find the nearest preceding valid anchor for an address.
-
-    If the exact address has an anchor, return it unchanged. Otherwise
-    return the largest anchor address that precedes it.
-    """
-    pos = bisect.bisect_left(anchors, address)
-    if pos < len(anchors) and anchors[pos] == address:
-        return address
-    if pos > 0:
-        return anchors[pos - 1]
-    return address
-
-
 _ADDRESS_URI_RE = re.compile(
     r'<a href="address:'
     r'([0-9A-Fa-f]{4,})'     # hex address
@@ -969,10 +951,9 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
        memory-map page with `class="mm-link" target="memory-map"` so
        it pairs with the named-window mechanism inline `address:`
        links use in the listing.
-    2. Otherwise, if the address is a ROM-range anchor (provided via
-       `version_anchors`), the link points to the listing page at
-       `{version}.html#addr-XXXX` (or the nearest preceding anchor
-       inside the range).
+    2. Otherwise, if the address has an anchor in the version's listing
+       (provided via `version_anchors`), the link points to the listing
+       page at that anchor (or the nearest preceding one).
     3. Otherwise a warning is printed and the original `<a>` tag is
        left in place.
 
@@ -986,8 +967,8 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
 
     Arguments:
 
-    - `version_anchors` is the per-version sorted-anchor dict built
-      during the disassembly-rendering pass.
+    - `version_anchors` is `{version_id: AnchorIndex}`, built during
+      the disassembly-rendering pass.
     - `version_mm_links` is `{version_id: {addr: href}}` for memory-
       map entries, also built during the disassembly-rendering pass.
       Optional; if omitted only ROM-anchor resolution is attempted.
@@ -1039,19 +1020,14 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
                   f"'?{flag}'{src}")
             return match.group(0)
 
-        # Priority 2: ROM-range anchor.
-        anchors_sorted = version_anchors[version]
-        pos = bisect.bisect_left(anchors_sorted, addr)
-        if pos < len(anchors_sorted) and anchors_sorted[pos] == addr:
-            anchor = addr
-        elif pos > 0:
-            anchor = anchors_sorted[pos - 1]
-        else:
+        # Priority 2: an anchor in the version's listing.
+        fragment = version_anchors[version].resolve(addr)
+        if fragment is None:
             print(f"  Warning: address:{hex_str}@{version} — no anchor at "
                   f"or before &{hex_str}{src}")
             return match.group(0)
 
-        url = f"{version}.html#addr-{anchor:04X}"
+        url = f"{version}.html#{fragment}"
 
         if not flag:
             return f'<a{extra_attrs} href="{url}">{label}</a>'
@@ -1150,11 +1126,10 @@ def _apply_address_links(md_text, address_links, version_anchors=None):
         version = link_spec["version"]
         address = int(link_spec["address"], 0)
 
-        anchor_addr = address
+        fragment = None
         if version_anchors and version in version_anchors:
-            anchor_addr = _resolve_anchor(address, version_anchors[version])
-
-        url = f"{version}.html#addr-{anchor_addr:04X}"
+            fragment = version_anchors[version].resolve(address)
+        url = f"{version}.html#{fragment or anchor_id(address)}"
 
         matches = list(re.finditer(pattern, md_text))
         if not matches:
@@ -1472,15 +1447,11 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
         # labels with memory-map metadata.
         mm_entries = _normalized_memory_map(data)
         if mm_entries:
-            anchors = set()
-            for item in data["items"]:
-                anchors.add(item["addr"])
-                if "binary_addr" in item:
-                    anchors.add(item["binary_addr"])
             meta = data.get("meta", {})
             _render_memory_map_page(
                 env, source, page_id, entry["label"], mm_entries,
-                output_dirpath, {page_id: sorted(anchors)}, pages,
+                output_dirpath,
+                {page_id: AnchorIndex.from_items(data["items"])}, pages,
                 group_titles=rom_meta.get("memory_map_groups", {}),
                 rom_load_addr=meta.get("load_addr"),
                 rom_end_addr=meta.get("end_addr"),
@@ -1919,6 +1890,9 @@ def _filter_subroutines(data):
     ``data_banner``). Both share the same shape (``addr``, ``name``,
     ``title``, ``description``) and the same TOC styling, so they
     merge cleanly here.
+
+    Each entry is returned as a copy with an `anchor` key, the id of its
+    row in the listing, for the sidebar link.
     """
     meta = data.get("meta", {})
     load_addr = meta.get("load_addr", 0)
@@ -1926,7 +1900,10 @@ def _filter_subroutines(data):
     combined = list(data.get("subroutines", [])) + list(data.get("banners", []))
     in_range = [s for s in combined if load_addr <= s["addr"] < end_addr]
     in_range.sort(key=lambda s: s["addr"])
-    return in_range
+    return [
+        {**s, "anchor": row_anchor_id(s)}
+        for s in in_range
+    ]
 
 
 def copy_static():
