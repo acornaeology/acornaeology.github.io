@@ -20,6 +20,7 @@ from .anchors import AnchorIndex, anchor_id, parse_link_flags
 from .disassembly import build_label_addrs, build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import build_glossary_lookup, parse_glossary
+from .headings import add_heading_ids
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -1191,6 +1192,14 @@ def _apply_address_links(md_text, address_links, version_anchors=None):
     return md_text
 
 
+def _render_document_markdown(md_text):
+    """Render a standalone Markdown document (a per-version doc or a
+    project analysis) to HTML, with GitHub-style heading ids so that
+    `#heading` links written for GitHub work on the site too."""
+    converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
+    return add_heading_ids(converter.convert(md_text))
+
+
 def _render_glossary_page(env, slug, name, glossary, output_dirpath, pages):
     """Build the glossary page from parsed glossary data."""
     glossary_template = env.get_template("_glossary.html")
@@ -1252,8 +1261,7 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
             md_text = _apply_address_links(md_text, address_links,
                                            version_anchors)
 
-        converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
-        content_html = converter.convert(md_text)
+        content_html = _render_document_markdown(md_text)
 
         doc_filename = _doc_output_filename(version_id, doc["path"])
         src_label = f"{source['slug']}/{doc_filename}"
@@ -1580,14 +1588,16 @@ def _rewrite_md_links_to_html(html, analyses):
 
     def repl(match):
         href = match.group(1)
+        fragment = match.group(2) or ""
         stem = Path(href).stem.lower()
         if stem in known_stems:
-            return f'href="{stem}.html"'
+            return f'href="{stem}.html{fragment}"'
         return match.group(0)
 
     # Match href="..." where the target ends in .md and isn't an
-    # absolute URL (no scheme, no leading //).
-    return re.sub(r'href="((?!https?:|//)[^"#?]+\.md)(?:#[^"]*)?"', repl, html)
+    # absolute URL (no scheme, no leading //). A `#heading` fragment is
+    # kept: the rendered page has the same GitHub-style heading ids.
+    return re.sub(r'href="((?!https?:|//)[^"#?]+\.md)(#[^"]*)?"', repl, html)
 
 
 def _render_analysis_pages(env, source, output_dirpath,
@@ -1624,8 +1634,7 @@ def _render_analysis_pages(env, source, output_dirpath,
             md_text = _apply_address_links(md_text, address_links,
                                            version_anchors)
 
-        converter = markdown_lib.Markdown(extensions=["tables", "fenced_code"])
-        content_html = converter.convert(md_text)
+        content_html = _render_document_markdown(md_text)
 
         # Rewrite inter-analysis links: the Markdown sources link to
         # sibling writeups as `foo.md` (a valid GitHub link) but the
