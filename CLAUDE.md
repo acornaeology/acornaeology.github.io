@@ -36,14 +36,28 @@ Static site generator for annotated 6502 disassemblies of Acorn ROMs. Transforms
 4. `generator/disassembly.py` converts JSON items into template-ready line dicts with pre-rendered HTML (`Markup` objects)
 5. `templates/_disassembly.html` renders the two-column layout (subroutine nav + listing table)
 
+### Listings and links between them
+
+A version renders a primary listing plus any declared under
+`disassemblies` in its metadata. Each listing has a key, `VERSION` or
+`VERSION/SLUG`, that names its page (`VERSION.html`,
+`VERSION-SLUG.html`) and that links name with `@KEY` (or `@/SLUG`
+within a version). `build_disassemblies` loads every listing of a
+project first, into a `ListingLinks` (`generator/listings.py`: anchors,
+labels and memory-map links per key), then renders. Every resolver of
+`address:` / `label:` links, in docs, analyses, memory maps and
+listing comments, goes through it. A version whose metadata gives the
+primary listing its own `label` presents its listings as peer
+programs; otherwise the others are parts of the primary.
+
 ### Listing anchors
 
 Every anchor id on a listing page (`addr-XXXX`) and every lookup from an
 address to an anchor goes through `generator/anchors.py`. That covers
 row ids, stored-address ids for relocated rows, the subroutine sidebar,
 come-from popups, operand links, inline `address:`/`label:` links, and
-links from docs, analyses and memory maps (`AnchorIndex`, held per page
-in `version_anchors`). Don't format `addr-` ids anywhere else.
+links from docs, analyses and memory maps (`AnchorIndex`, held per
+listing in `ListingLinks`). Don't format `addr-` ids anywhere else.
 
 Anchors are move-aware (#15). dasmos >= 4.4.0 names each item's move
 (`move`) and lists moves in `meta.moves`. A plain `addr-XXXX` claimed by

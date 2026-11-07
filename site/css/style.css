@@ -1181,6 +1181,13 @@ hr {
 /* --- Doc pages --- */
 
 .doc-back,
+/* The version a peer program's listing belongs to, beneath its title. */
+.listing-context {
+    margin-top: -0.4em;
+    color: var(--dim);
+    font-size: 1.05rem;
+}
+
 .version-back {
     font-size: 0.9rem;
     margin-bottom: 1.5rem;

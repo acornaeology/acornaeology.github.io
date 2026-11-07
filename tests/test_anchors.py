@@ -18,6 +18,7 @@ from generator.build import (
     apply_label_uri_links,
 )
 from generator.disassembly import process_disassembly
+from generator.listings import ListingLinks
 
 
 # Two overlays of &0400 (the Dunjunz disc's keyboard and joystick images)
@@ -191,11 +192,11 @@ class TestLegacyJsonWithoutMoves:
 
 class TestApplyAddressUriLinks:
     def _anchors(self):
-        return {"1": AnchorIndex.from_addrs([0x8000, 0x8003])}
+        return ListingLinks({"1": AnchorIndex.from_addrs([0x8000, 0x8003])})
 
     def test_links_to_listing_anchor(self):
         out = apply_address_uri_links(
-            '<a href="address:8003">go</a>', self._anchors(), default_version="1")
+            '<a href="address:8003">go</a>', self._anchors(), default_listing="1")
         assert out == '<a href="1.html#addr-8003">go</a>'
 
     def test_mid_item_resolves_to_preceding_anchor(self):
@@ -206,60 +207,62 @@ class TestApplyAddressUriLinks:
     def test_hex_flag_appends_second_link(self):
         out = apply_address_uri_links(
             '<a href="address:8003?hex">go</a>', self._anchors(),
-            default_version="1")
+            default_listing="1")
         assert out == ('<a href="1.html#addr-8003">go</a> '
                        '(<a href="1.html#addr-8003"><code>&amp;8003</code></a>)')
 
     def test_memory_map_entry_wins(self):
+        links = self._anchors()
+        links.mm_links["1"] = {0x70: "1-memory-map.html#mm-zp"}
         out = apply_address_uri_links(
-            '<a href="address:0070">zp</a>', self._anchors(), default_version="1",
-            version_mm_links={"1": {0x70: "1-memory-map.html#mm-zp"}})
+            '<a href="address:0070">zp</a>', links, default_listing="1")
         assert out == ('<a class="mm-link" target="memory-map" '
                        'href="1-memory-map.html#mm-zp">zp</a>')
 
     def test_before_first_anchor_is_left_unchanged(self, capsys):
         html = '<a href="address:0100">go</a>'
         assert apply_address_uri_links(
-            html, self._anchors(), default_version="1") == html
+            html, self._anchors(), default_listing="1") == html
         assert "no anchor" in capsys.readouterr().out
 
     def test_unknown_flag_is_left_unchanged(self, capsys):
         html = '<a href="address:8000?bogus">go</a>'
         assert apply_address_uri_links(
-            html, self._anchors(), default_version="1") == html
+            html, self._anchors(), default_listing="1") == html
         assert "unknown flag" in capsys.readouterr().out
 
     def test_move_flag_links_to_that_copy(self, capsys):
         out = apply_address_uri_links(
             '<a href="address:0400?move=low_joystick&amp;hex">j</a>',
-            {"disc": AnchorIndex.from_data(OVERLAYS)}, default_version="disc")
+            ListingLinks({"disc": AnchorIndex.from_data(OVERLAYS)}), default_listing="disc")
         assert out.startswith('<a href="disc.html#addr-0400@low_joystick">j</a> (')
         assert capsys.readouterr().out == ""
 
     def test_ambiguous_address_warns(self, capsys):
         out = apply_address_uri_links(
             '<a href="address:0400">k</a>',
-            {"disc": AnchorIndex.from_data(OVERLAYS)}, default_version="disc")
+            ListingLinks({"disc": AnchorIndex.from_data(OVERLAYS)}), default_listing="disc")
         assert out == '<a href="disc.html#addr-0400">k</a>'
         assert "several copies" in capsys.readouterr().out
 
     def test_unknown_move_warns(self, capsys):
         html = '<a href="address:0400?move=nope">k</a>'
         assert apply_address_uri_links(
-            html, {"disc": AnchorIndex.from_data(OVERLAYS)},
-            default_version="disc") == html
+            html, ListingLinks({"disc": AnchorIndex.from_data(OVERLAYS)}),
+            default_listing="disc") == html
         assert "unknown move" in capsys.readouterr().out
 
 
 class TestApplyLabelUriLinks:
     def test_label_in_a_move_pins_its_copy(self, capsys):
-        anchors = {"disc": AnchorIndex.from_data(OVERLAYS)}
+        anchors = ListingLinks(
+            {"disc": AnchorIndex.from_data(OVERLAYS)},
+            labels={"disc": {"add_points_joystick": 0x0400}})
         html = apply_label_uri_links(
             '<a href="label:add_points_joystick?hex">j</a>',
-            {"disc": {"add_points_joystick": 0x0400}}, default_version="disc",
-            version_anchors=anchors)
+            anchors, default_listing="disc")
         assert html == '<a href="address:0400?move=low_joystick&hex">j</a>'
-        out = apply_address_uri_links(html, anchors, default_version="disc")
+        out = apply_address_uri_links(html, anchors, default_listing="disc")
         assert out.startswith('<a href="disc.html#addr-0400@low_joystick">')
         assert capsys.readouterr().out == ""
 

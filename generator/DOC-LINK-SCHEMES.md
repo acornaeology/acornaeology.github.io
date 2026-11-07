@@ -24,8 +24,13 @@ There are three schemes:
 
 | Scheme | Targets | Stable across versions? |
 |---|---|---|
-| `address:HEX[@version][?flags]` | a numeric ROM address | no — the address is literal |
-| `label:NAME[@version][?flags]` | a symbolic disassembly label | **yes** — resolves to the label's current address (and copy) at build time |
+| `address:HEX[@listing][?flags]` | a numeric ROM address | no — the address is literal |
+| `label:NAME[@listing][?flags]` | a symbolic disassembly label | **yes** — resolves to the label's current address (and copy) at build time |
+
+`listing` is a listing key: `version` for a version's primary listing,
+`version/slug` for one declared under `disassemblies`, `/slug` for one in
+the linking page's version and `/` for that version's primary listing
+(`generator/listings.py`).
 
 `flags` are `hex`, and at most one copy selector, `move=NAME`, `unmoved` or
 `stored`, joined by `&` (`anchors.parse_link_flags`). Copy selectors matter only
@@ -62,7 +67,7 @@ inside `ANFS`), and every `occurrence` index silently drifted whenever
 prose was edited. The author now marks the exact word, so the whole class
 of bugs disappears.
 
-## `label:NAME[@version][?hex]`
+## `label:NAME[@listing][?hex]`
 
     [rx_frame_b](label:rx_frame_b)              — label-only link
     [rx_frame_b](label:rx_frame_b?hex)          — append " (&E263)"
@@ -71,12 +76,12 @@ of bugs disappears.
 - `NAME` is a disassembly label name from the target version's JSON label
   set.
 - Resolution: `apply_label_uri_links()` maps `NAME` → address via a
-  per-version `{name: addr}` map (built from the JSON, the same source as
-  `version_anchors` / `version_mm_links`), then delegates to the **exact**
+  per-listing `{name: addr}` map (built from the JSON, and held with the
+  listing's anchors and memory-map links in `ListingLinks`), then delegates to the **exact**
   address resolution `address:` uses (memory-map page if the address is a
   mapped entry, otherwise the ROM-range anchor). The `?hex` flag appends
   ` (&XXXX)` using the *resolved* address.
-- `@version` optional; defaults to the doc's own version (project-level
+- `@listing` optional; defaults to the doc's own version (project-level
   analyses must qualify).
 - Unknown `NAME` in that version → warning, tag left in place.
 

@@ -38,6 +38,12 @@ Supported target forms:
   version is qualified).
 - `address:HEX@VERSION` – cross-version reference (mainly used in
   project-level analyses that talk about multiple ROM versions).
+- `address:HEX@VERSION/SLUG` – a reference into one of a version's
+  other listings, those declared under `disassemblies` (§7.6), such as
+  `address:23B2@disc_master/editor`. `@/SLUG` names a listing of the
+  same version as the comment or doc, and `@/` that version's primary
+  listing. Name the listing whenever the address also exists in
+  another listing: a loader that runs where the game later loads, say.
 - `address:HEX?hex` – appends a second hyperlink ` (&HEX)` so the
   label and the hex are both clickable. Use for the first mention
   of a routine in a prose block.
@@ -71,8 +77,8 @@ comment(0xE041, "Mismatch → [`ram_test_fail`](label:ram_test_fail)",
         inline=True)
 ```
 
-`label:NAME`, `label:NAME@VERSION`, and `label:NAME?hex` mirror the
-`address:` forms exactly and resolve identically once the name is looked
+`label:NAME`, `label:NAME@VERSION`, `label:NAME@VERSION/SLUG`,
+`label:NAME@/SLUG` and `label:NAME?hex` mirror the `address:` forms exactly and resolve identically once the name is looked
 up. A label named like a hex string (e.g. `E263`) *must* use `label:` to
 be unambiguous. Keep numeric `address:HEX` for genuine raw-address or
 `&XXXX`-prose references. `lint` validates every `label:` name against
@@ -314,17 +320,18 @@ index's "Analyses" section.
 }
 ```
 
-Analyses use the same `[label](address:HEX)` syntax. For
-references across versions inside an analysis, qualify with
-`@VERSION` (for multi-version projects):
+Analyses use the same `[label](address:HEX)` syntax, but an analysis
+belongs to no one version, so every `address:` and `label:` link in
+one must name its listing with `@VERSION` or `@VERSION/SLUG`:
 
 ```markdown
 `ram_test` at [`&E00B`](address:E00B@1?hex) behaves differently
 from the same slot in [`&E00B` on 3.60](address:E00B@3.60).
+The editor starts at [`&23B2`](address:23B2@disc_master/editor?hex).
 ```
 
-Unqualified `address:HEX` defaults to the `default_version` the
-analysis was rendered with (specified per-project in the manifest).
+An unqualified link, or one using `@/SLUG`, warns at build time and is
+left unresolved.
 
 ### 5.2 Per-version `docs` (release notes, change logs)
 
@@ -470,6 +477,40 @@ Each version whose JSON contains memory-map entries gets its own
 a **Memory Map** column that lights up for rows with a populated
 memory map. Versions without enriched labels silently skip the
 column – no warning, no empty page.
+
+Each listing has its own memory map (§7.6), built from its own JSON, so
+it shows only the groups its entries use. `memory_map_groups` in the
+version metadata supplies the group titles for all of them.
+
+### 7.6 Several listings per version
+
+A version may have more listings than its primary one. Declare each
+under `disassemblies` in `rom.json` / `binary.json`:
+
+```json
+"disassemblies": [
+    {
+        "label": "*EDITOR",
+        "slug": "editor",
+        "json": "output/dunjunz-disc_master-editor.json",
+        "runtime": "One-line description shown beneath the title."
+    }
+]
+```
+
+Each renders as its own page, `{version}-{slug}.html`, with its own
+anchors and memory map, and links name it as `@{version}/{slug}`
+(§1.1). Its anchors are separate from every other listing's, so the
+same address in two listings is two different rows.
+
+By default the extra listings are parts of the primary program, such
+as JOYSTIK's two resident-driver templates: the index lists them under
+it, and each links back to "{title} disassembly". When they are
+separate programs instead, such as a disc's loader, game and editor,
+give the primary listing a `label` of its own at the top level of the
+metadata (`"label": "The game"`). The version then lists all its
+programs as peers beneath its title, and each listing page is headed
+with its program's label, with the version's title beneath.
 
 ---
 

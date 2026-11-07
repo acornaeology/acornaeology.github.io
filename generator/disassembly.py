@@ -120,7 +120,7 @@ def build_label_addrs(data):
 
 
 def process_disassembly(data, version_id=None, glossary_lookup=None,
-                        anchors=None):
+                        anchors=None, links=None, listing_key=None):
     """Process structured JSON into sections of template-ready lines.
 
     `version_id` is the per-version URL stem (e.g. `"1"` for
@@ -132,6 +132,11 @@ def process_disassembly(data, version_id=None, glossary_lookup=None,
 
     `anchors` is the listing's `AnchorIndex`; built from `data` when
     omitted.
+
+    `links` (the project's `ListingLinks`) and `listing_key` (this
+    listing's key) let comments link into other listings with
+    `address:HEX@KEY` and `label:NAME@KEY`. Without them, a comment's
+    `@` qualifier is ignored.
 
     Returns a list of section dicts, each with:
         lines           - list of line dicts
@@ -267,7 +272,8 @@ def process_disassembly(data, version_id=None, glossary_lookup=None,
     in_relocated = False
     # Scope the label:/glossary: resolution context for every
     # render_markdown call reached from this listing.
-    with listing_context(label_addrs, glossary_lookup, anchors):
+    with listing_context(label_addrs, glossary_lookup, anchors,
+                         links=links, listing_key=listing_key):
         for item in data["items"]:
             key = (item["addr"], item.get("binary_addr"))
             sub = sub_lookup.get(key)

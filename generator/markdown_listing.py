@@ -43,25 +43,26 @@ from markupsafe import Markup
 from mistletoe.html_renderer import HTMLRenderer
 
 from .anchors import AnchorIndex, parse_link_flags
+from .listings import AddressMiss, resolve_listing_key
 
 
 _ADDRESS_URI_TARGET_RE = re.compile(
     r'^address:'
     r'(?P<hex>[0-9A-Fa-f]{4,})'
-    r'(?:@[^?]+)?'         # @version: ignored in listing context
+    r'(?:@(?P<at>[^?]*))?'   # @listing: another listing's page
     r'(?:\?(?P<flag>\S*))?'  # ?flag[&flag...], see anchors.parse_link_flags
     r'$',
     re.IGNORECASE,
 )
 
-# `label:NAME[@version][?flag]` -- a symbolic label reference. The name is
-# resolved to its current address (per version) so the link stays correct
-# when code shifts between versions. `@version` is ignored in the listing
-# context (a comment always refers to its own version).
+# `label:NAME[@listing][?flag]` -- a symbolic label reference. The name is
+# resolved to its current address (per listing) so the link stays correct
+# when code shifts between versions. `@listing` names another listing
+# (see `listings`); without it, a comment refers to its own listing.
 _LABEL_URI_TARGET_RE = re.compile(
     r'^label:'
     r'(?P<name>[^@?]+)'
-    r'(?:@[^?]+)?'
+    r'(?:@(?P<at>[^?]*))?'
     r'(?:\?(?P<flag>\S*))?'
     r'$',
 )
@@ -80,18 +81,23 @@ _GLOSSARY_URI_TARGET_RE = re.compile(r'^glossary:(?P<slug>\S+)$')
 # mm_links, the listing renderer sets them once via `listing_context`;
 # `render_markdown` falls back to this when the maps aren't passed
 # explicitly (they are in unit tests).
-_LISTING_CONTEXT = {"label_addrs": {}, "glossary_lookup": {}, "anchors": None}
+_LISTING_CONTEXT = {"label_addrs": {}, "glossary_lookup": {}, "anchors": None,
+                    "links": None, "listing_key": None}
 
 
 @contextmanager
-def listing_context(label_addrs=None, glossary_lookup=None, anchors=None):
+def listing_context(label_addrs=None, glossary_lookup=None, anchors=None,
+                    links=None, listing_key=None):
     """Scope the label->address map, the glossary lookup and the listing's
     `AnchorIndex` used to resolve links for the duration of a listing
-    render."""
+    render. `links` (the project's `ListingLinks`) and `listing_key`
+    (this listing's key) resolve links into other listings."""
     prev = dict(_LISTING_CONTEXT)
     _LISTING_CONTEXT["label_addrs"] = label_addrs or {}
     _LISTING_CONTEXT["glossary_lookup"] = glossary_lookup or {}
     _LISTING_CONTEXT["anchors"] = anchors
+    _LISTING_CONTEXT["links"] = links
+    _LISTING_CONTEXT["listing_key"] = listing_key
     try:
         yield
     finally:
@@ -113,10 +119,11 @@ class ListingHTMLRenderer(HTMLRenderer):
       `language-XXX` class, matching the highlight.js / Prism
       convention.
 
-    - `render_link` resolves `address:HEX[@version][?hex]` targets
+    - `render_link` resolves `address:HEX[@listing][?hex]` targets
       intelligently -- see the module docstring for the priority
-      order. `@version` is ignored in the listing context because
-      comments in a listing always refer to their own version.
+      order. `@listing` naming another listing links to that listing's
+      page; naming this one (or, outside a full listing render, any)
+      changes nothing.
 
     The renderer reads `self.mm_links`, `self.valid_addrs`, and
     `self.sorted_addrs` for address resolution. Callers must set
@@ -166,6 +173,10 @@ class ListingHTMLRenderer(HTMLRenderer):
 
         lm = _LABEL_URI_TARGET_RE.match(target)
         if lm:
+            other = self._other_listing(lm.group("at"), target)
+            if other is not None:
+                return self._render_other_label_link(
+                    other, lm.group("name"), lm.group("flag"), token)
             return self._render_label_link(
                 lm.group("name"), lm.group("flag"), token)
 
@@ -178,7 +189,63 @@ class ListingHTMLRenderer(HTMLRenderer):
         addr = int(hex_str, 16)
         inner = self.render_inner(token)
 
+        other = self._other_listing(m.group("at"), target)
+        if other is not None:
+            return self._other_address_anchor(other, addr, hex_str, flags,
+                                              inner)
         return self._address_anchor(addr, hex_str, flags, inner)
+
+    def _other_listing(self, at, target):
+        """The key of the listing an `@` qualifier names, when that is
+        another listing than this one; else None. `False` if it names
+        no listing the project has (after warning)."""
+        links = self.links
+        if at is None or links is None or self.listing_key is None:
+            return None
+        key = resolve_listing_key(at, self.listing_key)
+        if key == self.listing_key:
+            return None
+        if key not in links:
+            print(f"  Warning: {target} -- unknown listing")
+            return False
+        return key
+
+    def _other_address_anchor(self, key, addr, hex_str, flags, inner):
+        """Emit the `<a>` for an address in another listing `key` (or
+        leave the link unresolved if `key` is False)."""
+        result = (AddressMiss("unknown listing") if key is False
+                  else self.links.address_target(key, addr, flags))
+        if isinstance(result, AddressMiss):
+            if key is not False:
+                print(f"  Warning: address:{hex_str}@{key} -- "
+                      f"{result.reason}")
+            return f'<a href="address:{hex_str}">{inner}</a>'
+        if result.warning:
+            print(f"  Warning: address:{hex_str}@{key} -- {result.warning}")
+        attrs = ' class="mm-link" target="memory-map"' if result.memory_map else ""
+        tip_attr = f' data-tip="&amp;{hex_str}"'
+        if flags.hex:
+            return (f'<a{attrs} href="{result.href}"{tip_attr}>{inner}</a> '
+                    f'(<a{attrs} href="{result.href}"{tip_attr}>'
+                    f'<code>&amp;{hex_str}</code></a>)')
+        return f'<a{attrs} href="{result.href}"{tip_attr}>{inner}</a>'
+
+    def _render_other_label_link(self, key, name, flag, token):
+        """Resolve `label:NAME@KEY` in another listing `key`, linking to
+        the row that carries the label."""
+        inner = self.render_inner(token)
+        addr = self.links.label_addr(key, name) if key is not False else None
+        if addr is None:
+            if key is not False:
+                print(f"  Warning: label:{name}@{key} -- unknown label")
+            return f'<a href="label:{html_escape(name)}">{inner}</a>'
+        flags = self._link_flags(flag, f"label:{name}@{key}")
+        copy_flags = self.links.label_flags(key, name)
+        if copy_flags is not None and not flags.selects_copy:
+            flags.move = copy_flags.move
+            flags.unmoved = copy_flags.unmoved
+        return self._other_address_anchor(key, addr, f"{addr:04X}", flags,
+                                          inner)
 
     @staticmethod
     def _link_flags(flag_str, what):
@@ -318,6 +385,8 @@ def render_markdown(text, valid_addrs, sorted_addrs, *, inline=False,
         renderer.glossary_lookup = (
             glossary_lookup if glossary_lookup is not None
             else _LISTING_CONTEXT["glossary_lookup"])
+        renderer.links = _LISTING_CONTEXT["links"]
+        renderer.listing_key = _LISTING_CONTEXT["listing_key"]
         if inline:
             # Inline contexts (inline comments, titles, register cells)
             # are single-line and must not be parsed as block-level

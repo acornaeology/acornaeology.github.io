@@ -14,6 +14,7 @@ import markdown as markdown_lib
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from .anchors import AnchorIndex, anchor_id, parse_link_flags
@@ -21,6 +22,13 @@ from .disassembly import build_label_addrs, build_macros, process_disassembly
 from .feed import generate_atom_feed, generate_sitemap
 from .glossary import build_glossary_lookup, parse_glossary
 from .headings import add_heading_ids
+from .listings import (
+    AddressMiss,
+    ListingLinks,
+    listing_key,
+    listing_page_stem,
+    resolve_listing_key,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -452,98 +460,22 @@ def build_disassemblies(env, sources, pages):
                 print(f"  Warning: glossary file {glossary_filepath} "
                       f"not found")
 
-        # Build version metadata for the index page. A single peek at
-        # each version's JSON tells us whether a per-version memory-map
-        # page will be rendered later; the rom.json docs array has a
-        # `"type": "changes"` marker distinguishing the changes-from doc
-        # from any other per-version docs.
-        versions = []
-        for version_id in source["versions"]:
-            version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
-            if version_dirpath is None:
-                print(f"  Warning: version directory not found for "
-                      f"'{version_id}', skipping")
-                continue
+        # Pass 1: load every version and its listings, and index each
+        # listing's anchors, labels and memory-map links, so that any
+        # page — a listing, a doc, a memory map or an analysis — can
+        # link into any listing of the project.
+        plans = [plan for plan in (
+            _load_version(repo_dirpath, slug, name, version_id)
+            for version_id in source["versions"]) if plan is not None]
+        links = ListingLinks()
+        for plan in plans:
+            for listing in plan.listings:
+                _register_listing(links, listing, slug)
 
-            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
-            if meta_filepath.exists():
-                rom_meta = json.loads(meta_filepath.read_text())
-                title = rom_meta.get("title", f"{name} {version_id}")
-                doc_entries = rom_meta.get("docs", [])
-                source_file_entries = rom_meta.get("source_files", [])
-            else:
-                rom_meta = {}
-                title = f"{name} {version_id}"
-                doc_entries = []
-                source_file_entries = []
-
-            primary_json_filepath = _primary_disassembly_json(
-                version_dirpath, rom_meta)
-            has_memory_map = False
-            if primary_json_filepath is not None:
-                vdata = json.loads(primary_json_filepath.read_text())
-                has_memory_map = bool(
-                    vdata.get("memory_map") or vdata.get("index_bases"))
-
-            # Additional disassembly listings (e.g. driver variants) — each
-            # rendered as its own formatted page and listed under the parent
-            # program in the index.
-            additional_disassemblies = []
-            for extra in rom_meta.get("disassemblies", []):
-                extra_page_id = f"{version_id}-{extra['slug']}"
-                extra_has_mm = False
-                extra_json_filepath = version_dirpath / extra["json"]
-                if extra_json_filepath.exists():
-                    extra_data = json.loads(extra_json_filepath.read_text())
-                    extra_has_mm = bool(
-                        extra_data.get("memory_map")
-                        or extra_data.get("index_bases"))
-                additional_disassemblies.append({
-                    "label": extra["label"],
-                    "disassembly_url": f"{extra_page_id}.html",
-                    "memory_map_url": (
-                        f"{extra_page_id}-memory-map.html"
-                        if extra_has_mm else None
-                    ),
-                })
-
-            changes_doc = None
-            other_docs = []
-            for doc in doc_entries:
-                if doc.get("type") == "changes":
-                    changes_doc = doc
-                else:
-                    other_docs.append(doc)
-
-            versions.append({
-                "id": version_id,
-                "title": title,
-                "disassembly_url": f"{version_id}.html",
-                "memory_map_url": (
-                    f"{version_id}-memory-map.html" if has_memory_map else None
-                ),
-                "changes_url": (
-                    _doc_output_filename(version_id, changes_doc["path"])
-                    if changes_doc else None
-                ),
-                "changes_label": changes_doc["label"] if changes_doc else None,
-                "other_docs": [
-                    {
-                        "label": d["label"],
-                        "url": _doc_output_filename(version_id, d["path"]),
-                    }
-                    for d in other_docs
-                ],
-                "source_files": [
-                    {
-                        "label": sf["label"],
-                        "url": _source_output_filename(version_id, sf),
-                        "language": sf.get("language", ""),
-                    }
-                    for sf in source_file_entries
-                ],
-                "additional_disassemblies": additional_disassemblies,
-            })
+        # Build version metadata for the index page. The rom.json docs
+        # array has a `"type": "changes"` marker distinguishing the
+        # changes-from doc from any other per-version docs.
+        versions = [_index_version_entry(plan) for plan in plans]
 
         # Build per-ROM index page
         reference_groups = _group_links(_index_references(source))
@@ -576,75 +508,34 @@ def build_disassemblies(env, sources, pages):
             _render_glossary_page(env, slug, name, glossary, output_dirpath,
                                   pages)
 
-        # Build per-version disassembly pages
-        version_anchors = {}  # version_id -> AnchorIndex of its listing
-        version_mm_links = {}  # version_id -> {addr: "{version}-memory-map.html#mm-NAME"}
-        version_labels = {}    # version_id -> {label_name: addr} for label: links
-
         # Map each version's repo source files to the site page that
         # renders them, so prose docs/analyses can keep GitHub-relative
         # file links yet resolve to the right page on the site. Built
         # up-front (over all versions) so an analysis can cite any
         # version's sources.
-        source_page_entries = []
-        for version_id in source["versions"]:
-            version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
-            if version_dirpath is None:
-                continue
-            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
-            rom_meta = json.loads(meta_filepath.read_text()) \
-                if meta_filepath.exists() else {}
-            source_page_entries.append((version_id, version_dirpath, rom_meta))
-        source_page_map = _build_source_page_map(source_page_entries)
+        source_page_map = _build_source_page_map(
+            [(plan.version_id, plan.version_dirpath, plan.rom_meta)
+             for plan in plans])
 
-        for version_id in source["versions"]:
-            version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
-            if version_dirpath is None:
-                print(f"  Warning: version directory not found for "
-                      f"'{version_id}', skipping")
-                continue
+        # Pass 2: render each version's pages.
+        for plan in plans:
+            version_id = plan.version_id
+            version_dirpath = plan.version_dirpath
+            rom_meta = plan.rom_meta
+            title = plan.title
+            links_list = list(rom_meta.get("links", []))
 
             # Get last-modified date from git history
             updated_iso = git_last_modified_iso(repo_dirpath, version_dirpath)
             updated_display = format_display_date(updated_iso) if updated_iso else None
 
-            # Read version metadata (needed to pick the primary listing when
-            # a version ships more than one disassembly JSON).
-            meta_filepath = _resolve_version_meta_filepath(version_dirpath)
-            if meta_filepath.exists():
-                rom_meta = json.loads(meta_filepath.read_text())
-                title = rom_meta.get("title", f"{name} {version_id}")
-                links = list(rom_meta.get("links", []))
-            else:
-                rom_meta = {}
-                title = f"{name} {version_id}"
-                links = []
-
-            # Find the primary disassembly JSON (the main program image),
-            # excluding any additional listings declared in the metadata.
-            data_filepath = _primary_disassembly_json(version_dirpath, rom_meta)
-            if data_filepath is None:
+            primary = plan.primary
+            if primary is None:
                 print(f"  Warning: no JSON found in "
                       f"{version_dirpath / 'output'}, skipping")
                 continue
-            data = json.loads(data_filepath.read_text())
-
-            # Anchors for this version's listing, and for links into it.
-            anchors = _listing_anchors(data, f"{slug}/{version_id}.html")
-            version_anchors[version_id] = anchors
-
-            # Collect memory-map links for this version: addresses with
-            # memory_map metadata resolve to the per-version memory-map
-            # page, not the listing's ROM-anchor space. Used by the doc
-            # and analysis renderers so non-ROM addresses (HAZEL, ZP,
-            # MMIO, etc.) cited from prose hit the right page.
-            version_mm_links[version_id] = {
-                entry["addr"]: f"{version_id}-memory-map.html#mm-{entry['name']}"
-                for entry in _normalized_memory_map(data)
-            }
-
-            # Label -> address map for `label:NAME` links cited from docs.
-            version_labels[version_id] = build_label_addrs(data)
+            data = primary.data
+            anchors = primary.anchors
 
             # Prepend the disassembly-source link. A version may ship the
             # same disassembly in more than one assembler flavour (e.g.
@@ -654,8 +545,9 @@ def build_disassemblies(env, sources, pages):
             if source_link:
                 # Drop any legacy single github link so the source isn't
                 # listed twice.
-                links = [l for l in links if l.get("icon") != "github"]
-                links.insert(0, source_link)
+                links_list = [l for l in links_list
+                              if l.get("icon") != "github"]
+                links_list.insert(0, source_link)
 
             # Add report-issue link with prefilled title and body
             issue_title = f"[{title}] "
@@ -692,31 +584,19 @@ def build_disassemblies(env, sources, pages):
             # listing pattern works; class="mm-link" hooks the link into
             # the listing-page JavaScript that focuses an already-open
             # memory-map tab, matching inline address: links.
-            if data.get("memory_map") or data.get("index_bases"):
-                links.append({
-                    "label": "Memory map",
-                    "url": f"{version_id}-memory-map.html",
-                    "icon": "map",
-                    "target": "memory-map",
-                    "class": "mm-link",
-                    "category": "ours",
-                })
+            if primary.has_memory_map:
+                links_list.append(_memory_map_link(primary))
 
-            # Link to the version's additional disassembly listings (e.g.
-            # driver variants) — these are peers of this disassembly.
-            for extra in rom_meta.get("disassemblies", []):
-                links.append({
-                    "label": extra["label"],
-                    "url": f"{version_id}-{extra['slug']}.html",
-                    "icon": "code",
-                    "category": "ours",
-                })
+            # Link to the version's other listings: driver variants, or
+            # the other programs on a disc.
+            for extra in plan.extras:
+                links_list.append(_listing_link(extra))
 
             # Append our generated companion doc pages (also "This
             # disassembly"). An author can override the inferred category
             # per doc in rom.json.
             for doc in rom_meta.get("docs", []):
-                links.append({
+                links_list.append({
                     "label": doc["label"],
                     "url": _doc_output_filename(version_id, doc["path"]),
                     "icon": "doc",
@@ -730,7 +610,7 @@ def build_disassemblies(env, sources, pages):
             # own page. They render as plain text for now (see
             # `_render_source_pages`).
             for entry in rom_meta.get("source_files", []):
-                links.append({
+                links_list.append({
                     "label": entry["label"],
                     "url": _source_output_filename(version_id, entry),
                     "icon": entry.get("icon", "code"),
@@ -748,23 +628,26 @@ def build_disassemblies(env, sources, pages):
             # its version-specific form when deduped.
             version_references = _merge_references(
                 source.get("references", []), rom_meta.get("references", []))
-            links = _dedup_links(links + version_references)
-            links.append(report_link)
+            links_list = _dedup_links(links_list + version_references)
+            links_list.append(report_link)
 
-            link_groups = _group_links(links)
+            link_groups = _group_links(links_list)
 
             sections = process_disassembly(
                 data, version_id=version_id,
-                glossary_lookup=glossary_slug_lookup, anchors=anchors)
+                glossary_lookup=glossary_slug_lookup, anchors=anchors,
+                links=links, listing_key=primary.key)
             macros = build_macros(data)
 
-            source_addr_label = _source_address_label(meta_filepath, rom_meta)
+            source_addr_label = _source_address_label(
+                plan.meta_filepath, rom_meta)
             html = disassembly_template.render(
                 root="../",
                 slug=slug,
                 name=name,
                 version_id=version_id,
-                title=title,
+                title=primary.label if plan.peers else title,
+                context=title if plan.peers else None,
                 description=description,
                 link_groups=link_groups,
                 sections=sections,
@@ -780,7 +663,8 @@ def build_disassemblies(env, sources, pages):
             print(f"  {slug}/{version_id}.html")
             pages.append({
                 "url": f"{BASE_URL}{slug}/{version_id}.html",
-                "title": title,
+                "title": (f"{primary.label}, {title}" if plan.peers
+                          else title),
                 "description": description,
                 "is_disassembly": True,
                 "updated": updated_iso,
@@ -788,10 +672,7 @@ def build_disassemblies(env, sources, pages):
 
             # Build doc pages for this version
             _render_doc_pages(env, source, version_id, version_dirpath,
-                              rom_meta, output_dirpath, version_anchors,
-                              glossary_lookup, pages,
-                              version_mm_links=version_mm_links,
-                              version_labels=version_labels,
+                              rom_meta, output_dirpath, links, pages,
                               glossary_slug_lookup=glossary_slug_lookup,
                               source_page_map=source_page_map)
 
@@ -799,11 +680,12 @@ def build_disassemblies(env, sources, pages):
             _render_source_pages(env, source, version_id, version_dirpath,
                                  rom_meta, title, output_dirpath, pages)
 
-            # Build additional disassembly pages (e.g. driver variants),
-            # each a formatted, anchored listing like the primary one.
+            # Build the version's other listing pages (driver variants,
+            # or a disc's other programs), each a formatted, anchored
+            # listing like the primary one.
             _render_additional_disassemblies(
-                env, source, version_id, version_dirpath, rom_meta, title,
-                output_dirpath, glossary_slug_lookup=glossary_slug_lookup,
+                env, source, plan, output_dirpath, links,
+                glossary_slug_lookup=glossary_slug_lookup,
                 pages=pages, updated_iso=updated_iso,
                 updated_display=updated_display)
 
@@ -811,28 +693,221 @@ def build_disassemblies(env, sources, pages):
             # enriched any non-ROM labels with memory-map metadata —
             # including indexing bases, which since schema v4 are ordinary
             # `b`-flagged rows folded into the map).
-            mm_entries = _normalized_memory_map(data)
-            if mm_entries:
-                group_titles = rom_meta.get("memory_map_groups", {})
-                meta = data.get("meta", {})
-                _render_memory_map_page(env, source, version_id, title,
-                                        mm_entries, output_dirpath,
-                                        version_anchors, pages,
-                                        group_titles=group_titles,
-                                        rom_load_addr=meta.get("load_addr"),
-                                        rom_end_addr=meta.get("end_addr"),
-                                        regions=data.get("regions", []),
-                                        version_labels=version_labels,
-                                        glossary_slug_lookup=glossary_slug_lookup)
+            _render_listing_memory_map(env, source, plan, primary,
+                                       primary.label if plan.peers else title,
+                                       output_dirpath, links, pages,
+                                       glossary_slug_lookup)
 
         # Build project-level analysis pages (after all versions, so
         # analyses can link into any version's anchors)
-        _render_analysis_pages(env, source, output_dirpath,
-                               version_anchors, glossary_lookup, pages,
-                               version_mm_links=version_mm_links,
-                               version_labels=version_labels,
+        _render_analysis_pages(env, source, output_dirpath, links, pages,
                                glossary_slug_lookup=glossary_slug_lookup,
                                source_page_map=source_page_map)
+
+
+@dataclass
+class _Listing:
+    """One listing page of a version: its primary listing (`slug` None)
+    or one declared under `disassemblies` (`entry` is that declaration)."""
+    key: str
+    slug: str | None
+    label: str
+    data: dict
+    anchors: AnchorIndex
+    entry: dict = field(default_factory=dict)
+
+    @property
+    def page_stem(self):
+        return listing_page_stem(self.key)
+
+    @property
+    def has_memory_map(self):
+        return bool(self.data.get("memory_map")
+                    or self.data.get("index_bases"))
+
+
+@dataclass
+class _VersionPlan:
+    """A version's metadata and listings, loaded before anything renders."""
+    version_id: str
+    version_dirpath: Path
+    meta_filepath: Path
+    rom_meta: dict
+    title: str
+    primary: _Listing | None
+    extras: list
+
+    @property
+    def listings(self):
+        return ([self.primary] if self.primary else []) + self.extras
+
+    @property
+    def peers(self):
+        """Whether the version's listings are peers — separate programs
+        rather than a program and its parts. A version says so by giving
+        its primary listing a `label` of its own."""
+        return "label" in self.rom_meta
+
+
+def _load_version(repo_dirpath, slug, name, version_id):
+    """Load a version's metadata and listings, or None (with a warning)
+    if its directory is missing."""
+    version_dirpath = resolve_version_dirpath(repo_dirpath, version_id)
+    if version_dirpath is None:
+        print(f"  Warning: version directory not found for "
+              f"'{version_id}', skipping")
+        return None
+    meta_filepath = _resolve_version_meta_filepath(version_dirpath)
+    rom_meta = (json.loads(meta_filepath.read_text())
+                if meta_filepath.exists() else {})
+    title = rom_meta.get("title", f"{name} {version_id}")
+
+    primary = None
+    primary_json_filepath = _primary_disassembly_json(
+        version_dirpath, rom_meta)
+    if primary_json_filepath is not None:
+        data = json.loads(primary_json_filepath.read_text())
+        key = listing_key(version_id)
+        primary = _Listing(
+            key=key, slug=None, label=rom_meta.get("label", title),
+            data=data,
+            anchors=_listing_anchors(data, f"{slug}/{key}.html"))
+
+    extras = []
+    for entry in rom_meta.get("disassemblies", []):
+        json_filepath = version_dirpath / entry["json"]
+        if not json_filepath.exists():
+            print(f"  Warning: disassembly JSON {json_filepath} not found, "
+                  f"skipping")
+            continue
+        data = json.loads(json_filepath.read_text())
+        key = listing_key(version_id, entry["slug"])
+        extras.append(_Listing(
+            key=key, slug=entry["slug"], label=entry["label"], data=data,
+            anchors=_listing_anchors(
+                data, f"{slug}/{listing_page_stem(key)}.html"),
+            entry=entry))
+
+    return _VersionPlan(version_id, version_dirpath, meta_filepath,
+                        rom_meta, title, primary, extras)
+
+
+def _register_listing(links, listing, slug):
+    """Index `listing` in the project's `ListingLinks`, and warn if its
+    key is taken (two listings would share a page)."""
+    if listing.key in links:
+        print(f"  Warning: {slug} declares listing {listing.key} twice")
+    links.anchors[listing.key] = listing.anchors
+    links.labels[listing.key] = build_label_addrs(listing.data)
+    # Addresses with memory-map metadata resolve to the listing's
+    # memory-map page, not to its rows, so non-ROM addresses (HAZEL, ZP,
+    # MMIO, etc.) cited from prose hit the right page.
+    links.mm_links[listing.key] = {
+        entry["addr"]: f"{listing.page_stem}-memory-map.html#mm-{entry['name']}"
+        for entry in _normalized_memory_map(listing.data)
+    }
+
+
+def _memory_map_link(listing):
+    """The page link to a listing's memory map."""
+    return {
+        "label": "Memory map",
+        "url": f"{listing.page_stem}-memory-map.html",
+        "icon": "map",
+        "target": "memory-map",
+        "class": "mm-link",
+        "category": "ours",
+    }
+
+
+def _listing_link(listing, label=None):
+    """The page link to another listing of the same version."""
+    return {
+        "label": label or listing.label,
+        "url": f"{listing.page_stem}.html",
+        "icon": "code",
+        "category": "ours",
+    }
+
+
+def _index_version_entry(plan):
+    """A version's row (and sub-rows) on the project index."""
+    version_id = plan.version_id
+    rom_meta = plan.rom_meta
+
+    changes_doc = None
+    other_docs = []
+    for doc in rom_meta.get("docs", []):
+        if doc.get("type") == "changes":
+            changes_doc = doc
+        else:
+            other_docs.append(doc)
+
+    def listing_row(listing):
+        return {
+            "label": listing.label,
+            "disassembly_url": f"{listing.page_stem}.html",
+            "memory_map_url": (
+                f"{listing.page_stem}-memory-map.html"
+                if listing.has_memory_map else None),
+        }
+
+    # A version of peer programs lists every program, the primary
+    # included, beneath its title; otherwise the title is the primary
+    # listing and the others are its parts.
+    primary = plan.primary
+    sub_listings = plan.listings if plan.peers else plan.extras
+    return {
+        "id": version_id,
+        "title": plan.title,
+        "peers": plan.peers,
+        "disassembly_url": f"{version_id}.html",
+        "memory_map_url": (
+            f"{version_id}-memory-map.html"
+            if primary is not None and primary.has_memory_map
+            and not plan.peers else None
+        ),
+        "changes_url": (
+            _doc_output_filename(version_id, changes_doc["path"])
+            if changes_doc else None
+        ),
+        "changes_label": changes_doc["label"] if changes_doc else None,
+        "other_docs": [
+            {
+                "label": d["label"],
+                "url": _doc_output_filename(version_id, d["path"]),
+            }
+            for d in other_docs
+        ],
+        "source_files": [
+            {
+                "label": sf["label"],
+                "url": _source_output_filename(version_id, sf),
+                "language": sf.get("language", ""),
+            }
+            for sf in rom_meta.get("source_files", [])
+        ],
+        "additional_disassemblies": [listing_row(l) for l in sub_listings],
+    }
+
+
+def _render_listing_memory_map(env, source, plan, listing, title,
+                               output_dirpath, links, pages,
+                               glossary_slug_lookup):
+    """Render `listing`'s memory-map page, if its JSON carries a memory
+    map."""
+    mm_entries = _normalized_memory_map(listing.data)
+    if not mm_entries:
+        return
+    meta = listing.data.get("meta", {})
+    _render_memory_map_page(
+        env, source, listing.key, title, mm_entries, output_dirpath,
+        links, pages,
+        group_titles=plan.rom_meta.get("memory_map_groups", {}),
+        rom_load_addr=meta.get("load_addr"),
+        rom_end_addr=meta.get("end_addr"),
+        regions=listing.data.get("regions", []),
+        glossary_slug_lookup=glossary_slug_lookup)
 
 
 def _listing_anchors(data, page_label):
@@ -938,7 +1013,7 @@ def _analysis_output_filename(analysis_url):
 _ADDRESS_URI_RE = re.compile(
     r'<a href="address:'
     r'([0-9A-Fa-f]{4,})'     # hex address
-    r'(?:@([^"?]+))?'        # optional @version
+    r'(?:@([^"?]*))?'        # optional @listing
     r'(?:\?([^"]*))?'        # optional ?flag1[&flag2...]
     r'">'
     r'(.*?)'                 # label (markdown-converted, may contain HTML)
@@ -947,35 +1022,31 @@ _ADDRESS_URI_RE = re.compile(
 )
 
 
-def apply_address_uri_links(html, version_anchors, default_version=None,
-                            source_label="", link_class=None, target=None,
-                            version_mm_links=None):
-    """Rewrite Markdown-authored `address:HEX[@version][?flag]` URIs.
+def apply_address_uri_links(html, links, default_listing=None,
+                            source_label="", link_class=None, target=None):
+    """Rewrite Markdown-authored `address:HEX[@listing][?flag]` URIs.
 
     Authors write inline links in their Markdown sources such as
 
         [rx_frame_b](address:E263)                  — label-only link
         [rx_frame_b](address:E263?hex)              — append " (&E263)"
         [rx_frame_b](address:E263@3.60?hex)         — explicit version
+        [entry](address:23B2@disc_master/editor)    — another listing
+        [entry](address:23B2@/editor)               — one in this version
         [rx_frame_b (&E263)](address:E263@3.60)     — author wrote label
                                                       fully by hand
 
     Markdown converts those to `<a href="address:…">label</a>`; this
-    post-processor resolves each URI to the matching disassembly page
-    and anchor and rewrites the output.
+    post-processor resolves each URI to the matching listing page and
+    anchor and rewrites the output. `@listing` is a listing key (see
+    `listings`); without one, the link goes to `default_listing`.
 
-    Resolution priority for each address:
-
-    1. If a memory-map entry exists for the address (provided via
-       `version_mm_links`), the link points to the per-version
-       memory-map page with `class="mm-link" target="memory-map"` so
-       it pairs with the named-window mechanism inline `address:`
-       links use in the listing.
-    2. Otherwise, if the address has an anchor in the version's listing
-       (provided via `version_anchors`), the link points to the listing
-       page at that anchor (or the nearest preceding one).
-    3. Otherwise a warning is printed and the original `<a>` tag is
-       left in place.
+    Resolution (`ListingLinks.address_target`): a memory-map entry for
+    the address links to the listing's memory-map page, with
+    `class="mm-link" target="memory-map"` so it pairs with the
+    named-window mechanism inline `address:` links use in the listing.
+    Otherwise the link goes to the listing row at or before the address.
+    Failing both, a warning is printed and the `<a>` is left in place.
 
     Flags (after `?`, separated by `&`; see `anchors.parse_link_flags`):
 
@@ -992,18 +1063,14 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
 
     Arguments:
 
-    - `version_anchors` is `{version_id: AnchorIndex}`, built during
-      the disassembly-rendering pass.
-    - `version_mm_links` is `{version_id: {addr: href}}` for memory-
-      map entries, also built during the disassembly-rendering pass.
-      Optional; if omitted only ROM-anchor resolution is attempted.
-    - `default_version` supplies the version for unqualified URIs
-      (omit `@version`). Pass the doc's own `version_id` inside
-      per-version docs; pass `None` inside project-level analyses.
+    - `links` is the project's `ListingLinks`.
+    - `default_listing` is the listing key for URIs without `@`, and the
+      base of `@/SLUG`. Pass a doc's own version inside per-version
+      docs; pass `None` inside project-level analyses.
     - `source_label` appears in warning messages so authors can find
       the offending source.
     - `link_class` and `target` are injected as attributes on every
-      emitted `<a>` for ROM-range links. Memory-map-link attributes
+      emitted `<a>` for listing-row links. Memory-map-link attributes
       are fixed (`class="mm-link"`, `target="memory-map"`).
     """
 
@@ -1014,58 +1081,33 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
         extra_attrs += f' target="{target}"'
 
     def rewrite(match):
-        hex_str, version, flag_str, label = match.groups()
-        version = version or default_version
+        hex_str, at, flag_str, label = match.groups()
+        key = resolve_listing_key(at, default_listing)
         src = f" ({source_label})" if source_label else ""
         flags = parse_link_flags(flag_str)
-        where = f"address:{hex_str}@{version}"
+        where = f"address:{hex_str}@{key if key is not None else at}"
 
-        def emit(attrs, url):
-            if not flags.hex:
-                return f'<a{attrs} href="{url}">{label}</a>'
-            hex_display = f'<code>&amp;{hex_str.upper()}</code>'
-            return (f'<a{attrs} href="{url}">{label}</a> '
-                    f'(<a{attrs} href="{url}">{hex_display}</a>)')
-
-        if version is None:
-            print(f"  Warning: address:{hex_str} has no @version qualifier "
-                  f"and no default is available here{src}")
+        if key is None:
+            print(f"  Warning: address:{hex_str}{'@' + at if at else ''} "
+                  f"names no listing and no default is available "
+                  f"here{src}")
             return match.group(0)
 
-        if version not in version_anchors:
-            print(f"  Warning: address:{hex_str}@{version} — unknown "
-                  f"version{src}")
+        result = links.address_target(key, int(hex_str, 16), flags)
+        if isinstance(result, AddressMiss):
+            print(f"  Warning: {where} — {result.reason}{src}")
             return match.group(0)
+        if result.warning:
+            print(f"  Warning: {where} — {result.warning}{src}")
 
-        if flags.error:
-            print(f"  Warning: {where} — {flags.error}{src}")
-            return match.group(0)
-
-        addr = int(hex_str, 16)
-        anchors = version_anchors[version]
-
-        # Priority 1: memory-map entry → memory-map page link, unless the
-        # author asked for a particular copy of moved code.
-        mm_for_version = (version_mm_links or {}).get(version, {})
-        if addr in mm_for_version and not (flags.move or flags.stored):
-            return emit(' class="mm-link" target="memory-map"',
-                        mm_for_version[addr])
-
-        # Priority 2: an anchor in the version's listing.
-        if flags.move is not None and not anchors.has_move(flags.move):
-            print(f"  Warning: {where} — unknown move "
-                  f"'{flags.move}'{src}")
-            return match.group(0)
-        resolution = anchors.resolve(addr, flags)
-        if resolution is None:
-            print(f"  Warning: {where} — no anchor at or before "
-                  f"&{hex_str}{src}")
-            return match.group(0)
-        if resolution.ambiguous:
-            print(f"  Warning: {where} — several copies are at "
-                  f"&{hex_str}; linking to #{resolution.id}. Name one with "
-                  f"?move=NAME, ?unmoved or ?stored{src}")
-        return emit(extra_attrs, f"{version}.html#{resolution.id}")
+        attrs = (' class="mm-link" target="memory-map"'
+                 if result.memory_map else extra_attrs)
+        url = result.href
+        if not flags.hex:
+            return f'<a{attrs} href="{url}">{label}</a>'
+        hex_display = f'<code>&amp;{hex_str.upper()}</code>'
+        return (f'<a{attrs} href="{url}">{label}</a> '
+                f'(<a{attrs} href="{url}">{hex_display}</a>)')
 
     return _ADDRESS_URI_RE.sub(rewrite, html)
 
@@ -1073,41 +1115,39 @@ def apply_address_uri_links(html, version_anchors, default_version=None,
 _LABEL_URI_RE = re.compile(
     r'<a href="label:'
     r'(?P<name>[^"@?]+)'      # label name
-    r'(?P<at>@[^"?]+)?'       # optional @version (preserved)
+    r'(?P<at>@[^"?]*)?'       # optional @listing (preserved)
     r'(?P<flag>\?[^"]*)?'     # optional ?flag (preserved)
     r'">',
 )
 
 
-def apply_label_uri_links(html, version_labels, default_version=None,
-                          source_label="", version_anchors=None):
-    """Translate `label:NAME[@version][?flag]` hrefs into the equivalent
-    `address:HEX[@version][?flag]` href, so the downstream
+def apply_label_uri_links(html, links, default_listing=None,
+                          source_label=""):
+    """Translate `label:NAME[@listing][?flag]` hrefs into the equivalent
+    `address:HEX[@listing][?flag]` href, so the downstream
     `apply_address_uri_links` resolves them like any address link. The
     label text is untouched.
 
-    `version_labels` is `{version_id: {name: addr}}`. An unqualified
-    `label:` uses `default_version`.
+    `links` is the project's `ListingLinks`; an unqualified `label:` is
+    looked up in `default_listing`.
 
-    When `version_anchors` (`{version_id: AnchorIndex}`) is given and a
-    listing row carries the label, the translated link also names that
-    row's copy (`?move=NAME` or `?unmoved`), so a label in one of several
-    overlapping copies links to its own copy.
+    When a listing row carries the label, the translated link also names
+    that row's copy (`?move=NAME` or `?unmoved`), so a label in one of
+    several overlapping copies links to its own copy.
     """
     def rewrite(match):
         name = match.group("name")
         at = match.group("at") or ""
         flag = match.group("flag") or ""
-        version = at[1:] if at else default_version
-        addr = (version_labels or {}).get(version, {}).get(name)
+        key = resolve_listing_key(at[1:], default_listing)
+        addr = links.label_addr(key, name) if key is not None else None
         if addr is None:
             src = f" ({source_label})" if source_label else ""
-            ver = f"@{version}" if version else ""
-            print(f"  Warning: label:{name}{ver} — unknown label{src}")
+            where = f"@{key}" if key else at
+            print(f"  Warning: label:{name}{where} — unknown label{src}")
             return match.group(0)
-        anchors = (version_anchors or {}).get(version)
         flags = parse_link_flags(flag[1:])
-        copy_flags = anchors.label_flags(name) if anchors else None
+        copy_flags = links.label_flags(key, name)
         if copy_flags is not None and not flags.selects_copy:
             flags.move = copy_flags.move
             flags.unmoved = copy_flags.unmoved
@@ -1146,29 +1186,31 @@ def apply_glossary_uri_links(html, glossary_slug_lookup, source_label=""):
     return _GLOSSARY_URI_RE.sub(rewrite, html)
 
 
-def _apply_address_links(md_text, address_links, version_anchors=None):
+def _apply_address_links(md_text, address_links, links=None):
     """Insert Markdown links for address references before HTML conversion.
 
     Each entry in address_links specifies a pattern to match, which
-    occurrence to link, and the target version/address for the anchor.
-    Replacements are applied end-to-start so positions don't shift.
+    occurrence to link, and the target listing (`version`, a listing
+    key) and address for the anchor. Replacements are applied
+    end-to-start so positions don't shift.
 
-    If version_anchors is provided, addresses that don't have a direct
-    anchor are resolved to the nearest preceding anchor address.
+    If `links` (the project's `ListingLinks`) is provided, addresses
+    that don't have a direct anchor are resolved to the nearest
+    preceding anchor address.
     """
     replacements = []
 
     for link_spec in address_links:
         pattern = link_spec["pattern"]
         occurrence = link_spec["occurrence"]
-        version = link_spec["version"]
+        key = link_spec["version"]
         address = int(link_spec["address"], 0)
 
         resolution = None
-        if version_anchors and version in version_anchors:
-            resolution = version_anchors[version].resolve(address)
+        if links is not None and key in links:
+            resolution = links.listing_anchors(key).resolve(address)
         fragment = resolution.id if resolution else anchor_id(address)
-        url = f"{version}.html#{fragment}"
+        url = f"{listing_page_stem(key)}.html#{fragment}"
 
         matches = list(re.finditer(pattern, md_text))
         if not matches:
@@ -1240,9 +1282,7 @@ def _render_glossary_page(env, slug, name, glossary, output_dirpath, pages):
 
 
 def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
-                      output_dirpath, version_anchors=None,
-                      glossary_lookup=None, pages=None,
-                      version_mm_links=None, version_labels=None,
+                      output_dirpath, links, pages=None,
                       glossary_slug_lookup=None, source_page_map=None):
     """Build document pages declared in rom.json for this version."""
     doc_template = env.get_template("_doc.html")
@@ -1258,8 +1298,7 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
 
         address_links = doc.get("address_links", [])
         if address_links:
-            md_text = _apply_address_links(md_text, address_links,
-                                           version_anchors)
+            md_text = _apply_address_links(md_text, address_links, links)
 
         content_html = _render_document_markdown(md_text)
 
@@ -1270,20 +1309,18 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         content_html = apply_glossary_uri_links(
             content_html, glossary_slug_lookup, source_label=src_label)
 
-        # Inline [text](label:NAME[@version]) references translate to the
+        # Inline [text](label:NAME[@listing]) references translate to the
         # equivalent address: URI, resolved below. Unqualified label: /
-        # address: URIs default to this doc's own version.
+        # address: URIs default to this doc's version's primary listing.
+        default_listing = listing_key(version_id)
         content_html = apply_label_uri_links(
-            content_html, version_labels, default_version=version_id,
-            source_label=src_label,
-            version_anchors=version_anchors)
+            content_html, links, default_listing=default_listing,
+            source_label=src_label)
 
-        # Rewrite inline [label](address:HEX[@version]) URIs.
+        # Rewrite inline [label](address:HEX[@listing]) URIs.
         content_html = apply_address_uri_links(
-            content_html, version_anchors,
-            default_version=version_id,
-            source_label=src_label,
-            version_mm_links=version_mm_links)
+            content_html, links, default_listing=default_listing,
+            source_label=src_label)
 
         # Repoint GitHub-relative links to repo source files at their
         # rendered site pages.
@@ -1395,75 +1432,56 @@ def _rewrite_source_file_links(html, doc_dirpath, source_page_map):
         r'href="((?!https?:|//|#)[^"#?]+)(#[^"]*)?"', repl, html)
 
 
-def _render_additional_disassemblies(env, source, version_id, version_dirpath,
-                                     rom_meta, parent_title, output_dirpath,
-                                     glossary_slug_lookup=None, pages=None,
-                                     updated_iso=None, updated_display=None):
-    """Render each additional disassembly listing declared for a version.
+def _render_additional_disassemblies(env, source, plan, output_dirpath,
+                                     links, glossary_slug_lookup=None,
+                                     pages=None, updated_iso=None,
+                                     updated_display=None):
+    """Render each additional listing declared for a version.
 
-    A program can comprise more than one separately-disassembled body of
-    code — JOYSTIK, for instance, carries two 256-byte driver variants
-    disassembled apart from its main image. Each is declared under
-    `disassemblies` in the version metadata (label, slug, json) and gets
-    its own formatted, anchored listing page (and a memory-map page when
-    the listing carries one), exactly like the primary disassembly — so a
-    driver variant reads as a first-class disassembly, not plain text.
+    A version can comprise more than one separately-disassembled body of
+    code. JOYSTIK carries two 256-byte driver variants disassembled apart
+    from its main image; a disc holds several separate programs. Each is
+    declared under `disassemblies` in the version metadata (label, slug,
+    json) and gets its own formatted, anchored listing page (and a
+    memory-map page when the listing carries one), exactly like the
+    primary disassembly.
 
-    Navigation links each variant back to the parent program and across
-    to its sibling variants.
+    Navigation links each listing to the version's primary listing and
+    across to the others. A version of peer programs (see
+    `_VersionPlan.peers`) names the primary by its own label; otherwise
+    it reads as the parent program's disassembly.
     """
-    disassemblies = rom_meta.get("disassemblies", [])
-    if not disassemblies:
+    if not plan.extras:
         return
 
     disassembly_template = env.get_template("_disassembly.html")
     slug = source["slug"]
     name = source["name"]
     description = source["description"]
-    source_addr_label = _source_address_label(
-        _resolve_version_meta_filepath(version_dirpath), rom_meta)
+    source_addr_label = _source_address_label(plan.meta_filepath,
+                                              plan.rom_meta)
 
-    for entry in disassemblies:
-        json_filepath = version_dirpath / entry["json"]
-        if not json_filepath.exists():
-            print(f"  Warning: disassembly JSON {json_filepath} not found, "
-                  f"skipping")
-            continue
-        data = json.loads(json_filepath.read_text())
-        page_id = f"{version_id}-{entry['slug']}"
+    for listing in plan.extras:
+        data = listing.data
+        page_id = listing.page_stem
 
-        # Navigation: back to the parent program, then across to siblings,
+        # Navigation: to the primary listing, then across to the others,
         # then this listing's own memory map (if any).
-        links = [{
-            "label": f"{parent_title} disassembly",
-            "url": f"{version_id}.html",
-            "icon": "code",
-            "category": "ours",
-        }]
-        for sibling in disassemblies:
-            if sibling["slug"] == entry["slug"]:
-                continue
-            links.append({
-                "label": sibling["label"],
-                "url": f"{version_id}-{sibling['slug']}.html",
-                "icon": "code",
-                "category": "ours",
-            })
-        if data.get("memory_map") or data.get("index_bases"):
-            links.append({
-                "label": "Memory map",
-                "url": f"{page_id}-memory-map.html",
-                "icon": "map",
-                "target": "memory-map",
-                "class": "mm-link",
-                "category": "ours",
-            })
-        link_groups = _group_links(links)
+        nav = []
+        if plan.primary is not None:
+            nav.append(_listing_link(
+                plan.primary,
+                None if plan.peers else f"{plan.title} disassembly"))
+        nav.extend(_listing_link(other) for other in plan.extras
+                   if other is not listing)
+        if listing.has_memory_map:
+            nav.append(_memory_map_link(listing))
+        link_groups = _group_links(nav)
 
-        anchors = _listing_anchors(data, f"{slug}/{page_id}.html")
+        anchors = listing.anchors
         sections = process_disassembly(
             data, version_id=page_id, glossary_lookup=glossary_slug_lookup,
-            anchors=anchors)
+            anchors=anchors, links=links, listing_key=listing.key)
         macros = build_macros(data)
 
         html = disassembly_template.render(
@@ -1471,8 +1489,9 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
             slug=slug,
             name=name,
             version_id=page_id,
-            title=entry["label"],
-            description=entry.get("runtime", description),
+            title=listing.label,
+            context=plan.title if plan.peers else None,
+            description=listing.entry.get("runtime", description),
             link_groups=link_groups,
             sections=sections,
             macros=macros,
@@ -1486,7 +1505,8 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
         if pages is not None:
             pages.append({
                 "url": f"{BASE_URL}{slug}/{page_id}.html",
-                "title": entry["label"],
+                "title": (f"{listing.label}, {plan.title}" if plan.peers
+                          else listing.label),
                 "description": description,
                 "is_disassembly": True,
                 "updated": updated_iso,
@@ -1494,19 +1514,9 @@ def _render_additional_disassemblies(env, source, version_id, version_dirpath,
 
         # A memory-map page too, if this listing enriched any non-ROM
         # labels with memory-map metadata.
-        mm_entries = _normalized_memory_map(data)
-        if mm_entries:
-            meta = data.get("meta", {})
-            _render_memory_map_page(
-                env, source, page_id, entry["label"], mm_entries,
-                output_dirpath,
-                {page_id: anchors}, pages,
-                group_titles=rom_meta.get("memory_map_groups", {}),
-                rom_load_addr=meta.get("load_addr"),
-                rom_end_addr=meta.get("end_addr"),
-                regions=data.get("regions", []),
-                version_labels={page_id: build_label_addrs(data)},
-                glossary_slug_lookup=glossary_slug_lookup)
+        _render_listing_memory_map(env, source, plan, listing, listing.label,
+                                   output_dirpath, links, pages,
+                                   glossary_slug_lookup)
 
 
 def _render_source_pages(env, source, version_id, version_dirpath, rom_meta,
@@ -1600,10 +1610,8 @@ def _rewrite_md_links_to_html(html, analyses):
     return re.sub(r'href="((?!https?:|//)[^"#?]+\.md)(#[^"]*)?"', repl, html)
 
 
-def _render_analysis_pages(env, source, output_dirpath,
-                           version_anchors=None, glossary_lookup=None,
-                           pages=None, version_mm_links=None,
-                           version_labels=None, glossary_slug_lookup=None,
+def _render_analysis_pages(env, source, output_dirpath, links,
+                           pages=None, glossary_slug_lookup=None,
                            source_page_map=None):
     """Build project-level analysis pages from acornaeology.json.
 
@@ -1611,7 +1619,8 @@ def _render_analysis_pages(env, source, output_dirpath,
     inside the source repo and is rendered to a standalone HTML
     page at `<slug>/<stem>.html`. Inline `address:` / `label:` /
     `glossary:` links behave as for per-version docs (analyses are
-    project-level, so `address:` / `label:` must carry `@version`).
+    project-level, so `address:` / `label:` must name a listing with
+    `@version` or `@version/slug`).
     """
     analyses = source.get("analyses", [])
     if not analyses:
@@ -1631,8 +1640,7 @@ def _render_analysis_pages(env, source, output_dirpath,
 
         address_links = analysis.get("address_links", [])
         if address_links:
-            md_text = _apply_address_links(md_text, address_links,
-                                           version_anchors)
+            md_text = _apply_address_links(md_text, address_links, links)
 
         content_html = _render_document_markdown(md_text)
 
@@ -1650,22 +1658,19 @@ def _render_analysis_pages(env, source, output_dirpath,
         content_html = apply_glossary_uri_links(
             content_html, glossary_slug_lookup, source_label=src_label)
 
-        # Inline [text](label:NAME@version) references. Analyses are
-        # project-level, so label: (like address:) must carry @version.
+        # Inline [text](label:NAME@listing) references. Analyses are
+        # project-level, so label: (like address:) must name a listing.
         content_html = apply_label_uri_links(
-            content_html, version_labels, default_version=None,
-            source_label=src_label,
-            version_anchors=version_anchors)
+            content_html, links, default_listing=None,
+            source_label=src_label)
 
-        # Rewrite inline [label](address:HEX[@version]) URIs. Analyses
-        # are project-level, so there's no implicit "current version";
-        # authors must always specify @version. apply_address_uri_links
-        # warns on unqualified references rather than guessing.
+        # Rewrite inline [label](address:HEX@listing) URIs. Analyses
+        # are project-level, so there's no implicit current listing;
+        # authors must always name one. apply_address_uri_links warns on
+        # unqualified references rather than guessing.
         content_html = apply_address_uri_links(
-            content_html, version_anchors,
-            default_version=None,
-            source_label=src_label,
-            version_mm_links=version_mm_links)
+            content_html, links, default_listing=None,
+            source_label=src_label)
 
         # Repoint GitHub-relative links to repo source files at their
         # rendered site pages.
@@ -1739,13 +1744,13 @@ def _normalized_memory_map(data):
 _ACCESS_LABELS = {"r": "R", "w": "W", "b": "B"}
 
 
-def _render_memory_map_page(env, source, version_id, version_title,
-                            memory_map, output_dirpath, version_anchors,
+def _render_memory_map_page(env, source, key, version_title,
+                            memory_map, output_dirpath, links,
                             pages=None, group_titles=None,
                             rom_load_addr=None, rom_end_addr=None,
-                            regions=None, version_labels=None,
-                            glossary_slug_lookup=None):
-    """Render {version_id}-memory-map.html for one version of a project.
+                            regions=None, glossary_slug_lookup=None):
+    """Render the memory-map page of listing `key`
+    (`{page stem}-memory-map.html`).
 
     `memory_map` is this version's entries already normalised to the v4
     shape by `_normalized_memory_map` (so v2/v3 and v4 documents render
@@ -1764,7 +1769,7 @@ def _render_memory_map_page(env, source, version_id, version_title,
     The memory map is version-scoped because workspace layout can shift
     between ROM releases. Descriptions pass through the standard
     Markdown pipeline; `[label](address:HEX)` links resolve to either
-    `{version_id}.html#addr-XXXX` (ROM code) or `#mm-NAME` (other
+    the listing's `{page stem}.html#addr-XXXX` (code) or `#mm-NAME` (other
     entries on the same memory-map page).
 
     `group_titles` maps memory-map group keys (e.g. `zero_page`,
@@ -1803,11 +1808,11 @@ def _render_memory_map_page(env, source, version_id, version_title,
 
     def rewrite_mm_refs(html):
         def repl(match):
-            hex_str, version, flag_str, label = match.groups()
-            # Only intercept unqualified URIs (no @version). Explicitly
-            # versioned URIs still go to the ROM-range resolver, which
-            # also handles multi-version anchor disambiguation.
-            if version:
+            hex_str, at, flag_str, label = match.groups()
+            # Only intercept unqualified URIs (no @listing). URIs naming
+            # a listing still go to the listing resolver, which also
+            # handles multi-version anchor disambiguation.
+            if at:
                 return match.group(0)
             addr = int(hex_str, 16)
             name = mm_addr_to_name.get(addr)
@@ -1832,7 +1837,8 @@ def _render_memory_map_page(env, source, version_id, version_title,
                     f'(<a class="mm-link" href="{url}">{hex_display}</a>)')
         return _ADDRESS_URI_RE.sub(repl, html)
 
-    output_filename = f"{version_id}-memory-map.html"
+    page_stem = listing_page_stem(key)
+    output_filename = f"{page_stem}-memory-map.html"
 
     def render_description(md):
         if not md:
@@ -1849,13 +1855,11 @@ def _render_memory_map_page(env, source, version_id, version_title,
             html, glossary_slug_lookup,
             source_label=f"{source['slug']}/{output_filename}")
         html = apply_label_uri_links(
-            html, version_labels, default_version=version_id,
-            source_label=f"{source['slug']}/{output_filename}",
-            version_anchors=version_anchors)
+            html, links, default_listing=key,
+            source_label=f"{source['slug']}/{output_filename}")
         html = rewrite_mm_refs(html)
         html = apply_address_uri_links(
-            html, version_anchors,
-            default_version=version_id,
+            html, links, default_listing=key,
             source_label=f"{source['slug']}/{output_filename}",
             link_class="listing-link",
             target="listing")
@@ -1922,7 +1926,7 @@ def _render_memory_map_page(env, source, version_id, version_title,
         root="../",
         slug=source["slug"],
         name=source["name"],
-        version_id=version_id,
+        version_id=page_stem,
         title=version_title,
         output_filename=output_filename,
         groups=groups,

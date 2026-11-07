@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
 
-{% block title %}Assembly - {{ title }}{% endblock %}
-{% block description %}Annotated disassembly of {{ title }}.{% endblock %}
+{% block title %}Assembly - {{ title }}{% if context %}, {{ context }}{% endif %}{% endblock %}
+{% block description %}Annotated disassembly of {{ title }}{% if context %}, {{ context }}{% endif %}.{% endblock %}
 {% block og_url %}https://acornaeology.uk/{{ slug }}/{{ version_id }}.html{% endblock %}
 
 {% block body_attrs %} class="page-disassembly"{% endblock %}
@@ -13,7 +13,8 @@
 
 {% block content %}
 <h1>{{ title }}</h1>
-{% if updated_display %}<p class="updated-date">Updated {{ updated_display }}</p>{% endif %}
+{% if context %}<p class="listing-context">{{ context }}</p>
+{% endif %}{% if updated_display %}<p class="updated-date">Updated {{ updated_display }}</p>{% endif %}
 <p class="version-back"><a href="./">&larr; All {{ name }} versions</a></p>
 {% if link_groups %}
 <div class="rom-links">

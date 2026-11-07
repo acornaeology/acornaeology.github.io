@@ -1,24 +1,25 @@
 """Unit tests for the doc-level label:/glossary: URI resolvers in build.py."""
 from generator.build import apply_label_uri_links, apply_glossary_uri_links
+from generator.listings import ListingLinks
 
 
 class TestLabelUriLinks:
     def test_label_translates_to_address_uri(self):
         html = '<a href="label:print_cmos_pair">print_cmos_pair</a>'
         out = apply_label_uri_links(
-            html, {"4.24": {"print_cmos_pair": 0x9668}},
-            default_version="4.24")
+            html, ListingLinks(labels={"4.24": {"print_cmos_pair": 0x9668}}),
+            default_listing="4.24")
         assert '<a href="address:9668">print_cmos_pair</a>' == out
 
     def test_label_preserves_version_and_flag(self):
         html = '<a href="label:foo@3.60?hex">foo</a>'
         out = apply_label_uri_links(
-            html, {"3.60": {"foo": 0xE263}}, default_version="4.24")
+            html, ListingLinks(labels={"3.60": {"foo": 0xE263}}), default_listing="4.24")
         assert '<a href="address:E263@3.60?hex">foo</a>' == out
 
     def test_unknown_label_left_intact(self):
         html = '<a href="label:nope">nope</a>'
-        out = apply_label_uri_links(html, {"4.24": {}}, default_version="4.24")
+        out = apply_label_uri_links(html, ListingLinks(labels={"4.24": {}}), default_listing="4.24")
         assert out == html
 
 

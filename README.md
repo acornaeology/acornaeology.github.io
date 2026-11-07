@@ -71,12 +71,15 @@ Per-version docs (`rom.json.docs`) and project-level analyses (`acornaeology.jso
 [rx_frame_b](address:E263)                ← label-only link
 [rx_frame_b](address:E263?hex)            ← appends " (&E263)" as a second link
 [legacy init](address:80F3@3.60?hex)      ← explicit version (required in analyses)
+[editor](address:23B2@disc_master/editor) ← another listing of a version
+[editor](address:23B2@/editor)            ← another listing of this version
 [rx_frame_b (&E263)](address:E263@1)      ← author wrote label by hand
 ```
 
 The `address:` scheme is resolved at render time:
 
 - Inside a **per-version doc**, an unqualified URI (`address:E263`) links to that doc's own version. Use `@version` to link to a different version.
+- A version can have several listings (`disassemblies` in its metadata). `@version/slug` names one, and `@/slug` names one in the same version as the doc or comment.
 - Inside a **project-level analysis**, authors must always specify `@version` — analyses aren't tied to a single version, so there's no implicit default.
 - Hex is 4+ digits, case-insensitive. If the exact address isn't an anchor in the target version, the link falls back to the nearest preceding anchor.
 
@@ -90,7 +93,7 @@ A `?flag` suffix tweaks the rendered output:
 
 Combine flags with `&`: `[add points](address:0400@disc?move=low_joystick&hex)`.
 
-Unresolvable URIs (unknown version, missing `@version` in an analysis, address before the first anchor, unknown flag or move) print a build warning and leave the link unchanged rather than failing the build.
+Unresolvable URIs (unknown version or listing, missing `@version` in an analysis, address before the first anchor, unknown flag or move) print a build warning and leave the link unchanged rather than failing the build.
 
 ### Anchors are permalinks
 

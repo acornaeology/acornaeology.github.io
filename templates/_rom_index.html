@@ -26,7 +26,7 @@
 <tbody>
 {% for version in versions %}
 <tr>
-    <td><a href="{{ version.disassembly_url }}">{{ version.title }}</a></td>
+    <td>{% if version.peers %}{{ version.title }}{% else %}<a href="{{ version.disassembly_url }}">{{ version.title }}</a>{% endif %}</td>
     <td>{% if version.memory_map_url %}<a href="{{ version.memory_map_url }}">Memory map</a>{% endif %}</td>
     <td>{% if version.changes_url %}<a href="{{ version.changes_url }}">{{ version.changes_label }}</a>{% endif %}</td>
 </tr>
