@@ -656,6 +656,7 @@ def build_disassemblies(env, sources, pages):
                 updated_iso=updated_iso,
                 updated_display=updated_display,
                 source_addr_label=source_addr_label,
+                files=_file_rows(primary.files),
             )
 
             version_filepath = output_dirpath / f"{version_id}.html"
@@ -715,6 +716,7 @@ class _Listing:
     data: dict
     anchors: AnchorIndex
     entry: dict = field(default_factory=dict)
+    files: list = field(default_factory=list)
 
     @property
     def page_stem(self):
@@ -770,7 +772,7 @@ def _load_version(repo_dirpath, slug, name, version_id):
         key = listing_key(version_id)
         primary = _Listing(
             key=key, slug=None, label=rom_meta.get("label", title),
-            data=data,
+            files=rom_meta.get("files", []), data=data,
             anchors=_listing_anchors(data, f"{slug}/{key}.html"))
 
     extras = []
@@ -784,6 +786,7 @@ def _load_version(repo_dirpath, slug, name, version_id):
         key = listing_key(version_id, entry["slug"])
         extras.append(_Listing(
             key=key, slug=entry["slug"], label=entry["label"], data=data,
+            files=entry.get("files", []),
             anchors=_listing_anchors(
                 data, f"{slug}/{listing_page_stem(key)}.html"),
             entry=entry))
@@ -806,6 +809,39 @@ def _register_listing(links, listing, slug):
         entry["addr"]: f"{listing.page_stem}-memory-map.html#mm-{entry['name']}"
         for entry in _normalized_memory_map(listing.data)
     }
+
+
+def _acorn_hex(value):
+    """`value` (an int, or a hex string such as `"0x0400"`, `"&0400"` or
+    `"0400"`) as Acorn-style hex, `&0400`; a string that isn't hex is
+    shown as it is."""
+    if value is None or value == "":
+        return ""
+    if isinstance(value, int):
+        return f"&{value:04X}"
+    text = str(value).strip()
+    digits = text[2:] if text[:2].lower() == "0x" else text.lstrip("&")
+    try:
+        return f"&{int(digits, 16):04X}"
+    except ValueError:
+        return text
+
+
+def _file_rows(files):
+    """Rows for a listing's Files table, from the `files` its metadata
+    declares (`[{name, load, exec, size, sha256}]`): the program's files
+    as they are on the disc or tape. Load, exec and length are shown in
+    hex, as `*INFO` shows them."""
+    return [
+        {
+            "name": f.get("name", ""),
+            "load": _acorn_hex(f.get("load")),
+            "exec": _acorn_hex(f.get("exec")),
+            "length": _acorn_hex(f.get("size")),
+            "sha256": f.get("sha256", ""),
+        }
+        for f in files
+    ]
 
 
 def _memory_map_link(listing):
@@ -1499,6 +1535,7 @@ def _render_additional_disassemblies(env, source, plan, output_dirpath,
             updated_iso=updated_iso,
             updated_display=updated_display,
             source_addr_label=source_addr_label,
+            files=_file_rows(listing.files),
         )
         (output_dirpath / f"{page_id}.html").write_text(html)
         print(f"  {slug}/{page_id}.html")

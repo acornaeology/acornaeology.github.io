@@ -332,6 +332,38 @@ a:hover {
     border-bottom: 1px solid var(--rule);
 }
 
+/* The files a listing's program is made of, as on its disc or tape. */
+.listing-files {
+    font-size: 0.85rem;
+    color: var(--dim);
+    margin: 0 0 1rem;
+}
+
+.file-table-wrap {
+    overflow-x: auto;
+}
+
+.file-table {
+    border-collapse: collapse;
+    margin-top: 0.25rem;
+}
+
+.file-table th {
+    text-align: left;
+    font-weight: 600;
+    padding: 0.2em 1.2em 0.2em 0;
+}
+
+.file-table td {
+    padding: 0.15em 1.2em 0.15em 0;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.file-table .file-hash {
+    font-size: 0.85em;
+}
+
 /* Feedback is a call to action, not a reference — demote it below the
    attribution groups and drop the heading rule so it reads as a footer
    line rather than a peer of the sources. */

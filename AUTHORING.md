@@ -512,6 +512,23 @@ metadata (`"label": "The game"`). The version then lists all its
 programs as peers beneath its title, and each listing page is headed
 with its program's label, with the version's title beneath.
 
+Each listing may also list the files its program is made of, as they
+are on the disc or tape, under `files`: in its `disassemblies` entry,
+or at the top level of the metadata for the primary listing.
+
+```json
+"files": [
+    {"name": "Editor", "load": "0x1910", "exec": "0x23B2",
+     "size": 5518, "sha256": "b979…"}
+]
+```
+
+They render as a Files table at the top of the listing page, with load,
+exec and length in hex as `*INFO` shows them. `load` and `exec` may be
+hex strings (`"0x1910"`, `"&1910"`, `"1910"`) or integers; `size` is an
+integer. The older single-file fields (`size`, `load_address`, …) are
+not shown.
+
 ---
 
 ## 8. CLI tools in each disassembly repo

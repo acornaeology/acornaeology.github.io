@@ -179,3 +179,20 @@ class TestPeerListingsOnTheIndex:
                 for r in entry["additional_disassemblies"]] == [
             ("The game", "disc_master.html"),
             ("*EDITOR", "disc_master-editor.html")]
+
+
+class TestFileRows:
+    def test_addresses_and_length_in_acorn_hex(self):
+        from generator.build import _file_rows
+        assert _file_rows([{"name": "Coder", "load": "0x0400",
+                            "exec": "0x0740", "size": 1023,
+                            "sha256": "5644"}]) == [
+            {"name": "Coder", "load": "&0400", "exec": "&0740",
+             "length": "&03FF", "sha256": "5644"}]
+
+    def test_missing_and_odd_values(self):
+        from generator.build import _file_rows
+        assert _file_rows([{"name": "X", "load": "1900", "exec": "&1909",
+                            "size": "n/a"}]) == [
+            {"name": "X", "load": "&1900", "exec": "&1909", "length": "n/a",
+             "sha256": ""}]

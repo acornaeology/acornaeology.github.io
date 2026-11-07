@@ -29,6 +29,20 @@
 </section>
 {% endfor %}
 </div>
+{% endif %}{% if files %}
+<section class="listing-files">
+<h2 class="rom-link-heading">Files</h2>
+<div class="file-table-wrap">
+<table class="file-table">
+<thead><tr><th>File</th><th>Load</th><th>Exec</th><th>Length</th><th>SHA-256</th></tr></thead>
+<tbody>
+{% for f in files -%}
+<tr><td>{{ f.name }}</td><td><code>{{ f.load }}</code></td><td><code>{{ f.exec }}</code></td><td><code>{{ f.length }}</code></td><td><code class="file-hash">{{ f.sha256 }}</code></td></tr>
+{% endfor -%}
+</tbody>
+</table>
+</div>
+</section>
 {% endif %}
 
 <div class="disassembly-layout">
