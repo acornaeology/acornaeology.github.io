@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from html import escape
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import markdown as markdown_lib
 from jinja2 import Environment, FileSystemLoader
@@ -405,21 +405,72 @@ def _localise_reference_assets(references, repo_dirpath, slug, output_dirpath):
     fragment/mailto, or that don't resolve to a real file inside the repo are
     left untouched.
     """
-    repo_root = repo_dirpath.resolve()
     for ref in references:
         url = ref.get("url", "")
-        if not url or "://" in url or url.startswith(("/", "#", "mailto:")):
-            continue
-        src_filepath = (repo_dirpath / url).resolve()
-        if not src_filepath.is_file():
-            continue
-        # Never copy from outside the source repo.
-        if not src_filepath.is_relative_to(repo_root):
-            continue
-        dst_filepath = output_dirpath / url
-        dst_filepath.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src_filepath, dst_filepath)
-        ref["url"] = f"{BASE_URL}{slug}/{Path(url).as_posix()}"
+        rel_path = _publish_repo_file(url, repo_dirpath, repo_dirpath,
+                                      output_dirpath)
+        if rel_path is not None:
+            ref["url"] = f"{BASE_URL}{slug}/{rel_path}"
+
+
+def _is_local_url(url):
+    """Whether `url` is a relative path, not external, site-absolute, a
+    fragment, a mailto: or a data: URI."""
+    return bool(url) and "://" not in url and not url.startswith(
+        ("/", "#", "mailto:", "data:"))
+
+
+def _publish_repo_file(url, base_dirpath, repo_dirpath, output_dirpath):
+    """Copy the source-repo file a relative `url` names into the output.
+
+    `url` resolves against `base_dirpath`, the directory of whatever
+    names it (the repo root for a manifest reference, a Markdown file's
+    directory for an image). The file is copied to
+    `<output_dirpath>/<its path in the repo>`, so a project's served
+    files mirror the repo's layout and a file named from several places
+    is published once. Returns that repo-relative POSIX path, or None
+    when `url` isn't local or doesn't name a file inside the repo
+    (files outside the repo are never copied).
+    """
+    if not _is_local_url(url):
+        return None
+    src_filepath = (base_dirpath / url).resolve()
+    repo_root = repo_dirpath.resolve()
+    if not src_filepath.is_file() or not src_filepath.is_relative_to(
+            repo_root):
+        return None
+    rel_path = src_filepath.relative_to(repo_root).as_posix()
+    dst_filepath = output_dirpath / rel_path
+    dst_filepath.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src_filepath, dst_filepath)
+    return rel_path
+
+
+_IMG_SRC_RE = re.compile(r'(<img\b[^>]*?\bsrc=")([^"]*)(")')
+
+
+def _localise_images(html, md_dirpath, repo_dirpath, output_dirpath):
+    """Serve the repo images a rendered Markdown page shows.
+
+    A Markdown file shows images by paths relative to itself
+    (`![sprite](sprites/sprite_00.png)`), which read correctly on GitHub
+    but name files the site doesn't serve. Copy each such image into the
+    project's output directory (see `_publish_repo_file`) and repoint
+    its `src` there. Pages render at `<slug>/<page>.html`, alongside
+    the project's output root, so the new `src` is the repo-relative
+    path. External, site-absolute and data: srcs, and those naming no
+    file inside the repo, are left untouched.
+    """
+    def repl(match):
+        src = match.group(2)
+        path = unquote(src.split("#", 1)[0].split("?", 1)[0])
+        rel_path = _publish_repo_file(path, md_dirpath, repo_dirpath,
+                                      output_dirpath)
+        if rel_path is None:
+            return match.group(0)
+        return f"{match.group(1)}{quote(rel_path)}{match.group(3)}"
+
+    return _IMG_SRC_RE.sub(repl, html)
 
 
 def build_disassemblies(env, sources, pages):
@@ -1363,6 +1414,11 @@ def _render_doc_pages(env, source, version_id, version_dirpath, rom_meta,
         content_html = _rewrite_source_file_links(
             content_html, md_filepath.parent, source_page_map)
 
+        # Serve the repo images the doc shows.
+        content_html = _localise_images(
+            content_html, md_filepath.parent, source["repo_dirpath"],
+            output_dirpath)
+
         disassembly_title = rom_meta.get("title", f"{name} {version_id}")
         html = doc_template.render(
             root="../",
@@ -1713,6 +1769,10 @@ def _render_analysis_pages(env, source, output_dirpath, links,
         # rendered site pages.
         content_html = _rewrite_source_file_links(
             content_html, md_filepath.parent, source_page_map)
+
+        # Serve the repo images the analysis shows.
+        content_html = _localise_images(
+            content_html, md_filepath.parent, repo_dirpath, output_dirpath)
 
         html = doc_template.render(
             root="../",

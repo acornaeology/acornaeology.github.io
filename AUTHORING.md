@@ -333,6 +333,18 @@ The editor starts at [`&23B2`](address:23B2@disc_master/editor?hex).
 An unqualified link, or one using `@/SLUG`, warns at build time and is
 left unresolved.
 
+Images work in analyses and per-version docs alike. Give each one a
+path relative to the Markdown file, so it shows on GitHub too:
+
+```markdown
+![sprite &00](sprites/sprite_00.png)
+```
+
+The build copies each image that resolves to a file inside the repo
+into the site, mirroring the repo layout (`/{slug}/docs/sprites/…`),
+and repoints the `src` there. External, site-absolute and `data:`
+images are left alone, and files outside the repo are never copied.
+
 ### 5.2 Per-version `docs` (release notes, change logs)
 
 Each version's `rom.json` has an optional `docs` array. Entries
