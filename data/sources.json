@@ -26,5 +26,9 @@
     {
         "repo": "https://github.com/acornaeology/dunjunz",
         "path": "../../dunjunz"
+    },
+    {
+        "repo": "https://github.com/acornaeology/acorn-compact-mouse-driver",
+        "path": "../../acorn-compact-mouse-driver"
     }
 ]
